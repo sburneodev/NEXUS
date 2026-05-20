@@ -1,0 +1,38 @@
+# ─── FRONTEND ─────────────
+node_modules/
+dist/
+.cache/
+.vite/
+
+# ─── BACKEND JAVA ───────────
+target/
+*.jar
+*.war
+*.class
+.mvn/
+hs_err_pid*.log
+
+# ─── ENTORNO Y SECRETOS ──────────
+.env
+.env.local
+.env.*.local
+docker-compose.override.yml
+
+# ─── IDEs ────────────
+.idea/
+*.iml
+.vscode/settings.json
+.vscode/extensions.json
+
+# ─── SISTEMA OPERATIVO ─────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── SONARQUBE ─────
+.sonar/
+.scannerwork/
+
+# ─── LOGS ────────
+*.log
+logs/

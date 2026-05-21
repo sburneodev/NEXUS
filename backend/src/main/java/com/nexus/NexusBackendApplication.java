@@ -1,12 +1,13 @@
 package com.nexus;
 
-import org.junit.jupiter.api.Test;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-class NexusApplicationTests {
+@SpringBootApplication
+public class NexusBackendApplication {
 
-    @Test
-    void contextLoads() {
-        // Test deshabilitado hasta que la BD esté configurada
-    }
+	public static void main(String[] args) {
+		SpringApplication.run(NexusBackendApplication.class, args);
+	}
 
 }

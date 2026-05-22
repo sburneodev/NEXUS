@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,13 +16,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    // NOTA: Es completamente normal que 'JwtService' salga en rojo subrayado.
-    // Es el servicio que se creará en la siguiente tarjeta para descifrar el token.
-    private final JwtService jwtService; 
+    private final JwtUtil jwtUtil; 
     private final UserDetailsService userDetailsService;
+
+    // ✅ ESTE ES EL CONSTRUCTOR QUE EXIGE JAVA PARA LAS VARIABLES FINAL
+    public JwtAuthFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -42,11 +44,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. Extraemos el token JWT (quitando la palabra "Bearer " que son 7 caracteres)
+        // 2. Extraemos el token JWT (quitando la palabra "Bearer ")
         jwt = authHeader.substring(7);
         
         // 3. Extraemos el email o nombre de usuario guardado dentro del token
-        userEmail = jwtService.extractUsername(jwt);
+        userEmail = jwtUtil.extractUsername(jwt);
 
         // 4. Si hay usuario y el sistema aún no lo ha autenticado en esta petición...
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -55,7 +57,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
             
             // 5. Si el token es verídico y no ha caducado
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            if (jwtUtil.isTokenValid(jwt, userDetails)) {
                 
                 // Le creamos su credencial de acceso válida para Spring Security
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

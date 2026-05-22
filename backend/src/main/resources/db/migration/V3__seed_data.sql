@@ -1,16 +1,8 @@
 -- ============================================================
---  LevelUp Nexus ERP — sql/seed.sql
---  Docker: montado como 03_seed.sql en initdb
---  Motor: PostgreSQL 16 | Versión: v1.2.0
---  Autores: Desirée Cobo Batalla & Sebastián Burneo Reyes
---  ─────────────────────────────────────────────────────────
---  Script idempotente: todos los inserts usan ON CONFLICT DO NOTHING.
---  Puede re-ejecutarse sin duplicar datos.
---  ─────────────────────────────────────────────────────────
---  Contraseñas de demo (BCrypt cost=12):
---    admin123     → admin       |  gestor123   → gestor
---    cajero123    → cajero      |  marketing123 → mkt
---    contable123  → contable
+--  LevelUp Nexus ERP — V3__seed_data.sql (Flyway)
+--  Se ejecuta automáticamente después de V2.
+--  Datos de prueba: roles, usuarios, productos, transacciones.
+--  Versión: v1.2.0
 -- ============================================================
 
 -- ── SEED 1 · ROLES ───────────────────────────────────────────

@@ -24,7 +24,9 @@ services:
       - "${DB_PORT_EXTERNAL:-5433}:5432"
     volumes:
       - nexus_pg_data:/var/lib/postgresql/data
-      - ./sql/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./sql/init.sql/init_schema.sql:/docker-entrypoint-initdb.d/01_init_schema.sql:ro
+      - ./sql/init.sql/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+      - ./sql/init.sql/triggers.sql:/docker-entrypoint-initdb.d/03_triggers.sql:ro
     networks:
       - nexus_internal
     healthcheck:

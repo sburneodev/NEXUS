@@ -1,0 +1,35 @@
+# ============================================================
+#  LevelUp Nexus ERP — Caddyfile
+#  Dominio: sibr.app
+#  Caddy obtiene SSL de Let's Encrypt automáticamente
+# ============================================================
+
+sibr.app {
+
+    # ── Frontend — React/Vite ─────────────────────────────
+    reverse_proxy nexus-frontend:80
+
+    # ── Backend — Spring Boot API ─────────────────────────
+    handle /api/* {
+        reverse_proxy nexus-backend:8080
+    }
+
+    # ── Compresión ────────────────────────────────────────
+    encode gzip
+
+    # ── Logs ──────────────────────────────────────────────
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+
+# SonarQube accesible en subdominio separado
+sonar.sibr.app {
+    reverse_proxy nexus-sonarqube:9000
+
+    log {
+        output file /var/log/caddy/sonar.log
+        format json
+    }
+}

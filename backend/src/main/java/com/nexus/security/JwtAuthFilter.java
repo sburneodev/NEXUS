@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,13 +16,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 @Component
-@RequiredArgsConstructor
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    // NOTA: Es completamente normal que 'JwtService' salga en rojo subrayado.
-    // Es el servicio que se creará en la siguiente tarjeta para descifrar el token.
-	private final JwtUtil jwtUtil;
+    private final JwtUtil jwtUtil; 
     private final UserDetailsService userDetailsService;
+
+    // ✅ ESTE ES EL CONSTRUCTOR QUE EXIGE JAVA PARA LAS VARIABLES FINAL
+    public JwtAuthFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+        this.jwtUtil = jwtUtil;
+        this.userDetailsService = userDetailsService;
+    }
 
     @Override
     protected void doFilterInternal(
@@ -42,7 +44,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 2. Extraemos el token JWT (quitando la palabra "Bearer " que son 7 caracteres)
+        // 2. Extraemos el token JWT (quitando la palabra "Bearer ")
         jwt = authHeader.substring(7);
         
         // 3. Extraemos el email o nombre de usuario guardado dentro del token

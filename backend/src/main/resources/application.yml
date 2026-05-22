@@ -58,7 +58,7 @@ server:
 
 # ─── JWT ──────────────────────────────────────────────────
 jwt:
-  secret: clave-local-desarrollo-minimo-32-caracteres-cambiar
+  secret: ${JWT_SECRET:UnaClaveSuperSecretaYMuyLargaDeMasDe32CaracteresParaNexusERP}
   expiration: 28800000
 
 # ─── IA ───────────────────────────────────────────────────

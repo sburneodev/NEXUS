@@ -1,19 +1,9 @@
 -- ============================================================
---  LevelUp Nexus ERP — sql/triggers.sql
---  Docker: montado como 02_triggers.sql en initdb
---  Motor: PostgreSQL 16 | Versión: v1.2.0
---  Autores: Desirée Cobo Batalla & Sebastián Burneo Reyes
---  ─────────────────────────────────────────────────────────
---  Contenido:
---    1. fn_audit_trigger()          — función genérica de auditoría
---    2. fn_set_actualizado_en()     — actualización automática de timestamp
---    3. fn_productos_before_delete()— protección borrado físico + auditoría
---    4. fn_bloquear_update_tx()     — inmutabilidad de transacciones_stock
---    5. fn_clientes_before_update() — validación puntos + timestamp clientes
---    6. Stored Procedure sp_registrar_transaccion_stock (ACID + FOR UPDATE)
---    7. Declaración de todos los triggers en sus tablas
+--  LevelUp Nexus ERP — V2__triggers_audit.sql (Flyway)
+--  Se ejecuta automáticamente después de V1.
+--  Contiene: funciones PL/pgSQL, triggers y SP ACID.
+--  Versión: v1.2.0
 -- ============================================================
-
 
 -- ============================================================
 -- SECCIÓN 1 · FUNCIÓN GENÉRICA DE AUDITORÍA

@@ -27,6 +27,7 @@ services:
       - ./sql/init.sql/init_schema.sql:/docker-entrypoint-initdb.d/01_init_schema.sql:ro
       - ./sql/init.sql/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
       - ./sql/init.sql/triggers.sql:/docker-entrypoint-initdb.d/03_triggers.sql:ro
+      - ./sql/init.sql/add_warehouse_locations.sql:/docker-entrypoint-initdb.d/04_add_warehouse_locations.sql:ro
     networks:
       - nexus_internal
     healthcheck:

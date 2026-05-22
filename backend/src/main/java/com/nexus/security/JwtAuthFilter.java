@@ -22,7 +22,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     // NOTA: Es completamente normal que 'JwtService' salga en rojo subrayado.
     // Es el servicio que se creará en la siguiente tarjeta para descifrar el token.
-    private final JwtService jwtService; 
+	private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
     @Override
@@ -46,7 +46,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
         
         // 3. Extraemos el email o nombre de usuario guardado dentro del token
-        userEmail = jwtService.extractUsername(jwt);
+        userEmail = jwtUtil.extractUsername(jwt);
 
         // 4. Si hay usuario y el sistema aún no lo ha autenticado en esta petición...
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
@@ -55,7 +55,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
             
             // 5. Si el token es verídico y no ha caducado
-            if (jwtService.isTokenValid(jwt, userDetails)) {
+            if (jwtUtil.isTokenValid(jwt, userDetails)) {
                 
                 // Le creamos su credencial de acceso válida para Spring Security
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(

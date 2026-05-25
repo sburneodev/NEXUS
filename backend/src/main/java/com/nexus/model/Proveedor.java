@@ -19,7 +19,7 @@ public class Proveedor {
     private String direccion;
 
     @Column(name = "tiempo_entrega_d")
-    private Integer tiempoEntregaD;
+    private Short tiempoEntregaD;
 
     private Boolean activo = true;
 
@@ -34,8 +34,8 @@ public class Proveedor {
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public String getDireccion() { return direccion; }
     public void setDireccion(String direccion) { this.direccion = direccion; }
-    public Integer getTiempoEntregaD() { return tiempoEntregaD; }
-    public void setTiempoEntregaD(Integer tiempoEntregaD) { this.tiempoEntregaD = tiempoEntregaD; }
+    public Short getTiempoEntregaD() { return tiempoEntregaD; }
+    public void setTiempoEntregaD(Short tiempoEntregaD) { this.tiempoEntregaD = tiempoEntregaD; }
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
 }

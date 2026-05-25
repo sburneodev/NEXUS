@@ -45,5 +45,18 @@ public class AuthService {
         return new LoginResponse(token, usuario.getEmail(), roles);
     }
 
+    public String verifyEmail(String token) {
+        Usuario usuario = usuarioRepository.findByVerifyToken(token)
+                .orElseThrow(() -> new RuntimeException("Token de verificación inválido"));
+
+        if (usuario.isVerified()) {
+            return "La cuenta ya estaba verificada.";
+        }
+
+        usuario.setVerified(true);
+        usuario.setVerifyToken(null);
+        usuarioRepository.save(usuario);
+        return "Cuenta verificada correctamente.";
+    }
  
     }

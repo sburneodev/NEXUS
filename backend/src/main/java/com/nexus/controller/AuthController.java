@@ -16,13 +16,13 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // SEC-05 — POST /api/auth/login
+    //  POST /api/auth/login
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
-    // SEC-08 — GET /api/auth/verify-email?token=UUID
+    // GET /api/auth/verify-email?token=UUID
     @GetMapping("/verify-email")
     public ResponseEntity<String> verifyEmail(@RequestParam String token) {
         return ResponseEntity.ok(authService.verifyEmail(token));

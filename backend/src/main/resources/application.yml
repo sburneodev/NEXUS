@@ -1,12 +1,11 @@
-#Esto es el chore, todas las varibles se modificaran mas adelante.
+# Solo muestra las secciones que cambian. El resto del archivo queda igual.
 
 spring:
   application:
     name: nexus-backend
 
-  # ─── BASE DE DATOS ────────────────────────────────────────
   datasource:
-    url: ${DB_URL}
+    url:      ${DB_URL}
     username: ${DB_USER}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -15,7 +14,6 @@ spring:
       minimum-idle: 2
       connection-timeout: 30000
 
-  # ─── JPA / HIBERNATE ──────────────────────────────────────
   jpa:
     hibernate:
       ddl-auto: validate
@@ -26,7 +24,6 @@ spring:
         format_sql: true
         default_schema: public
 
-  # ─── FLYWAY ───────────────────────────────────────────────
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -34,20 +31,23 @@ spring:
     validate-on-migrate: true
 
   # ─── EMAIL ────────────────────────────────────────────────
+  # CORRECCIÓN: las credenciales leen de variables de entorno
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: tucorreo@gmail.com
-    password: tupassword
+    host:     ${MAIL_HOST:smtp.gmail.com}
+    port:     ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}           # ← tu Gmail aquí en .env
+    password: ${MAIL_PASSWORD:}           # ← App Password de Gmail en .env
     properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-            required: true
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
 
-# ─── SERVIDOR ─────────────────────────────────────────────
+  # Serializar JSON: no incluir campos null en la respuesta
+  jackson:
+    default-property-inclusion: non_null
+
 server:
   port: 8080
   servlet:
@@ -56,23 +56,27 @@ server:
     include-message: always
     include-binding-errors: always
 
-# ─── JWT ──────────────────────────────────────────────────
 jwt:
   secret: ${JWT_SECRET:UnaClaveSuperSecretaYMuyLargaDeMasDe32CaracteresParaNexusERP}
   expiration: 28800000
 
-# ─── IA ───────────────────────────────────────────────────
+# ─── NUEVO: URL base para los enlaces del email ───────────
+# En local: http://localhost:8080
+# En Docker: http://localhost:8080 (el contexto /api lo añade EmailService)
+# En VPS:   https://tudominio.com
+app:
+  base-url: ${APP_BASE_URL:http://localhost:8080}
+
 ai:
   gemini:
-    api-key: pon-tu-api-key-aqui
+    api-key: ${AI_GEMINI_API_KEY:pon-tu-api-key-aqui}
     url: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
     model: gemini-2.0-flash
   groq:
-    api-key: pon-tu-api-key-aqui
+    api-key: ${AI_GROQ_API_KEY:pon-tu-api-key-aqui}
     url: https://api.groq.com/openai/v1/chat/completions
     model: llama-3.1-8b-instant
 
-# ─── LOGGING ──────────────────────────────────────────────
 logging:
   level:
     root: INFO
@@ -82,7 +86,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# ─── ACTUATOR (salud del servidor) ────────────────────────
 management:
   endpoints:
     web:

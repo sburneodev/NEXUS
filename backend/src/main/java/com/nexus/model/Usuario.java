@@ -14,21 +14,20 @@ public class Usuario {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String password;
 
     // Relación Muchos a Muchos con la tabla intermedia
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
-        name = "usuarios_roles",
-        joinColumns = @JoinColumn(name = "usuario_id"),
-        inverseJoinColumns = @JoinColumn(name = "rol_id")
-    )
+            name = "usuarios_roles",
+            joinColumns = @JoinColumn(name = "id_usuario"),     
+            inverseJoinColumns = @JoinColumn(name = "id_rol")
+        )
     private Set<Rol> roles;
 
     // Getters y Setters
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPassword() { return password; }

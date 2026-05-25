@@ -1,0 +1,52 @@
+package com.nexus.dto;
+
+import java.math.BigDecimal;
+import java.util.Map;
+
+public class ProductoDTO {
+
+    private Long id;
+    private String sku;
+    private String nombre;
+    private String descripcion;
+    private BigDecimal precioCoste;
+    private BigDecimal precioVenta;
+    private Integer stockActual;
+    private Integer stockMinimo;
+    private Integer stockMaximo;
+    private String tipoProducto;
+    private String estadoConservacion;
+    private Map<String, Object> atributosEspecificos;
+    private Boolean activo;
+    private String proveedorNombre;
+
+    // Getters y Setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getSku() { return sku; }
+    public void setSku(String sku) { this.sku = sku; }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+    public BigDecimal getPrecioCoste() { return precioCoste; }
+    public void setPrecioCoste(BigDecimal precioCoste) { this.precioCoste = precioCoste; }
+    public BigDecimal getPrecioVenta() { return precioVenta; }
+    public void setPrecioVenta(BigDecimal precioVenta) { this.precioVenta = precioVenta; }
+    public Integer getStockActual() { return stockActual; }
+    public void setStockActual(Integer stockActual) { this.stockActual = stockActual; }
+    public Integer getStockMinimo() { return stockMinimo; }
+    public void setStockMinimo(Integer stockMinimo) { this.stockMinimo = stockMinimo; }
+    public Integer getStockMaximo() { return stockMaximo; }
+    public void setStockMaximo(Integer stockMaximo) { this.stockMaximo = stockMaximo; }
+    public String getTipoProducto() { return tipoProducto; }
+    public void setTipoProducto(String tipoProducto) { this.tipoProducto = tipoProducto; }
+    public String getEstadoConservacion() { return estadoConservacion; }
+    public void setEstadoConservacion(String e) { this.estadoConservacion = e; }
+    public Map<String, Object> getAtributosEspecificos() { return atributosEspecificos; }
+    public void setAtributosEspecificos(Map<String, Object> a) { this.atributosEspecificos = a; }
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
+    public String getProveedorNombre() { return proveedorNombre; }
+    public void setProveedorNombre(String proveedorNombre) { this.proveedorNombre = proveedorNombre; }
+}

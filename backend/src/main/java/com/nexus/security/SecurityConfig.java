@@ -29,7 +29,7 @@ public class SecurityConfig {
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/login", "/auth/verify-email").permitAll()
+                .requestMatchers("/auth/login", "/auth/verify-email", "/auth/register").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 .requestMatchers("/admin/**", "/usuarios/**", "/audit/**").hasAuthority("ADMIN")
                 .anyRequest().authenticated()

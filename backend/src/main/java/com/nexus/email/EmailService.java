@@ -2,8 +2,8 @@ package com.nexus.email;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -19,67 +19,45 @@ import org.springframework.stereotype.Service;
  *
  * Para que @Async funcione hay que añadir @EnableAsync en NexusBackendApplication.
  */
-@Slf4j
 @Service
-@RequiredArgsConstructor
 public class EmailService {
+
+    // Logger manual — sustituye a @Slf4j de Lombok
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     private final JavaMailSender mailSender;
 
-    // URL base de la app: http://localhost:8080 en dev, https://tudominio.com en prod
+    // Constructor manual — sustituye a @RequiredArgsConstructor de Lombok
+    public EmailService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
+
     @Value("${app.base-url}")
     private String appBaseUrl;
 
-    // Remitente que aparece en el email (configurado en application.yml)
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    // ══════════════════════════════════════════════════════════════════
-    // SEC-07 — Envío del email de verificación de cuenta
-    // ══════════════════════════════════════════════════════════════════
-
-    /**
-     * Envía un email HTML con el enlace de activación de cuenta.
-     *
-     * El enlace apunta a: GET /api/auth/verify-email?token={token}
-     * Ese endpoint lo implementa Sebastián en SEC-08.
-     *
-     * @param destinatario Email del usuario recién registrado
-     * @param username     Nombre de usuario para personalizar el saludo
-     * @param token        UUID generado en AuthService.register()
-     */
     @Async
     public void sendVerificationEmail(String destinatario, String username, String token) {
-        // Construir el enlace completo de verificación
-        // Resultado: http://localhost:8080/api/auth/verify-email?token=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
         String verificationUrl = appBaseUrl + "/api/auth/verify-email?token=" + token;
-
-        // Construir el HTML del email
         String htmlContent = buildVerificationEmailHtml(username, verificationUrl);
 
         try {
             MimeMessage message = mailSender.createMimeMessage();
-
-            // MimeMessageHelper con UTF-8 para caracteres especiales en español
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
             helper.setTo(destinatario);
             helper.setSubject("⚡ Activa tu cuenta en LevelUp Nexus ERP");
-            helper.setText(htmlContent, true); // true = es HTML
+            helper.setText(htmlContent, true);
 
             mailSender.send(message);
             log.info("[EMAIL] Email de verificación enviado a: {}", destinatario);
 
         } catch (MessagingException e) {
-            // No lanzamos excepción: el registro ya fue exitoso.
-            // El usuario puede pedir reenvío del email más adelante.
             log.error("[EMAIL] Error al enviar email de verificación a {}: {}", destinatario, e.getMessage());
         }
     }
-
-    // ══════════════════════════════════════════════════════════════════
-    // HTML del email — diseño corporativo de LevelUp Nexus
-    // ══════════════════════════════════════════════════════════════════
 
     private String buildVerificationEmailHtml(String username, String verificationUrl) {
         return """
@@ -94,13 +72,13 @@ public class EmailService {
 
                     <!-- Contenedor principal -->
                     <table width="100%%" cellpadding="0" cellspacing="0"
-                           style="background-color:#F8FAFC; padding: 40px 0;">
+                            style="background-color:#F8FAFC; padding: 40px 0;">
                         <tr>
                             <td align="center">
                                 <table width="600" cellpadding="0" cellspacing="0"
-                                       style="background-color:#ffffff; border-radius:12px;
-                                              box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-                                              overflow:hidden; max-width:600px; width:100%%;">
+                                        style="background-color:#ffffff; border-radius:12px;
+                                                box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                                                overflow:hidden; max-width:600px; width:100%%;">
 
                                     <!-- Cabecera azul corporativo -->
                                     <tr>
@@ -133,11 +111,11 @@ public class EmailService {
                                             <!-- Botón de acción naranja -->
                                             <div style="text-align:center; margin-bottom:32px;">
                                                 <a href="%s"
-                                                   style="display:inline-block; background-color:#F97316;
-                                                          color:#ffffff; text-decoration:none;
-                                                          padding:14px 36px; border-radius:8px;
-                                                          font-size:16px; font-weight:700;
-                                                          letter-spacing:0.3px;">
+                                                    style="display:inline-block; background-color:#F97316;
+                                                            color:#ffffff; text-decoration:none;
+                                                            padding:14px 36px; border-radius:8px;
+                                                            font-size:16px; font-weight:700;
+                                                            letter-spacing:0.3px;">
                                                     ✅ Activar mi cuenta
                                                 </a>
                                             </div>
@@ -148,7 +126,7 @@ public class EmailService {
                                             </p>
                                             <p style="margin:0; word-break:break-all;">
                                                 <a href="%s"
-                                                   style="color:#3B82F6; font-size:12px; text-decoration:none;">
+                                                    style="color:#3B82F6; font-size:12px; text-decoration:none;">
                                                     %s
                                                 </a>
                                             </p>

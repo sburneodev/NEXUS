@@ -3,8 +3,8 @@ package com.nexus.auth;
 import com.nexus.auth.dto.AuthResponse;
 import com.nexus.auth.dto.RegisterRequest;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +22,19 @@ import org.springframework.web.bind.annotation.*;
  *   POST /api/auth/login          ← SEC-05
  *   GET  /api/auth/verify-email   ← SEC-08
  */
-@Slf4j
 @RestController
 @RequestMapping("/auth")
-@RequiredArgsConstructor
 public class AuthController {
 
+    // Logger manual — sustituye a @Slf4j de Lombok
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
+
     private final AuthService authService;
+
+    // Constructor manual — sustituye a @RequiredArgsConstructor de Lombok
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
 
     // ── SEC-06 · Registro ─────────────────────────────────────────────
     /**
@@ -43,9 +49,9 @@ public class AuthController {
      * }
      *
      * Respuestas:
-     *   201 Created    → Registro exitoso, email enviado
+     *   201 Created     → Registro exitoso, email enviado
      *   400 Bad Request → Validación fallida (campo vacío, email inválido…)
-     *   409 Conflict   → Email o username ya en uso
+     *   409 Conflict    → Email o username ya en uso
      */
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(

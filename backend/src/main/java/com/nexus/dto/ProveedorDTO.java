@@ -1,29 +1,17 @@
-package com.nexus.model;
+package com.nexus.dto;
 
-import jakarta.persistence.*;
-
-@Entity
-@Table(name = "proveedores")
-public class Proveedor {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class ProveedorDTO {
     private Long id;
-
-    @Column(name = "razon_social", nullable = false)
     private String razonSocial;
-
     private String cif;
     private String email;
     private String telefono;
     private String direccion;
-
-    @Column(name = "tiempo_entrega_d")
     private Integer tiempoEntregaD;
-
-    private Boolean activo = true;
+    private Boolean activo;
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
     public String getRazonSocial() { return razonSocial; }
     public void setRazonSocial(String razonSocial) { this.razonSocial = razonSocial; }
     public String getCif() { return cif; }

@@ -30,75 +30,58 @@
 		     PRODUCCIÓN
 		══════════════════════════════════════════════ -->
 
-		<!-- Lombok: @Data, @Slf4j, @RequiredArgsConstructor... -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
 
-		<!-- Web MVC: expone @RestController como endpoints HTTP -->
-		<!-- CORRECCIÓN: spring-boot-starter-webmvc NO EXISTE → es spring-boot-starter-web -->
-		<dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- Spring Security: autenticación, filtros, BCrypt -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
-		<!-- JPA + Hibernate: ORM para mapear entidades a tablas PostgreSQL -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
 
-		<!-- Bean Validation: @NotBlank, @Email, @Size en DTOs -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 
-		<!-- JavaMail: envío de emails HTML para verificación MFA (SEC-07) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-mail</artifactId>
 		</dependency>
 
-		<!-- Actuator: /actuator/health para el healthcheck de Docker -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
-		<!-- Flyway Core: migraciones versionadas V1__, V2__, V3__, V4__ -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-core</artifactId>
 		</dependency>
 
-		<!-- Flyway PostgreSQL: soporte específico para PostgreSQL en Flyway 10+ -->
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
-		<!-- Driver JDBC de PostgreSQL -->
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- JWT: generación y validación de tokens HMAC-SHA256 -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-api</artifactId>
@@ -117,14 +100,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- spring-dotenv: lee el .env local para desarrollo sin Docker -->
 		<dependency>
 			<groupId>me.paulschwarz</groupId>
 			<artifactId>spring-dotenv</artifactId>
 			<version>4.0.0</version>
 		</dependency>
 
-		<!-- DevTools: hot reload en desarrollo (se excluye del JAR de producción) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
@@ -132,33 +113,22 @@
 			<optional>true</optional>
 		</dependency>
 
-		<!-- TESTS
-	CORRECCIÓN: eliminadas las 6 dependencias que NO EXISTEN en ningún
-	repositorio Maven. Causaban "Artifact not found" al compilar:
-	✗ spring-boot-starter-data-jpa-test
-	✗ spring-boot-starter-flyway-test
-	✗ spring-boot-starter-mail-test
-	✗ spring-boot-starter-security-test  (el correcto es spring-security-test)
-	✗ spring-boot-starter-validation-test
-	✗ spring-boot-starter-webmvc-test
-	spring-boot-starter-test ya incluye JUnit 5, Mockito, AssertJ y MockMvc.
-	-->
+		<!-- ══════════════════════════════════════════════
+		     TESTS
+		══════════════════════════════════════════════ -->
 
-		<!-- JUnit 5 + Mockito + AssertJ + MockMvc: todo lo necesario para tests -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 
-		<!-- @WithMockUser y SecurityMockMvcRequestPostProcessors para tests de seguridad -->
 		<dependency>
 			<groupId>org.springframework.security</groupId>
 			<artifactId>spring-security-test</artifactId>
 			<scope>test</scope>
 		</dependency>
 
-		<!-- H2 en memoria: tests de repositorios sin levantar PostgreSQL real -->
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
@@ -170,12 +140,10 @@
 	<build>
 		<plugins>
 
-			<!-- Spring Boot Maven Plugin: genera el fat JAR ejecutable -->
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
-					<!-- Excluir Lombok del JAR final de producción -->
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>
@@ -185,7 +153,6 @@
 				</configuration>
 			</plugin>
 
-			<!-- Compilador: Java 25 explícito + Lombok en annotationProcessorPaths -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
@@ -202,11 +169,10 @@
 				</configuration>
 			</plugin>
 
-			<!-- JaCoCo: genera el reporte de cobertura de tests para SonarQube -->
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.12</version>
+				<version>0.8.14</version>
 				<executions>
 					<execution>
 						<goals>
@@ -223,7 +189,6 @@
 				</executions>
 			</plugin>
 
-			<!-- SonarQube Scanner: sube el análisis al servidor Sonar del docker-compose -->
 			<plugin>
 				<groupId>org.sonarsource.scanner.maven</groupId>
 				<artifactId>sonar-maven-plugin</artifactId>

@@ -13,9 +13,11 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     // Para el login por username (usado por JwtUtil y AuthService)
     Optional<Usuario> findByUsername(String username);
 
-    // Parte Sebastián SEC08
-    
     // Comprobaciones de unicidad en el registro (SEC-06)
     boolean existsByEmail(String email);
+    
     boolean existsByUsername(String username);
+
+    // Para verificar el email con el token UUID (SEC-08 - Parte de Sebastián)
+    Optional<Usuario> findByVerifyToken(String verifyToken);
 }

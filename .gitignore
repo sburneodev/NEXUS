@@ -36,3 +36,9 @@ desktop.ini
 # ─── LOGS ────────
 *.log
 logs/
+
+
+.project
+.classpath
+.settings/
+.factorypath

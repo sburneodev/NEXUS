@@ -9,4 +9,5 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     
     // Con solo poner este nombre, Spring Boot genera el "SELECT * FROM usuarios WHERE email = ?"
     Optional<Usuario> findByEmail(String email);
+    Optional<Usuario> findByVerifyToken(String verifyToken);
 }

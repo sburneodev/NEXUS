@@ -22,6 +22,15 @@ public class Usuario {
 
     @Column(name = "verify_token")
     private String verifyToken;
+    
+    @Column(name = "username", nullable = false, unique = true)
+    private String username;
+
+    @Column(name = "nombre_completo")
+    private String nombreCompleto;
+
+    @Column(name = "is_active")
+    private boolean isActive = true;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -42,5 +51,11 @@ public class Usuario {
     public void setVerifyToken(String verifyToken) { this.verifyToken = verifyToken; }
     public Set<Rol> getRoles() { return roles; }
     public void setRoles(Set<Rol> roles) { this.roles = roles; }
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+    public String getNombreCompleto() { return nombreCompleto; }
+    public void setNombreCompleto(String nombreCompleto) { this.nombreCompleto = nombreCompleto; }
+    public boolean isActive() { return isActive; }
+    public void setActive(boolean active) { isActive = active; }
     
 }

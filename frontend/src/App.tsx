@@ -8,6 +8,7 @@ import { ClientesPage }      from './pages/ClientesPage';
 import { ProveedoresPage }   from './pages/ProveedoresPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
+import { AiPanelProvider }   from './context/AiPanelContext';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
@@ -23,6 +24,7 @@ function ComingSoon({ name }: { name: string }): JSX.Element {
 
 function App(): JSX.Element {
     return (
+        <AiPanelProvider>
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
@@ -50,6 +52,7 @@ function App(): JSX.Element {
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </BrowserRouter>
+        </AiPanelProvider>
     );
 }
 

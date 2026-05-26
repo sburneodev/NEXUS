@@ -10,20 +10,9 @@
 import { useState, useMemo } from 'react';
 import type { Producto, TipoProducto } from '../types/models';
 import { ProductModal } from '../components/productos/ProductModal';
+import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
 
-// ── Mock data tipado ──────────────────────────────────────────────────
-const MOCK_PRODUCTS: Producto[] = [
-    { id: 1, sku: 'STD-PS5-001', nombre: 'God of War Ragnarök — PS5', descripcion: 'Edición estándar física. PEGI 18.', idCategoria: 1, idProveedor: 1, idUbicacion: 1, precioCoste: 35.99, precioVenta: 69.99, stockActual: 42, stockMinimo: 5, stockMaximo: 200, activo: true, tipoProducto: 'ESTANDAR', estadoConservacion: null, atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 2, sku: 'STD-PS5-002', nombre: 'Elden Ring — PS5', descripcion: 'FromSoftware. Edición estándar física.', idCategoria: 1, idProveedor: 1, idUbicacion: 2, precioCoste: 29.50, precioVenta: 59.99, stockActual: 28, stockMinimo: 5, stockMaximo: 200, activo: true, tipoProducto: 'ESTANDAR', estadoConservacion: null, atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 3, sku: 'STD-NSW-001', nombre: 'Zelda: Tears of the Kingdom — Switch', descripcion: 'Nintendo Switch físico.', idCategoria: 2, idProveedor: 2, idUbicacion: 3, precioCoste: 39.99, precioVenta: 64.99, stockActual: 55, stockMinimo: 10, stockMaximo: 300, activo: true, tipoProducto: 'ESTANDAR', estadoConservacion: null, atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 4, sku: 'RET-SNES-001', nombre: 'Super Mario World — SNES CIB', descripcion: 'Cartucho + Caja + Manual.', idCategoria: 3, idProveedor: 4, idUbicacion: 10, precioCoste: 45.00, precioVenta: 124.99, stockActual: 1, stockMinimo: 1, stockMaximo: 1, activo: true, tipoProducto: 'RETRO', estadoConservacion: 'CIB', atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 5, sku: 'RET-SNES-002', nombre: 'Donkey Kong Country — SNES MINT', descripcion: 'Precintado original.', idCategoria: 3, idProveedor: 4, idUbicacion: 11, precioCoste: 110.00, precioVenta: 299.00, stockActual: 1, stockMinimo: 1, stockMaximo: 1, activo: true, tipoProducto: 'RETRO', estadoConservacion: 'MINT', atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 6, sku: 'STD-FNK-001', nombre: 'Funko Pop! Link — Zelda #856', descripcion: 'Figura coleccionable 9 cm.', idCategoria: 4, idProveedor: 5, idUbicacion: 6, precioCoste: 7.50, precioVenta: 14.99, stockActual: 35, stockMinimo: 5, stockMaximo: 100, activo: true, tipoProducto: 'ESTANDAR', estadoConservacion: null, atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 7, sku: 'STD-ACC-001', nombre: 'Mando DualSense — PS5 Blanco', descripcion: 'Mando oficial Sony PlayStation 5.', idCategoria: 5, idProveedor: 1, idUbicacion: 9, precioCoste: 48.00, precioVenta: 74.99, stockActual: 3, stockMinimo: 3, stockMaximo: 50, activo: true, tipoProducto: 'ESTANDAR', estadoConservacion: null, atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-    { id: 8, sku: 'RET-N64-001', nombre: 'Zelda: Ocarina of Time — N64 CIB', descripcion: 'Completo en caja. Cartucho dorado.', idCategoria: 3, idProveedor: 3, idUbicacion: 24, precioCoste: 70.00, precioVenta: 189.00, stockActual: 1, stockMinimo: 1, stockMaximo: 1, activo: false, tipoProducto: 'RETRO', estadoConservacion: 'CIB', atributosEspecificos: null, creadoEn: '2026-01-01T00:00:00Z', actualizadoEn: '2026-01-01T00:00:00Z' },
-];
-
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 8;
 
 export function ProductosPage(): JSX.Element {
     const [search, setSearch] = useState('');
@@ -31,7 +20,7 @@ export function ProductosPage(): JSX.Element {
     const [page, setPage] = useState(1);
     const [modalOpen, setModalOpen] = useState(false);
     const [selected, setSelected] = useState<Producto | null>(null);
-    const [products, setProducts] = useState<Producto[]>(MOCK_PRODUCTS);
+    const [products, setProducts] = useState<Producto[]>(MOCK_PRODUCTOS);
 
     // Filtrado y búsqueda
     const filtered = useMemo(() => {

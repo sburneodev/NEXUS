@@ -368,16 +368,16 @@ pre,
     transform: scale(0.98);
 }
 
-/* Primario — verde neón */
+/* Primario — degradado corporativo verde→cyan */
 .btn-primary {
-    background: var(--accent-primary);
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
     color: var(--text-inverse);
-    border-color: var(--accent-primary);
+    border-color: transparent;
     box-shadow: 0 0 20px rgba(0, 255, 136, 0.30);
 }
 
 .btn-primary:hover {
-    background: var(--accent-primary-dim);
+    background: linear-gradient(90deg, var(--accent-primary-dim), var(--accent-cyan-dim));
     box-shadow: 0 0 30px rgba(0, 255, 136, 0.45);
     transform: translateY(-1px);
 }

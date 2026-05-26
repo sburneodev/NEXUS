@@ -19,7 +19,7 @@ interface NavbarProps {
 
 export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
     const { user, logout }          = useAuth();
-    const { theme, toggle, isRetro } = useTheme();
+    const { theme, toggle } = useTheme();
     const [time, setTime]           = useState('');
     const [showMenu, setShowMenu]   = useState(false);
 
@@ -96,8 +96,8 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
 
             <div style={{ width: '1px', height: '24px', background: 'var(--border-subtle)' }} />
 
-            {/* Toggle tema — no mostrar en retro */}
-            {!isRetro && (
+            {/* Toggle tema */}
+            {(
                 <button
                     onClick={toggle}
                     title={theme === 'dark' ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
@@ -151,13 +151,15 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                     }}>
                         {initials}
                     </div>
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-primary)', textTransform: 'uppercase', lineHeight: 1.2 }}>
                             {username}
                         </div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--accent-primary)', letterSpacing: '0.04em' }}>
-                            {role}
-                        </div>
+                        {role.toUpperCase() !== username && (
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>
+                                {role}
+                            </div>
+                        )}
                     </div>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginLeft: '4px' }}>▾</span>
                 </div>

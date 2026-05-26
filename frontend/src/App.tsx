@@ -3,6 +3,7 @@ import { LoginPage }         from './pages/LoginPage';
 import { DashboardPage }     from './pages/DashboardPage';
 import { ProductosPage }     from './pages/ProductosPage';
 import { BovedaRetroPage }   from './pages/BovedaRetroPage';
+import { AlmacenPage }       from './pages/AlmacenPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 
@@ -30,6 +31,7 @@ function App(): JSX.Element {
                         <Route path="/dashboard"   element={<DashboardPage />} />
                         <Route path="/productos"   element={<ProductosPage />} />
                         <Route path="/boveda"      element={<BovedaRetroPage />} />
+                        <Route path="/almacen"     element={<AlmacenPage />} />
                         <Route path="/clientes"    element={<ComingSoon name="Clientes" />} />
                         <Route path="/proveedores" element={<ComingSoon name="Proveedores" />} />
                         <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />

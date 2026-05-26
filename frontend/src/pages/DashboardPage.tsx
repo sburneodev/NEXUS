@@ -41,7 +41,7 @@ export function DashboardPage(): JSX.Element {
 
         api.get<KpiData>('/dashboard/analytics')
             .then(({ data }) => {
-                if (!cancelled) { setKpiData(data); setLoadState('ok'); }
+                if (!cancelled) { setKpiData({ ...FALLBACK_KPI, ...data }); setLoadState('ok'); }
             })
             .catch(() => {
                 if (!cancelled) {

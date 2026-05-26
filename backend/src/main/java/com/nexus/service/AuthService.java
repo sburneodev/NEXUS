@@ -2,18 +2,18 @@ package com.nexus.service;
 
 import com.nexus.dto.LoginRequest;
 import com.nexus.dto.LoginResponse;
-import com.nexus.dto.RegisterRequest;          // NUEVO
-import com.nexus.email.EmailService;            // NUEVO
+import com.nexus.dto.RegisterRequest;
+import com.nexus.email.EmailService;
 import com.nexus.model.Usuario;
 import com.nexus.repository.UsuarioRepository;
 import com.nexus.security.JwtUtil;
-import org.springframework.http.HttpStatus;     // NUEVO
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional; // NUEVO
-import org.springframework.web.server.ResponseStatusException;   // NUEVO
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.UUID;                          // NUEVO
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -21,26 +21,26 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final EmailService emailService;    // NUEVO
+    private final EmailService emailService;
 
     public AuthService(UsuarioRepository usuarioRepository,
-                    PasswordEncoder passwordEncoder,
-                    JwtUtil jwtUtil,
-                       EmailService emailService) {   // NUEVO
+            PasswordEncoder passwordEncoder,
+            JwtUtil jwtUtil,
+            EmailService emailService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.emailService = emailService;             // NUEVO
+        this.emailService = emailService;
     }
 
-    // ── SEC-06 · Registro ────────────────────────────────── NUEVO ──
+    // ── SEC-06 · Registro ────────────────────────────────────────────
     @Transactional
     public String register(RegisterRequest request) {
 
         if (usuarioRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ResponseStatusException(
-                HttpStatus.CONFLICT,
-                "El email '" + request.getEmail() + "' ya está registrado.");
+                    HttpStatus.CONFLICT,
+                    "El email '" + request.getEmail() + "' ya está registrado.");
         }
 
         String verifyToken = UUID.randomUUID().toString();
@@ -53,28 +53,37 @@ public class AuthService {
 
         usuarioRepository.save(nuevoUsuario);
 
-        // SEC-07: enviar email de verificación en hilo aparte
         emailService.sendVerificationEmail(
-            request.getEmail(),
-            request.getEmail(),
-            verifyToken
-        );
+                request.getEmail(),
+                request.getEmail(),
+                verifyToken);
 
         return "Registro exitoso. Revisa tu email para activar la cuenta.";
     }
-    // ────────────────────────────────────────────────────────────────
 
-    // SEC-05 — Login (de tu compañero, no tocar)
+    // ── SEC-05 · Login ───────────────────────────────────────────────
+    // CORRECCIÓN: RuntimeException → ResponseStatusException
+    // RuntimeException causaba HTTP 500 en vez de 401/403,
+    // lo que impedía al frontend distinguir errores de credenciales.
     public LoginResponse login(LoginRequest request) {
+
         Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Credenciales incorrectas"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Credenciales incorrectas"));
 
         if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
-            throw new RuntimeException("Credenciales incorrectas");
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED, "Credenciales incorrectas");
         }
 
         if (!usuario.isVerified()) {
-            throw new RuntimeException("Cuenta no verificada. Revisa tu email.");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Cuenta no verificada. Revisa tu email.");
+        }
+
+        if (!usuario.isActive()) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN, "Cuenta desactivada. Contacta con el administrador.");
         }
 
         String roles = usuario.getRoles().stream()
@@ -86,9 +95,13 @@ public class AuthService {
         return new LoginResponse(token, usuario.getEmail(), roles);
     }
 
+    // ── SEC-08 · Verificar email ─────────────────────────────────────
+    @Transactional
     public String verifyEmail(String token) {
+
         Usuario usuario = usuarioRepository.findByVerifyToken(token)
-                .orElseThrow(() -> new RuntimeException("Token de verificación inválido"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Token de verificación inválido o ya usado."));
 
         if (usuario.isVerified()) {
             return "La cuenta ya estaba verificada.";

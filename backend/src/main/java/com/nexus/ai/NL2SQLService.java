@@ -17,6 +17,11 @@ public class NL2SQLService {
     private final GeminiService geminiService;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    
+    public NL2SQLService(GeminiService geminiService, JdbcTemplate jdbcTemplate) {
+        this.geminiService = geminiService;
+        this.jdbcTemplate  = jdbcTemplate;
+    }
 
     private static final String SCHEMA = """
         Tablas disponibles (PostgreSQL):

@@ -1,59 +1,63 @@
-/* ──────────────────────────────────────────────────────────────────
-   DashboardPage — Placeholder hasta que la Épica 5 conecte la IA.
-   Muestra KPI cards con datos estáticos de demostración.
-────────────────────────────────────────────────────────────────── */
+/**
+ * DashboardPage.tsx — UI-03 + UI-04
+ *
+ * Página principal del ERP.
+ * Obtiene los datos del backend en GET /api/dashboard/analytics
+ * y los distribuye a KpiCards, ChartsPanel y Nl2SqlPanel.
+ */
 
-interface KpiCardProps {
-    label: string;
-    value: string;
-    sub: string;
-    accent: string;
-    glow: string;
-    delay: number;
-}
+import { useEffect, useState } from 'react';
+import { useAuth } from '../hooks/useAuth';
+import api from '../services/api';
+import type { KpiData } from '../types/models';
+import { KpiCard } from '../components/dashboard/KpiCard';
+import { ChartsPanel } from '../components/dashboard/ChartsPanel';
+import { Nl2SqlPanel } from '../components/ai/Nl2SqlPanel';
 
-function KpiCard({ label, value, sub, accent, glow, delay }: KpiCardProps): JSX.Element {
-    return (
-        <div
-            className="card card--accent animate-fade-up"
-            style={{
-                borderTopColor: accent,
-                animationDelay: `${delay}ms`,
-            }}
-        >
-            <div className="data-label" style={{ marginBottom: '12px' }}>{label}</div>
-            <div style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '2rem',
-                fontWeight: 700,
-                color: accent,
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-                marginBottom: '6px',
-                textShadow: `0 0 20px ${glow}`,
-            }}>
-                {value}
-            </div>
-            <div style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                letterSpacing: '0.04em',
-            }}>
-                {sub}
-            </div>
-        </div>
-    );
-}
+// Datos de fallback para desarrollo sin backend
+const FALLBACK_KPI: KpiData = {
+    ventasHoy: 4280,
+    ventasAyer: 3820,
+    clientesActivos: 1847,
+    clientesNuevosSemana: 8,
+    piezasRetroDisponibles: 23,
+    productosStockCritico: 7,
+    ventasUltimos30Dias: Array.from({ length: 30 }, (_, i) => ({
+        fecha: new Date(Date.now() - (29 - i) * 86400000).toISOString().split('T')[0],
+        total: Math.floor(2000 + Math.random() * 4000),
+        unidades: Math.floor(10 + Math.random() * 50),
+    })),
+};
 
-const KPIS = [
-    { label: 'VENTAS HOY', value: '€4.280', sub: '+12% vs ayer', accent: 'var(--accent-primary)', glow: 'rgba(0,255,136,0.4)', delay: 0 },
-    { label: 'CLIENTES ACTIVOS', value: '1.847', sub: '8 nuevos esta semana', accent: 'var(--accent-cyan)', glow: 'rgba(0,212,255,0.4)', delay: 80 },
-    { label: 'PIEZAS RETRO', value: '23', sub: 'La Bóveda disponible', accent: 'var(--accent-gold)', glow: 'rgba(255,200,69,0.4)', delay: 160 },
-    { label: 'STOCK CRÍTICO', value: '7', sub: 'Productos bajo mínimo', accent: 'var(--accent-danger)', glow: 'rgba(255,68,102,0.4)', delay: 240 },
-];
+type LoadState = 'loading' | 'ok' | 'error';
 
 export function DashboardPage(): JSX.Element {
+    const { user } = useAuth();
+    const [kpiData, setKpiData] = useState<KpiData>(FALLBACK_KPI);
+    const [loadState, setLoadState] = useState<LoadState>('loading');
+
+    useEffect(() => {
+        let cancelled = false;
+
+        api.get<KpiData>('/dashboard/analytics')
+            .then(({ data }) => {
+                if (!cancelled) { setKpiData(data); setLoadState('ok'); }
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    // En desarrollo usamos los datos de fallback
+                    setLoadState('error');
+                }
+            });
+
+        return () => { cancelled = true; };
+    }, []);
+
+    const trend = kpiData.ventasHoy >= kpiData.ventasAyer ? 'up' : 'down';
+    const pctVentas = kpiData.ventasAyer > 0
+        ? Math.round(((kpiData.ventasHoy - kpiData.ventasAyer) / kpiData.ventasAyer) * 100)
+        : 0;
+
     return (
         <div>
 
@@ -75,17 +79,35 @@ export function DashboardPage(): JSX.Element {
                         WebkitTextFillColor: 'transparent',
                         backgroundClip: 'text',
                     }}>
-                        Administrador
+                        {user?.email.split('@')[0] ?? 'Administrador'}
                     </span>
                 </h1>
-                <p style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '12px',
-                    color: 'var(--text-muted)',
-                    letterSpacing: '0.04em',
-                }}>
-                    {new Date().toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <p style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: '12px',
+                        color: 'var(--text-muted)',
+                        letterSpacing: '0.04em',
+                    }}>
+                        {new Date().toLocaleDateString('es-ES', {
+                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                        })}
+                    </p>
+                    {loadState === 'error' && (
+                        <span style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize: '10px',
+                            color: 'var(--accent-gold)',
+                            letterSpacing: '0.06em',
+                            padding: '2px 8px',
+                            border: '1px solid var(--accent-gold)',
+                            borderRadius: '4px',
+                            opacity: 0.7,
+                        }}>
+                            DATOS DEMO
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* KPI Grid */}
@@ -93,45 +115,58 @@ export function DashboardPage(): JSX.Element {
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                 gap: '16px',
-                marginBottom: '32px',
+                marginBottom: '24px',
             }}>
-                {KPIS.map(kpi => <KpiCard key={kpi.label} {...kpi} />)}
+                <KpiCard
+                    title="VENTAS HOY"
+                    value={`€${kpiData.ventasHoy.toLocaleString('es-ES')}`}
+                    sub={`${pctVentas >= 0 ? '+' : ''}${pctVentas}% vs ayer`}
+                    icon="€"
+                    accent="var(--accent-primary)"
+                    glow="rgba(0,255,136,0.4)"
+                    trend={trend}
+                    delay={0}
+                />
+                <KpiCard
+                    title="CLIENTES ACTIVOS"
+                    value={kpiData.clientesActivos.toLocaleString('es-ES')}
+                    sub={`+${kpiData.clientesNuevosSemana} nuevos esta semana`}
+                    icon="◉"
+                    accent="var(--accent-cyan)"
+                    glow="rgba(0,212,255,0.4)"
+                    trend="up"
+                    delay={80}
+                />
+                <KpiCard
+                    title="PIEZAS RETRO"
+                    value={String(kpiData.piezasRetroDisponibles)}
+                    sub="La Bóveda disponible"
+                    icon="◆"
+                    accent="var(--accent-gold)"
+                    glow="rgba(255,200,69,0.4)"
+                    trend="neutral"
+                    delay={160}
+                />
+                <KpiCard
+                    title="STOCK CRÍTICO"
+                    value={String(kpiData.productosStockCritico)}
+                    sub="Productos bajo mínimo"
+                    icon="▦"
+                    accent="var(--accent-danger)"
+                    glow="rgba(255,68,102,0.4)"
+                    trend={kpiData.productosStockCritico > 5 ? 'down' : 'neutral'}
+                    delay={240}
+                />
             </div>
 
-            {/* Placeholder epica 5 */}
-            <div className="card animate-fade-up" style={{ animationDelay: '320ms' }}>
-                <div className="data-label" style={{ marginBottom: '12px' }}>
-                    ◇ IA & ANALYTICS
-                </div>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    height: '120px',
-                    border: '1px dashed var(--border-default)',
-                    borderRadius: '6px',
-                }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <div style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '12px',
-                            color: 'var(--text-muted)',
-                            letterSpacing: '0.06em',
-                            marginBottom: '6px',
-                        }}>
-                            ÉPICA 5 — CHARTS & IA PENDIENTE
-                        </div>
-                        <div style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '10px',
-                            color: 'var(--accent-cyan)',
-                            letterSpacing: '0.04em',
-                            opacity: 0.6,
-                        }}>
-                            Gemini · Groq · Chart.js
-                        </div>
-                    </div>
-                </div>
+            {/* Charts */}
+            <div style={{ marginBottom: '24px', animation: 'fadeInUp 0.4s 0.2s ease both' }}>
+                <ChartsPanel kpiData={kpiData} />
+            </div>
+
+            {/* NL2SQL Panel */}
+            <div style={{ animation: 'fadeInUp 0.4s 0.3s ease both' }}>
+                <Nl2SqlPanel />
             </div>
 
         </div>

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage }      from './pages/LoginPage';
 import { DashboardPage }  from './pages/DashboardPage';
+import { ProductosPage }  from './pages/ProductosPage';
 import { Layout }         from './components/layout/Layout';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
@@ -30,7 +31,7 @@ function App(): JSX.Element {
                 <Route element={<ProtectedRoute />}>
                     <Route element={<Layout />}>
                         <Route path="/dashboard"   element={<DashboardPage />} />
-                        <Route path="/productos"   element={<ComingSoon name="Productos" />} />
+                        <Route path="/productos"   element={<ProductosPage />} />
                         <Route path="/clientes"    element={<ComingSoon name="Clientes" />} />
                         <Route path="/proveedores" element={<ComingSoon name="Proveedores" />} />
                         <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />

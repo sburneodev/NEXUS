@@ -1,7 +1,9 @@
 /* ═══════════════════════════════════════════════════════════════════
    NEXUS ERP — Theme System
-   Tema oscuro (default) + tema claro.
+   Tema oscuro (default) + tema claro profesional.
    Toggle via clase .theme-light en <html>.
+   El toggle está en Navbar.tsx — solo aplica dentro de la app,
+   no en el LoginPage (que fuerza colorScheme: dark).
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── TEMA OSCURO (default) ─────────────────────────────────────── */
@@ -45,55 +47,64 @@
     color-scheme: dark;
 }
 
-/* ── TEMA CLARO ────────────────────────────────────────────────── */
+/* ── TEMA CLARO ─────────────────────────────────────────────────────
+   Mismo lenguaje visual que el oscuro: tipografía técnica,
+   acentos neón pero más contenidos, bordes sutiles.
+   NO es un tema "web genérico" — mantiene la identidad NEXUS.
+──────────────────────────────────────────────────────────────────── */
 html.theme-light {
-    --bg-void: #f0f0f5;
-    --bg-base: #f8f8fc;
+    /* Fondos — grises muy claros con tinte azul frío */
+    --bg-void: #eef0f5;
+    --bg-base: #f4f5fa;
     --bg-surface: #ffffff;
-    --bg-elevated: #eeeef6;
-    --bg-overlay: #e4e4f0;
+    --bg-elevated: #ecedf5;
+    --bg-overlay: #e0e2ee;
 
-    --accent-primary: #00aa55;
-    --accent-primary-dim: #008844;
-    --accent-primary-glow: rgba(0, 170, 85, 0.12);
+    /* Acentos — misma familia pero más oscuros para contrastar sobre blanco */
+    --accent-primary: #00995a;
+    --accent-primary-dim: #007744;
+    --accent-primary-glow: rgba(0, 153, 90, 0.12);
 
-    --accent-cyan: #0088cc;
-    --accent-cyan-dim: #006699;
-    --accent-cyan-glow: rgba(0, 136, 204, 0.10);
+    --accent-cyan: #0077bb;
+    --accent-cyan-dim: #005588;
+    --accent-cyan-glow: rgba(0, 119, 187, 0.10);
 
-    --accent-gold: #d4900a;
-    --accent-gold-dim: #aa7308;
-    --accent-gold-glow: rgba(212, 144, 10, 0.10);
+    --accent-gold: #c47f00;
+    --accent-gold-dim: #9e6600;
+    --accent-gold-glow: rgba(196, 127, 0, 0.10);
 
     --accent-danger: #cc2244;
     --accent-danger-dim: #aa1133;
     --accent-danger-glow: rgba(204, 34, 68, 0.10);
 
-    --text-primary: #111120;
-    --text-secondary: #555570;
+    /* Texto — oscuro con la misma jerarquía de 4 niveles */
+    --text-primary: #111122;
+    --text-secondary: #44446a;
     --text-muted: #9999bb;
-    --text-inverse: #f8f8fc;
+    --text-inverse: #ffffff;
 
+    /* Bordes */
     --border-subtle: rgba(0, 0, 0, 0.06);
     --border-default: rgba(0, 0, 0, 0.10);
-    --border-strong: rgba(0, 0, 0, 0.18);
-    --border-accent: rgba(0, 170, 85, 0.30);
+    --border-strong: rgba(0, 0, 0, 0.20);
+    --border-accent: rgba(0, 153, 90, 0.30);
 
     color-scheme: light;
 }
 
-/* Transición suave al cambiar de tema */
+/* ── Transición suave al cambiar de tema ───────────────────────────
+   Excluye animaciones propias para no interferir con Charts, etc.
+──────────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
     transition:
-        background-color 280ms ease,
-        border-color 280ms ease,
-        color 200ms ease,
-        box-shadow 280ms ease;
+        background-color 250ms ease,
+        border-color 250ms ease,
+        color 180ms ease,
+        box-shadow 250ms ease;
 }
 
-/* Excluir elementos con animaciones propias */
 .no-theme-transition,
 .no-theme-transition * {
     transition: none !important;

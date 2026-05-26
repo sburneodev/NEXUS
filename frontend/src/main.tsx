@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import './styles/globals.css';
 import './styles/theme.css';
+// Registro global de Chart.js — DEBE importarse antes que cualquier gráfico
+import './config/chartConfig';
 
 const rootElement = document.getElementById('root');
 

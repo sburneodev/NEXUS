@@ -4,6 +4,8 @@ import { DashboardPage }     from './pages/DashboardPage';
 import { ProductosPage }     from './pages/ProductosPage';
 import { BovedaRetroPage }   from './pages/BovedaRetroPage';
 import { AlmacenPage }       from './pages/AlmacenPage';
+import { ClientesPage }      from './pages/ClientesPage';
+import { ProveedoresPage }   from './pages/ProveedoresPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 
@@ -30,11 +32,11 @@ function App(): JSX.Element {
                     <Route element={<Layout />}>
                         <Route path="/dashboard"   element={<DashboardPage />} />
                         <Route path="/productos"   element={<ProductosPage />} />
+                        <Route path="/clientes"    element={<ClientesPage />} />
+                        <Route path="/proveedores" element={<ProveedoresPage />} />
+                        <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />
                         <Route path="/boveda"      element={<BovedaRetroPage />} />
                         <Route path="/almacen"     element={<AlmacenPage />} />
-                        <Route path="/clientes"    element={<ComingSoon name="Clientes" />} />
-                        <Route path="/proveedores" element={<ComingSoon name="Proveedores" />} />
-                        <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />
                         <Route path="/ai"          element={<ComingSoon name="IA & Analytics" />} />
                     </Route>
                 </Route>

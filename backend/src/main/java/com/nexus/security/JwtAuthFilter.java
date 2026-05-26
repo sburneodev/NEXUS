@@ -1,5 +1,7 @@
 package com.nexus.security;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,10 +19,9 @@ import java.io.IOException;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil; 
+    private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
-    // ✅ ESTE ES EL CONSTRUCTOR QUE EXIGE JAVA PARA LAS VARIABLES FINAL
     public JwtAuthFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
@@ -28,53 +29,62 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(
-         HttpServletRequest request,
-         HttpServletResponse response,
-         FilterChain filterChain
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
     ) throws ServletException, IOException {
-        
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
 
-        // 1. Si la petición no trae cabecera de autorización o no empieza por "Bearer ", pasa de largo
+        final String authHeader = request.getHeader("Authorization");
+        System.out.println(">>> AUTH HEADER: " + authHeader);
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // 2. Extraemos el token JWT (quitando la palabra "Bearer ")
-        jwt = authHeader.substring(7);
-        
-        // 3. Extraemos el email o nombre de usuario guardado dentro del token
-        userEmail = jwtUtil.extractUsername(jwt);
+        final String jwt = authHeader.substring(7);
 
-        // 4. Si hay usuario y el sistema aún no lo ha autenticado en esta petición...
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            
-            // Buscamos los datos de ese usuario en la base de datos
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-            
-            // 5. Si el token es verídico y no ha caducado
-            if (jwtUtil.isTokenValid(jwt, userDetails)) {
-                
-                // Le creamos su credencial de acceso válida para Spring Security
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                
-                // Guardamos el usuario autenticado en el contexto seguro de la app
-                SecurityContextHolder.getContext().setAuthentication(authToken);
+        try {
+            final String userEmail = jwtUtil.extractUsername(jwt);
+            System.out.println(">>> EMAIL EXTRAIDO: " + userEmail);
+
+            if (userEmail != null) {
+                System.out.println(">>> ENTRANDO AL IF...");
+
+                // CAPTURAMOS LA AUTENTICACIÓN ACTUAL DEL CONTEXTO
+                Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
+
+                // EVALUAMOS SI ES NULA O SI SPRING LE ASIGNÓ EL USUARIO "ANÓNIMO"
+                if (currentAuth == null || currentAuth instanceof AnonymousAuthenticationToken) {
+                    System.out.println(">>> CONTEXTO ES NULL O ANÓNIMO, BUSCANDO EN BD...");
+
+                    UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
+
+                    if (userDetails == null) {
+                        System.out.println(">>> ❌ ERROR: userDetailsService devolvió NULL en lugar de lanzar excepción.");
+                    } else {
+                        System.out.println(">>> AUTHORITIES BD: " + userDetails.getAuthorities());
+
+                        if (jwtUtil.isTokenValid(jwt, userDetails)) {
+                            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities()
+                            );
+                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                            SecurityContextHolder.getContext().setAuthentication(authToken);
+                            System.out.println(">>> ✅ AUTENTICACIÓN EXITOSA");
+                        } else {
+                            System.out.println(">>> ❌ TOKEN INVÁLIDO PARA ESTE USUARIO");
+                        }
+                    }
+                } else {
+                    System.out.println(">>> ⚠️ EL CONTEXTO YA ESTABA AUTENTICADO COMO: " + currentAuth.getName());
+                }
             }
+        } catch (Throwable t) { 
+            System.out.println(">>> 🚨 ERROR CRÍTICO CAPTURADO: " + t.getClass().getName() + " - " + t.getMessage());
+            t.printStackTrace();
         }
-        
-        // 6. Enviamos la petición al siguiente paso o controlador
+
         filterChain.doFilter(request, response);
     }
 }

@@ -1,0 +1,100 @@
+/* ═══════════════════════════════════════════════════════════════════
+   NEXUS ERP — Theme System
+   Tema oscuro (default) + tema claro.
+   Toggle via clase .theme-light en <html>.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── TEMA OSCURO (default) ─────────────────────────────────────── */
+:root {
+    --bg-void: #05050a;
+    --bg-base: #0a0a12;
+    --bg-surface: #0f0f1a;
+    --bg-elevated: #141428;
+    --bg-overlay: #1a1a35;
+
+    --accent-primary: #00ff88;
+    --accent-primary-dim: #00cc6a;
+    --accent-primary-glow: rgba(0, 255, 136, 0.15);
+
+    --accent-cyan: #00d4ff;
+    --accent-cyan-dim: #0099bb;
+    --accent-cyan-glow: rgba(0, 212, 255, 0.12);
+
+    --accent-gold: #ffc845;
+    --accent-gold-dim: #cc9e33;
+    --accent-gold-glow: rgba(255, 200, 69, 0.12);
+
+    --accent-danger: #ff4466;
+    --accent-danger-dim: #cc2244;
+    --accent-danger-glow: rgba(255, 68, 102, 0.12);
+
+    --text-primary: #e8e8f0;
+    --text-secondary: #8888aa;
+    --text-muted: #4a4a6a;
+    --text-inverse: #05050a;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-default: rgba(255, 255, 255, 0.10);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --border-accent: rgba(0, 255, 136, 0.30);
+
+    --sidebar-width: 240px;
+    --navbar-height: 56px;
+    --sidebar-collapsed: 64px;
+
+    color-scheme: dark;
+}
+
+/* ── TEMA CLARO ────────────────────────────────────────────────── */
+html.theme-light {
+    --bg-void: #f0f0f5;
+    --bg-base: #f8f8fc;
+    --bg-surface: #ffffff;
+    --bg-elevated: #eeeef6;
+    --bg-overlay: #e4e4f0;
+
+    --accent-primary: #00aa55;
+    --accent-primary-dim: #008844;
+    --accent-primary-glow: rgba(0, 170, 85, 0.12);
+
+    --accent-cyan: #0088cc;
+    --accent-cyan-dim: #006699;
+    --accent-cyan-glow: rgba(0, 136, 204, 0.10);
+
+    --accent-gold: #d4900a;
+    --accent-gold-dim: #aa7308;
+    --accent-gold-glow: rgba(212, 144, 10, 0.10);
+
+    --accent-danger: #cc2244;
+    --accent-danger-dim: #aa1133;
+    --accent-danger-glow: rgba(204, 34, 68, 0.10);
+
+    --text-primary: #111120;
+    --text-secondary: #555570;
+    --text-muted: #9999bb;
+    --text-inverse: #f8f8fc;
+
+    --border-subtle: rgba(0, 0, 0, 0.06);
+    --border-default: rgba(0, 0, 0, 0.10);
+    --border-strong: rgba(0, 0, 0, 0.18);
+    --border-accent: rgba(0, 170, 85, 0.30);
+
+    color-scheme: light;
+}
+
+/* Transición suave al cambiar de tema */
+*,
+*::before,
+*::after {
+    transition:
+        background-color 280ms ease,
+        border-color 280ms ease,
+        color 200ms ease,
+        box-shadow 280ms ease;
+}
+
+/* Excluir elementos con animaciones propias */
+.no-theme-transition,
+.no-theme-transition * {
+    transition: none !important;
+}

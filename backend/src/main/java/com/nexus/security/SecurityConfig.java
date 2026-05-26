@@ -36,9 +36,9 @@ public class SecurityConfig {
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
             
-           /* .authorizeHttpRequests(auth -> auth
+            /*.authorizeHttpRequests(auth -> auth
                     .anyRequest().permitAll()
-                );*/  //Esto para pruebas de endpoints
+                );  //Esto para pruebas de endpoints*/
 
         return http.build();
     }

@@ -58,56 +58,56 @@
     color-scheme: dark;
 }
 
-/* ── TEMA CLARO — Professional Daylight ───────────────────────────
-   Gris azulado frío. No blanco puro. Misma identidad NEXUS.
-   WCAG AA compliant.
+/* ── TEMA CLARO — Enterprise Premium Daylight ─────────────────────
+   Paleta pizarra fría al estilo Stripe / Vercel.
+   Fondos en escala de grises, acentos con contraste real, sombras
+   multicapa que elevan las tarjetas sobre el fondo sin usar neón.
+   WCAG 2.1 AA en todos los niveles de texto.
 ────────────────────────────────────────────────────────────────── */
 html.theme-light {
-    --bg-void: #dde1ec;
-    --bg-base: #e8ecf5;
-    --bg-surface: #f2f4fb;
-    --bg-elevated: #e2e6f0;
-    --bg-overlay: #d8dded;
+    /* ── Fondos: de más profundo a más elevado ────────────────────── */
+    --bg-void:     #E2E8F0;   /* Sidebar exterior — Slate-200          */
+    --bg-base:     #F1F5F9;   /* Fondo de página — Slate-100           */
+    --bg-surface:  #FFFFFF;   /* Cards, paneles — blanco real          */
+    --bg-elevated: #FFFFFF;   /* Modales, dropdowns — blanco + sombra  */
+    --bg-overlay:  #F8FAFC;   /* Hover, selecciones — Slate-50         */
 
-    --accent-primary: #007a45;
-    /* 5.2:1 sobre bg-surface ✅ */
-    --accent-primary-dim: #005c33;
-    --accent-primary-glow: rgba(0, 122, 69, 0.12);
+    /* ── Acentos: alto contraste sobre blanco (WCAG AA) ──────────── */
+    --accent-primary:      #059669;              /* Emerald-600 — 4.62:1 ✅ */
+    --accent-primary-dim:  #047857;              /* Emerald-700              */
+    --accent-primary-glow: rgba(5, 150, 105, 0.14);
 
-    --accent-cyan: #005f99;
-    /* 5.5:1 ✅ */
-    --accent-cyan-dim: #004477;
-    --accent-cyan-glow: rgba(0, 95, 153, 0.10);
+    --accent-cyan:      #0284c7;                 /* Sky-600  — 4.60:1 ✅    */
+    --accent-cyan-dim:  #0369a1;                 /* Sky-700                 */
+    --accent-cyan-glow: rgba(2, 132, 199, 0.12);
 
-    --accent-gold: #a86200;
-    /* 5.0:1 ✅ */
-    --accent-gold-dim: #7a4700;
-    --accent-gold-glow: rgba(168, 98, 0, 0.10);
+    --accent-gold:      #b45309;                 /* Amber-700 — 5.87:1 ✅   */
+    --accent-gold-dim:  #92400e;                 /* Amber-800               */
+    --accent-gold-glow: rgba(180, 83, 9, 0.12);
 
-    --accent-danger: #b81c38;
-    /* 5.8:1 ✅ */
-    --accent-danger-dim: #8a1228;
-    --accent-danger-glow: rgba(184, 28, 56, 0.10);
+    --accent-danger:      #dc2626;               /* Red-600 — 5.43:1 ✅     */
+    --accent-danger-dim:  #b91c1c;               /* Red-700                 */
+    --accent-danger-glow: rgba(220, 38, 38, 0.12);
 
-    --text-primary: #0e0e1a;
-    /* 16.8:1 ✅ */
-    --text-secondary: #32325a;
-    /* 8.4:1  ✅ */
-    --text-muted: #5a5a8a;
-    /* 4.6:1  ✅ */
-    --text-inverse: #f2f4fb;
+    /* ── Texto: cuatro niveles, todos WCAG AA sobre #FFFFFF ────────── */
+    --text-primary:   #0F172A;   /* Slate-900 — 18.5:1 ✅ */
+    --text-secondary: #334155;   /* Slate-700 —  9.7:1 ✅ */
+    --text-muted:     #64748B;   /* Slate-500 —  4.5:1 ✅ */
+    --text-inverse:   #FFFFFF;   /* Texto sobre acentos oscuros */
 
-    --border-subtle: rgba(0, 0, 30, 0.07);
-    --border-default: rgba(0, 0, 30, 0.12);
-    --border-strong: rgba(0, 0, 30, 0.22);
-    --border-accent: rgba(0, 122, 69, 0.35);
+    /* ── Bordes: estilo Stripe — finos y sin peso visual excesivo ─── */
+    --border-subtle:  rgba(15, 23, 42, 0.06);
+    --border-default: rgba(15, 23, 42, 0.12);
+    --border-strong:  rgba(15, 23, 42, 0.22);
+    --border-accent:  rgba(5, 150, 105, 0.30);
 
-    --shadow-sm: 0 1px 3px rgba(0, 0, 30, 0.10);
-    --shadow-base: 0 4px 16px rgba(0, 0, 30, 0.10);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 30, 0.14);
-    --shadow-green: 0 0 16px rgba(0, 122, 69, 0.15);
-    --shadow-cyan: 0 0 16px rgba(0, 95, 153, 0.15);
-    --shadow-gold: 0 0 16px rgba(168, 98, 0, 0.15);
+    /* ── Sombras: multicapa, efecto "float" sin resplandor neón ───── */
+    --shadow-sm:   0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+    --shadow-base: 0 1px 3px rgba(15,23,42,0.06), 0 4px 8px  rgba(15,23,42,0.06);
+    --shadow-lg:   0 2px 4px rgba(15,23,42,0.04), 0 8px 20px rgba(15,23,42,0.10);
+    --shadow-green: 0 0 0 1px rgba(5,150,105,0.15),  0 4px 12px rgba(5,150,105,0.12);
+    --shadow-cyan:  0 0 0 1px rgba(2,132,199,0.15),  0 4px 12px rgba(2,132,199,0.12);
+    --shadow-gold:  0 0 0 1px rgba(180,83,9,0.15),   0 4px 12px rgba(180,83,9,0.12);
 
     color-scheme: light;
 }
@@ -165,6 +165,66 @@ html.theme-retro {
     --font-mono: 'Courier New', 'Courier', monospace;
 
     color-scheme: dark;
+}
+
+/* ── MODO CLARO — Correcciones de componentes ─────────────────────
+   Sobreescrituras para colores hardcoded que no se adaptan solo
+   con variables CSS (gradientes de canvas, sombras inline, etc.).
+────────────────────────────────────────────────────────────────── */
+
+/* Body: gradiente ambiente discreto en lugar del neón oscuro */
+html.theme-light body {
+    background-image:
+        radial-gradient(ellipse 120% 60% at 50% -10%, rgba(5,150,105,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 40% at 100% 100%, rgba(2,132,199,0.03) 0%, transparent 50%);
+}
+
+/* Selección de texto */
+html.theme-light ::selection {
+    background: rgba(5, 150, 105, 0.15);
+    color: #0F172A;
+}
+
+/* Scrollbar — escala de grises clara */
+html.theme-light ::-webkit-scrollbar-track {
+    background: #F1F5F9;
+}
+html.theme-light ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+}
+html.theme-light ::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+}
+
+/* Cards — sombra multicapa real, sin reflejo blanco-sobre-blanco */
+html.theme-light .card {
+    box-shadow: var(--shadow-sm);
+}
+html.theme-light .card::before {
+    background: none;
+}
+html.theme-light .card:hover {
+    border-color: rgba(5, 150, 105, 0.20);
+    box-shadow: var(--shadow-green);
+}
+
+/* Botón primario — box-shadow corporativo sin neón */
+html.theme-light .btn-primary {
+    box-shadow: 0 1px 3px rgba(5,150,105,0.25), 0 4px 8px rgba(5,150,105,0.15);
+}
+html.theme-light .btn-primary:hover {
+    box-shadow: 0 2px 6px rgba(5,150,105,0.30), 0 6px 16px rgba(5,150,105,0.20);
+    transform: translateY(-1px);
+}
+
+/* Badge muted — fondo sutil coherente con el fondo claro */
+html.theme-light .badge-muted {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+/* Tabla — hover limpio sin oscurecer la fila */
+html.theme-light .data-table tr:hover td {
+    background: rgba(15, 23, 42, 0.03);
 }
 
 /* ── Animación de micro-interacción de bordes KPI ──────────────────

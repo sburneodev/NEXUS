@@ -105,20 +105,35 @@ export function FormModal<T extends Record<string, unknown>>({
 
     return (
         <>
-            {/* Overlay */}
-            <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 100, backdropFilter: 'blur(4px)' }} />
-
-            {/* Modal */}
-            <div style={{
-                position: 'fixed', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)', zIndex: 101,
-                width: '100%', maxWidth: '540px', maxHeight: '90dvh',
-                overflowY: 'auto', background: 'var(--bg-surface)',
-                border: '1px solid var(--border-default)',
-                borderRadius: 'var(--radius-lg)',
-                boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-                animation: 'fadeInUp 0.2s ease both',
-            }}>
+            {/* Overlay + centrado: backdrop y flex-center en un solo contenedor */}
+            <div
+                onClick={onClose}
+                style={{
+                    position:       'fixed',
+                    inset:          0,
+                    zIndex:         100,
+                    background:     'rgba(0,0,0,0.72)',
+                    backdropFilter: 'blur(4px)',
+                    display:        'flex',
+                    alignItems:     'center',
+                    justifyContent: 'center',
+                    padding:        '16px',
+                }}
+            >
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width:        '100%',
+                    maxWidth:     '540px',
+                    maxHeight:    '90dvh',
+                    overflowY:    'auto',
+                    background:   'var(--bg-surface)',
+                    border:       '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow:    '0 24px 64px rgba(0,0,0,0.6)',
+                    animation:    'fadeInUp 0.2s ease both',
+                    flexShrink:   0,
+                }}>
 
                 {/* Cabecera */}
                 <div style={{
@@ -208,6 +223,7 @@ export function FormModal<T extends Record<string, unknown>>({
                         </button>
                     </div>
                 </form>
+            </div>
             </div>
         </>
     );

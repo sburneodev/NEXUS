@@ -1,21 +1,7 @@
-/**
- * pages/AlmacenPage.tsx — UI-08
- *
- * Mapa interactivo 2D del almacén NEXUS ERP.
- * SVG nativo — sin librerías externas de mapas.
- * Consume GET /api/almacen/mapa (AlmacenController.java ya existente).
- *
- * Estructura de datos del backend:
- *   mapa[pasillo][estanteria][nivel] = { sku, nombre, stock_actual,
- *                                        stock_minimo, tipo_producto,
- *                                        bajo_minimo }
- */
-
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import api from '../services/api';
 
 // ── Tipos ─────────────────────────────────────────────────────────────
-
 interface RackData {
     nivel: number;
     id_producto: number | null;
@@ -27,499 +13,586 @@ interface RackData {
     estado_conservacion: string | null;
     bajo_minimo: boolean;
 }
-
 type NivelMap = Record<string, RackData>;
 type EstanteriaMap = Record<string, NivelMap>;
 type PasilloMap = Record<string, EstanteriaMap>;
+interface MapaResponse { mapa: PasilloMap; total_racks: number; racks_ocupados: number; }
+interface RackSeleccionado { pasillo: string; estanteria: string; racks: RackData[]; }
 
-interface MapaResponse {
-    mapa: PasilloMap;
-    total_racks: number;
-    racks_ocupados: number;
-}
+// ── Constantes ────────────────────────────────────────────────────────
+const ESTANTERIAS = ['A', 'B', 'C', 'D', 'E', 'F'] as const;
+const LEFT_SIDE   = ['P4', 'P3', 'P2', 'P1'] as const;
+const RIGHT_SIDE  = ['P8', 'P7', 'P6', 'P5'] as const;
 
-interface RackSeleccionado {
-    pasillo: string;
-    estanteria: string;
-    racks: RackData[];
-}
+// Capacidad física real: 8 pasillos × 6 estanterías = 48 racks
+const MAX_RACKS = 48;
+
+// ── Mock data ─────────────────────────────────────────────────────────
+const MOCK: MapaResponse = {
+    total_racks: 96, racks_ocupados: 11,
+    mapa: {
+        P1: {
+            A: { 1: { nivel:1, id_producto:1, sku:'RET-SNES-001', nombre:'Super Mario World — SNES CIB', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'CIB', bajo_minimo:false } },
+            B: { 1: { nivel:1, id_producto:2, sku:'RET-SNES-002', nombre:'Donkey Kong Country — SNES MINT', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'MINT', bajo_minimo:false } },
+            C: { 1: { nivel:1, id_producto:3, sku:'STD-PS5-001', nombre:'God of War Ragnarök — PS5', stock_actual:42, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } },
+            D: {}, E: {}, F: {},
+        },
+        P2: { A: {}, B: {}, C: { 1: { nivel:1, id_producto:4, sku:'RET-N64-001', nombre:'Zelda: OoT — N64 CIB', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'CIB', bajo_minimo:false } }, D: {}, E: {}, F: {} },
+        P3: { A: { 1: { nivel:1, id_producto:5, sku:'STD-PS5-002', nombre:'Elden Ring — PS5', stock_actual:28, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, B: {}, C: {}, D: {}, E: {}, F: {} },
+        P4: { A: { 1: { nivel:1, id_producto:7, sku:'STD-ACC-001', nombre:'DualSense PS5 Blanco', stock_actual:3, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:true } }, B: {}, C: {}, D: {}, E: {}, F: {} },
+        P5: { A: { 1: { nivel:1, id_producto:8, sku:'RET-N64-002', nombre:'Zelda Majora\'s Mask — N64', stock_actual:2, stock_minimo:5, tipo_producto:'RETRO', estado_conservacion:'LOOSE', bajo_minimo:true } }, B: {}, C: {}, D: {}, E: {}, F: {} },
+        P6: { A: { 1: { nivel:1, id_producto:9, sku:'STD-NSW-001', nombre:'Zelda: TOTK — Switch', stock_actual:55, stock_minimo:10, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, B: {}, C: {}, D: {}, E: {}, F: {} },
+        P7: { A: {}, B: {}, C: { 1: { nivel:1, id_producto:10, sku:'STD-FNK-001', nombre:'Funko Pop! Link #856', stock_actual:35, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, D: {}, E: {}, F: {} },
+        P8: { A: {}, B: {}, C: {}, D: {}, E: {}, F: {} },
+    },
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────
+function racksDeEstanteria(m: NivelMap): RackData[] { return Object.values(m); }
 
-const PASILLOS_ORDEN = ['P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7', 'P8'];
-const ESTANTERIAS = ['A', 'B', 'C', 'D', 'E', 'F'];
-
-/** Calcula el color del rack según ocupación y tipo */
-function colorRack(racks: RackData[]): string {
-    const ocupados = racks.filter(r => r.id_producto !== null);
-    if (ocupados.length === 0) return 'var(--bg-overlay)';
-
-    const tieneRetro = ocupados.some(r => r.tipo_producto === 'RETRO');
-    const tieneCritico = ocupados.some(r => r.bajo_minimo);
-
-    if (tieneCritico) return 'var(--accent-danger)';
-    if (tieneRetro) return 'var(--accent-gold)';
-
-    const ratio = ocupados.length / Math.max(racks.length, 1);
-    if (ratio >= 0.8) return 'var(--accent-primary)';
-    if (ratio >= 0.5) return 'var(--accent-cyan)';
-    return 'rgba(0,212,255,0.35)';
+function cellStatus(racks: RackData[]): 'empty' | 'ok' | 'low' | 'critical' | 'retro' {
+    // Un rack está ocupado solo si tiene producto CON stock > 0
+    const occ = racks.filter(r => r.id_producto !== null && (r.stock_actual ?? 0) > 0);
+    if (occ.length === 0) return 'empty';
+    if (occ.some(r => r.tipo_producto === 'RETRO')) return 'retro';
+    if (occ.some(r => r.bajo_minimo)) return 'critical';
+    return 'ok';
 }
 
-/** Extrae todos los racks de una estantería como array plano */
-function racksDeEstanteria(nivelMap: NivelMap): RackData[] {
-    return Object.values(nivelMap);
+// Calcula ocupación física real: racks únicos (pasillo+estantería) con stock > 0 / MAX_RACKS
+function calcularOcupacionVisual(mapa: PasilloMap): { pct: number; ocupados: number; libres: number; criticos: number } {
+    const ocupadosSet = new Set<string>();
+    let criticos = 0;
+
+    for (const [pasillo, em] of Object.entries(mapa)) {
+        for (const [estanteria, nm] of Object.entries(em)) {
+            const racks = Object.values(nm);
+            const conStock = racks.filter(r => r.id_producto !== null && (r.stock_actual ?? 0) > 0);
+            if (conStock.length > 0) {
+                ocupadosSet.add(`${pasillo}:${estanteria}`);
+                if (conStock.some(r => r.bajo_minimo && r.tipo_producto !== 'RETRO')) criticos++;
+            }
+        }
+    }
+
+    const ocupados = ocupadosSet.size;
+    return {
+        pct:      Math.round((ocupados / MAX_RACKS) * 100),
+        ocupados,
+        libres:   MAX_RACKS - ocupados,
+        criticos,
+    };
 }
 
-// ── Componente SVG del rack individual ───────────────────────────────
+const STATUS_COLOR: Record<string, string> = {
+    empty:    'var(--border-subtle)',
+    ok:       'var(--accent-primary)',
+    low:      'var(--accent-cyan)',
+    retro:    'var(--accent-gold)',
+    critical: 'var(--accent-danger)',
+};
+const STATUS_BG: Record<string, string> = {
+    empty:    'transparent',
+    ok:       'rgba(0,255,136,0.09)',
+    low:      'rgba(0,212,255,0.08)',
+    retro:    'rgba(255,200,69,0.10)',
+    critical: 'rgba(255,68,102,0.13)',
+};
 
-interface RackSVGProps {
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    label: string;
-    racks: RackData[];
-    seleccionado: boolean;
-    onClick: () => void;
+// ── Celda individual ──────────────────────────────────────────────────
+interface CellProps {
+    racks:       RackData[];
+    estanteria:  string;
+    selected:    boolean;
+    highlighted: boolean;
+    onClick:     () => void;
 }
+function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps): JSX.Element {
+    const status  = cellStatus(racks);
+    const occ     = racks.filter(r => r.id_producto !== null);
+    const first   = occ[0] ?? null;
+    const isEmpty = status === 'empty';
 
-function RackSVG({ x, y, w, h, label, racks, seleccionado, onClick }: RackSVGProps): JSX.Element {
-    const color = colorRack(racks);
-    const ocupados = racks.filter(r => r.id_producto !== null).length;
-    const total = racks.length;
-    const vacio = ocupados === 0;
+    const border = selected
+        ? '2px solid var(--accent-cyan)'
+        : highlighted
+        ? '2px dashed var(--accent-gold)'
+        : `1.5px solid ${STATUS_COLOR[status]}`;
 
     return (
-        <g
-            onClick={onClick}
-            style={{ cursor: vacio ? 'default' : 'pointer' }}
-            className="rack-group"
+        <div
+            onClick={isEmpty ? undefined : onClick}
+            title={first?.nombre ?? undefined}
+            style={{
+                flex:           1,
+                minWidth:       0,
+                minHeight:      0,
+                border,
+                borderRadius:   '8px',
+                background:     selected ? 'rgba(0,212,255,0.14)' : STATUS_BG[status],
+                display:        'flex',
+                flexDirection:  'column',
+                alignItems:     'center',
+                justifyContent: 'center',
+                cursor:         isEmpty ? 'default' : 'pointer',
+                gap:            '4px',
+                padding:        '6px 4px',
+                transition:     'all 140ms ease',
+                boxShadow:      selected
+                    ? '0 0 12px rgba(0,212,255,0.30)'
+                    : status !== 'empty'
+                    ? `0 0 8px ${STATUS_COLOR[status]}33`
+                    : 'none',
+            }}
         >
-            {/* Fondo del rack */}
-            <rect
-                x={x} y={y} width={w} height={h}
-                rx={3}
-                fill={color}
-                fillOpacity={seleccionado ? 1 : vacio ? 0.25 : 0.7}
-                stroke={seleccionado ? 'var(--accent-primary)' : color}
-                strokeWidth={seleccionado ? 2 : 1}
-                strokeOpacity={seleccionado ? 1 : 0.5}
-            />
-
-            {/* Borde extra si está seleccionado */}
-            {seleccionado && (
-                <rect
-                    x={x - 2} y={y - 2}
-                    width={w + 4} height={h + 4}
-                    rx={4}
-                    fill="none"
-                    stroke="var(--accent-primary)"
-                    strokeWidth={1.5}
-                    strokeOpacity={0.6}
-                />
+            {!isEmpty ? (
+                <>
+                    <span style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize:   'clamp(14px, 2.2vh, 26px)',
+                        fontWeight: 700,
+                        color:      STATUS_COLOR[status],
+                        lineHeight: 1,
+                    }}>
+                        {first!.stock_actual}
+                    </span>
+                    <span style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      'clamp(9px, 1.1vh, 13px)',
+                        fontWeight:    700,
+                        letterSpacing: '0.08em',
+                        color:         'var(--text-muted)',
+                    }}>
+                        {estanteria}
+                    </span>
+                </>
+            ) : (
+                <span style={{
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      'clamp(11px, 1.4vh, 16px)',
+                    fontWeight:    700,
+                    letterSpacing: '0.06em',
+                    color:         'var(--border-default)',
+                    opacity:       0.45,
+                }}>
+                    {estanteria}
+                </span>
             )}
+        </div>
+    );
+}
 
-            {/* Etiqueta estantería */}
-            <text
-                x={x + w / 2}
-                y={y + h / 2 + 1}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fill={vacio ? 'var(--text-muted)' : 'var(--text-inverse)'}
-                fontSize={10}
-                fontFamily="var(--font-mono)"
-                fontWeight={700}
-            >
-                {label}
-            </text>
+// ── Fila de pasillo ───────────────────────────────────────────────────
+interface PasilloRowProps {
+    pasillo:      string;
+    side:         'left' | 'right';
+    mapa:         PasilloMap;
+    seleccionado: RackSeleccionado | null;
+    skuResaltado: string;
+    onSelect:     (r: RackSeleccionado | null) => void;
+}
+function PasilloRow({ pasillo, side, mapa, seleccionado, skuResaltado, onSelect }: PasilloRowProps): JSX.Element {
+    const label = (
+        <div style={{
+            width:          '40px',
+            flexShrink:     0,
+            display:        'flex',
+            alignItems:     'center',
+            justifyContent: 'center',
+        }}>
+            <span style={{
+                fontFamily:    'var(--font-display)',
+                fontSize:      'clamp(12px, 1.6vh, 18px)',
+                fontWeight:    700,
+                color:         'var(--accent-cyan)',
+                letterSpacing: '0.10em',
+            }}>
+                {pasillo}
+            </span>
+        </div>
+    );
 
-            {/* Indicador de ocupación abajo */}
-            {!vacio && (
-                <text
-                    x={x + w / 2}
-                    y={y + h - 5}
-                    textAnchor="middle"
-                    fill="var(--text-inverse)"
-                    fontSize={7}
-                    fontFamily="var(--font-mono)"
-                    fillOpacity={0.75}
-                >
-                    {ocupados}/{total}
-                </text>
-            )}
-        </g>
+    return (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'stretch', gap: '6px', minHeight: 0 }}>
+            {side === 'left' && label}
+            {ESTANTERIAS.map(est => {
+                const nivelMap = mapa[pasillo]?.[est] ?? {};
+                const racks    = racksDeEstanteria(nivelMap);
+                const isSel    = seleccionado?.pasillo === pasillo && seleccionado?.estanteria === est;
+                const isHighl  = Boolean(skuResaltado && racks.some(r => r.sku === skuResaltado));
+                return (
+                    <Cell
+                        key={est}
+                        racks={racks}
+                        estanteria={est}
+                        selected={isSel}
+                        highlighted={isHighl}
+                        onClick={() => {
+                            const hasData = racks.some(r => r.id_producto !== null);
+                            if (!hasData) return;
+                            onSelect(isSel ? null : { pasillo, estanteria: est, racks });
+                        }}
+                    />
+                );
+            })}
+            {side === 'right' && label}
+        </div>
+    );
+}
+
+// ── Panel de información lateral (siempre visible) ────────────────────
+interface InfoPanelProps {
+    sel:          RackSeleccionado | null;
+    skuResaltado: string;
+    onClose:      () => void;
+}
+function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element {
+    const ocupados = sel
+        ? sel.racks.filter(r => r.id_producto !== null).sort((a, b) => a.nivel - b.nivel)
+        : [];
+
+    return (
+        <div style={{
+            width:        '280px',
+            flexShrink:   0,
+            display:      'flex',
+            flexDirection:'column',
+            background:   'var(--bg-surface)',
+            border:       '1px solid var(--border-default)',
+            borderRadius: '10px',
+            overflow:     'hidden',
+        }}>
+            {/* Cabecera del panel */}
+            <div style={{
+                padding:      '14px 16px',
+                borderBottom: '1px solid var(--border-subtle)',
+                background:   'var(--bg-elevated)',
+                display:      'flex',
+                alignItems:   'center',
+                justifyContent: 'space-between',
+                flexShrink:   0,
+            }}>
+                <div>
+                    <div style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '11px',
+                        fontWeight:    700,
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        color:         'var(--accent-cyan)',
+                        marginBottom:  '2px',
+                    }}>
+                        ◈ DETALLE DE ESTANTERÍA
+                    </div>
+                    <div style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize:   '13px',
+                        fontWeight: 700,
+                        color:      sel ? 'var(--text-primary)' : 'var(--text-muted)',
+                    }}>
+                        {sel ? `${sel.pasillo} — ${sel.estanteria}` : '— Sin selección —'}
+                    </div>
+                    {sel && (
+                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', marginTop:'2px' }}>
+                            {ocupados.length} producto{ocupados.length !== 1 ? 's' : ''} almacenado{ocupados.length !== 1 ? 's' : ''}
+                        </div>
+                    )}
+                </div>
+                {sel && (
+                    <button
+                        onClick={onClose}
+                        style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'16px', lineHeight:1, padding:'4px', flexShrink:0 }}
+                    >✕</button>
+                )}
+            </div>
+
+            {/* Contenido */}
+            <div style={{ flex:1, overflowY:'auto', padding:'12px', display:'flex', flexDirection:'column', gap:'8px' }}>
+                {!sel ? (
+                    /* Estado vacío */
+                    <div style={{
+                        flex:           1,
+                        display:        'flex',
+                        flexDirection:  'column',
+                        alignItems:     'center',
+                        justifyContent: 'center',
+                        gap:            '12px',
+                        padding:        '24px 16px',
+                        textAlign:      'center',
+                    }}>
+                        <div style={{ fontSize:'36px', opacity:0.2 }}>▦</div>
+                        <div style={{
+                            fontFamily:    'var(--font-display)',
+                            fontSize:      '11px',
+                            fontWeight:    700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color:         'var(--text-muted)',
+                            lineHeight:    1.5,
+                        }}>
+                            Selecciona una celda del mapa para ver su contenido
+                        </div>
+                        <div style={{
+                            fontFamily: 'var(--font-mono)',
+                            fontSize:   '10px',
+                            color:      'var(--border-default)',
+                            letterSpacing: '0.06em',
+                        }}>
+                            Solo celdas ocupadas son interactivas
+                        </div>
+                    </div>
+                ) : ocupados.length === 0 ? (
+                    <div style={{ textAlign:'center', padding:'24px', fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-muted)', letterSpacing:'0.08em' }}>
+                        RACK VACÍO
+                    </div>
+                ) : (
+                    ocupados.map(rack => {
+                        const hl = Boolean(skuResaltado && rack.sku === skuResaltado);
+                        return (
+                            <div key={rack.nivel} style={{
+                                background:   hl ? 'var(--accent-gold-glow)' : 'var(--bg-elevated)',
+                                border:       `1px solid ${hl ? 'var(--accent-gold)' : rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--border-subtle)'}`,
+                                borderRadius: '8px',
+                                padding:      '12px 14px',
+                            }}>
+                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px' }}>
+                                    <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--accent-cyan)', letterSpacing:'0.06em' }}>
+                                        Niv.{rack.nivel} · {rack.sku}
+                                    </span>
+                                    <div style={{ display:'flex', gap:'4px', flexShrink:0, marginLeft:'6px' }}>
+                                        {rack.tipo_producto === 'RETRO' && (
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', color:'var(--accent-gold)', border:'1px solid var(--accent-gold)', borderRadius:'3px', padding:'1px 5px' }}>RETRO</span>
+                                        )}
+                                        {rack.bajo_minimo && (
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', color:'var(--accent-danger)', border:'1px solid var(--accent-danger)', borderRadius:'3px', padding:'1px 5px' }}>⚠ CRÍTICO</span>
+                                        )}
+                                    </div>
+                                </div>
+                                <div style={{ fontFamily:'var(--font-body)', fontSize:'13px', color:'var(--text-primary)', fontWeight:500, marginBottom:'10px', lineHeight:1.35 }}>
+                                    {rack.nombre}
+                                </div>
+                                <div style={{ display:'flex', gap:'20px' }}>
+                                    <div>
+                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Stock</div>
+                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'20px', fontWeight:700, color: rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--accent-primary)', lineHeight:1 }}>
+                                            {rack.stock_actual}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Mínimo</div>
+                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'20px', fontWeight:700, color:'var(--text-secondary)', lineHeight:1 }}>
+                                            {rack.stock_minimo}
+                                        </div>
+                                    </div>
+                                    {rack.estado_conservacion && (
+                                        <div>
+                                            <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Estado</div>
+                                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color:'var(--accent-gold)', lineHeight:1 }}>
+                                                {rack.estado_conservacion}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })
+                )}
+            </div>
+        </div>
     );
 }
 
 // ── Página principal ──────────────────────────────────────────────────
-
 export function AlmacenPage(): JSX.Element {
-    const [mapaData, setMapaData] = useState<MapaResponse | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [seleccionado, setSeleccionado] = useState<RackSeleccionado | null>(null);
-    const [busqueda, setBusqueda] = useState('');
-    const [skuResaltado, setSkuResaltado] = useState('');
+    const [mapaData, setMapaData]           = useState<MapaResponse>(MOCK);
+    const [loading, setLoading]             = useState(true);
+    const [seleccionado, setSeleccionado]   = useState<RackSeleccionado | null>(null);
+    const [busqueda, setBusqueda]           = useState('');
+    const [skuResaltado, setSkuResaltado]   = useState('');
 
     useEffect(() => {
         api.get<MapaResponse>('/almacen/mapa')
             .then(({ data }) => { setMapaData(data); setLoading(false); })
-            .catch(() => { setError('No se pudo cargar el mapa del almacén.'); setLoading(false); });
+            .catch(() => setLoading(false));
     }, []);
 
-    // Estadísticas rápidas
-    const stats = useMemo(() => {
-        if (!mapaData) return { pasillos: 0, ocupados: 0, criticos: 0, total: 0 };
-        const mapa = mapaData.mapa;
-        let criticos = 0;
+    const { pct: pctOcupado, ocupados, libres, criticos } = useMemo(
+        () => calcularOcupacionVisual(mapaData.mapa),
+        [mapaData]
+    );
 
-        Object.values(mapa).forEach(estMap =>
-            Object.values(estMap).forEach(nivelMap =>
-                Object.values(nivelMap).forEach(r => { if (r.bajo_minimo) criticos++; })
-            )
-        );
-
-        return {
-            pasillos: Object.keys(mapa).length,
-            ocupados: mapaData.racks_ocupados,
-            criticos,
-            total: mapaData.total_racks,
-        };
-    }, [mapaData]);
-
-    function handleBuscar(): void {
-        if (!mapaData || !busqueda.trim()) { setSkuResaltado(''); return; }
+    const handleBuscar = useCallback(() => {
+        if (!busqueda.trim()) { setSkuResaltado(''); return; }
         const sku = busqueda.trim().toUpperCase();
         setSkuResaltado(sku);
-
-        // Encontrar el rack que contiene ese SKU y seleccionarlo
         const mapa = mapaData.mapa;
-        for (const [pasillo, estMap] of Object.entries(mapa)) {
-            for (const [estanteria, nivelMap] of Object.entries(estMap)) {
-                const racks = racksDeEstanteria(nivelMap);
+        for (const [pasillo, em] of Object.entries(mapa)) {
+            for (const [estanteria, nm] of Object.entries(em)) {
+                const racks = racksDeEstanteria(nm);
                 if (racks.some(r => r.sku === sku)) {
                     setSeleccionado({ pasillo, estanteria, racks });
                     return;
                 }
             }
         }
-    }
+    }, [busqueda, mapaData]);
 
-    // ── SVG layout ────────────────────────────────────────────────────
-    const RACK_W = 48;
-    const RACK_H = 38;
-    const GAP_X = 10;
-    const GAP_Y = 10;
-    const PASILLO_SEP = 28;
-    const LABEL_W = 32;
-    const PADDING = 16;
-
-    // Cuántas estanterías hay en cada pasillo (max 6 = A-F)
-    function estanteriasDePassillo(pasillo: string): string[] {
-        if (!mapaData) return ESTANTERIAS;
-        const estMap = mapaData.mapa[pasillo];
-        if (!estMap) return [];
-        return Object.keys(estMap).sort();
-    }
-
-    // Calcula posición X del pasillo en el SVG
-    function xDePasillo(idx: number): number {
-        return PADDING + LABEL_W + idx * (ESTANTERIAS.length * (RACK_W + GAP_X) + PASILLO_SEP);
-    }
-
-    const pasillosPresentes = PASILLOS_ORDEN.filter(p => mapaData?.mapa[p]);
-    const svgWidth = PADDING * 2 + LABEL_W + pasillosPresentes.length * (ESTANTERIAS.length * (RACK_W + GAP_X) + PASILLO_SEP);
-    const svgHeight = PADDING * 2 + 24 + ESTANTERIAS.length * (RACK_H + GAP_Y);
-
-    if (loading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', color: 'var(--accent-cyan)', letterSpacing: '0.08em' }}>
-                    CARGANDO MAPA DEL ALMACÉN...
-                    <span style={{ animation: 'terminalBlink 0.8s step-end infinite', marginLeft: '4px' }}>█</span>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div style={{ margin: '24px', padding: '16px', background: 'var(--accent-danger-glow)', border: '1px solid var(--accent-danger)', borderRadius: 'var(--radius-base)', fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--accent-danger)' }}>
-                ⚠ {error}
-            </div>
-        );
-    }
+    const mapa = mapaData.mapa;
 
     return (
         <>
-            <style>{`
-                @keyframes terminalBlink { 0%,100%{opacity:1} 50%{opacity:0} }
-                .rack-group:hover rect:first-child { filter: brightness(1.3); }
-            `}</style>
+            <style>{`@keyframes terminalBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
 
-            <div>
-                {/* Cabecera */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 'var(--space-6)', flexWrap: 'wrap', gap: 'var(--space-4)' }}>
-                    <div>
-                        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                            Mapa del <span style={{ color: 'var(--accent-cyan)' }}>Almacén</span>
-                        </h1>
-                        <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)', letterSpacing: '0.06em' }}>
-                            PLANO INTERACTIVO · HAZ CLIC EN UN RACK PARA VER DETALLES
-                        </p>
-                    </div>
+            <div style={{
+                height:        'calc(100dvh - 104px)',
+                display:       'flex',
+                flexDirection: 'column',
+                gap:           '8px',
+                overflow:      'hidden',
+            }}>
 
-                    {/* Buscador de SKU */}
-                    <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                        <input
-                            type="text"
-                            placeholder="Buscar SKU..."
-                            value={busqueda}
-                            onChange={e => setBusqueda(e.target.value)}
-                            onKeyDown={e => e.key === 'Enter' && handleBuscar()}
-                            style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: 'var(--radius-base)', padding: 'var(--space-2) var(--space-3)', outline: 'none', width: '180px', caretColor: 'var(--accent-cyan)' }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
-                            onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
-                        />
-                        <button
-                            onClick={handleBuscar}
-                            className="btn btn-secondary"
-                            style={{ fontSize: 'var(--text-xs)', letterSpacing: '0.10em' }}
-                        >
-                            ◎ LOCALIZAR
-                        </button>
-                        {skuResaltado && (
-                            <button
-                                onClick={() => { setSkuResaltado(''); setBusqueda(''); setSeleccionado(null); }}
-                                className="btn btn-ghost"
-                                style={{ fontSize: 'var(--text-xs)' }}
-                            >✕ LIMPIAR</button>
+                {/* ── Status bar ─────────────────────────────────────────── */}
+                <div style={{
+                    flexShrink:     0,
+                    height:         '48px',
+                    display:        'flex',
+                    alignItems:     'center',
+                    justifyContent: 'space-between',
+                    background:     'var(--bg-surface)',
+                    border:         '1px solid var(--border-subtle)',
+                    borderRadius:   '8px',
+                    padding:        '0 18px',
+                    gap:            '16px',
+                }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'20px' }}>
+                        <span style={{ fontFamily:'var(--font-display)', fontSize:'13px', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-primary)' }}>
+                            ▦ PLANO DEL ALMACÉN
+                        </span>
+                        {/* Ocupación */}
+                        <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'13px', fontWeight:700, color: pctOcupado > 85 ? 'var(--accent-danger)' : pctOcupado > 60 ? 'var(--accent-gold)' : 'var(--accent-primary)', letterSpacing:'0.04em' }}>
+                                {pctOcupado}% ocupado
+                            </span>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.04em', marginTop:'2px' }}>
+                                {ocupados} en uso · {libres} libres de {MAX_RACKS}
+                            </span>
+                        </div>
+                        {criticos > 0 && (
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-danger)', letterSpacing:'0.04em' }}>
+                                ⚠ {criticos} bajo mínimo
+                            </span>
+                        )}
+                        {loading && (
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-cyan)' }}>
+                                CARGANDO<span style={{ animation:'terminalBlink 0.8s step-end infinite' }}>█</span>
+                            </span>
                         )}
                     </div>
-                </div>
 
-                {/* KPI bar */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--space-4)', marginBottom: 'var(--space-6)' }}>
-                    {[
-                        { label: 'PASILLOS ACTIVOS', value: stats.pasillos, color: 'var(--accent-cyan)', icon: '▦' },
-                        { label: 'RACKS TOTALES', value: stats.total, color: 'var(--accent-primary)', icon: '◈' },
-                        { label: 'RACKS OCUPADOS', value: stats.ocupados, color: 'var(--accent-cyan)', icon: '◉' },
-                        { label: 'STOCK CRÍTICO', value: stats.criticos, color: 'var(--accent-danger)', icon: '▲' },
-                    ].map(kpi => (
-                        <div key={kpi.label} className="card" style={{ borderTop: `2px solid ${kpi.color}` }}>
-                            <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-2)' }}>
-                                {kpi.label}
+                    <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+                        {([ ['Stock OK','var(--accent-primary)'], ['Stock bajo','var(--accent-cyan)'], ['Retro','var(--accent-gold)'], ['Crítico','var(--accent-danger)'] ] as [string,string][]).map(([lbl, col]) => (
+                            <div key={lbl} style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                                <div style={{ width:'11px', height:'11px', borderRadius:'3px', background:col, flexShrink:0 }} />
+                                <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-secondary)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>{lbl}</span>
                             </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-3xl)', fontWeight: 700, color: kpi.color, letterSpacing: '-0.02em' }}>
-                                {kpi.value}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Layout mapa + panel lateral */}
-                <div style={{ display: 'grid', gridTemplateColumns: seleccionado ? '1fr 320px' : '1fr', gap: 'var(--space-5)', alignItems: 'start' }}>
-
-                    {/* SVG mapa */}
-                    <div className="card" style={{ overflowX: 'auto', padding: 'var(--space-5)' }}>
-                        <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 'var(--space-4)', display: 'flex', gap: 'var(--space-6)', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <span>● PLANO INTERACTIVO DEL ALMACÉN</span>
-                            <span style={{ color: 'var(--accent-primary)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                                <span style={{ width: 10, height: 10, background: 'var(--accent-primary)', display: 'inline-block', borderRadius: 2 }} /> Alto stock
-                            </span>
-                            <span style={{ color: 'var(--accent-cyan)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                                <span style={{ width: 10, height: 10, background: 'var(--accent-cyan)', display: 'inline-block', borderRadius: 2 }} /> Stock medio
-                            </span>
-                            <span style={{ color: 'var(--accent-gold)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                                <span style={{ width: 10, height: 10, background: 'var(--accent-gold)', display: 'inline-block', borderRadius: 2 }} /> Retro
-                            </span>
-                            <span style={{ color: 'var(--accent-danger)', display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                                <span style={{ width: 10, height: 10, background: 'var(--accent-danger)', display: 'inline-block', borderRadius: 2 }} /> Stock crítico
-                            </span>
-                        </div>
-
-                        <svg
-                            width={svgWidth}
-                            height={svgHeight}
-                            style={{ display: 'block', minWidth: '100%' }}
-                        >
-                            {/* Etiquetas de estanterías (eje Y) */}
-                            {ESTANTERIAS.map((est, iEst) => (
-                                <text
-                                    key={est}
-                                    x={PADDING + 12}
-                                    y={PADDING + 24 + iEst * (RACK_H + GAP_Y) + RACK_H / 2}
-                                    textAnchor="middle"
-                                    dominantBaseline="middle"
-                                    fill="var(--text-muted)"
-                                    fontSize={11}
-                                    fontFamily="var(--font-mono)"
-                                    fontWeight={600}
-                                >
-                                    {est}
-                                </text>
-                            ))}
-
-                            {/* Pasillos */}
-                            {pasillosPresentes.map((pasillo, iPasillo) => {
-                                const xBase = xDePasillo(iPasillo);
-                                const estanterias = estanteriasDePassillo(pasillo);
-
-                                return (
-                                    <g key={pasillo}>
-                                        {/* Etiqueta pasillo */}
-                                        <text
-                                            x={xBase + (RACK_W / 2)}
-                                            y={PADDING + 10}
-                                            textAnchor="middle"
-                                            fill="var(--text-secondary)"
-                                            fontSize={11}
-                                            fontFamily="var(--font-display)"
-                                            fontWeight={700}
-                                            letterSpacing={2}
-                                        >
-                                            {pasillo}
-                                        </text>
-
-                                        {/* Estanterías dentro del pasillo */}
-                                        {ESTANTERIAS.map((est, iEst) => {
-                                            const nivelMap = mapaData?.mapa[pasillo]?.[est];
-                                            const racks = nivelMap ? racksDeEstanteria(nivelMap) : [];
-                                            const xRack = xBase + estanterias.indexOf(est) * (RACK_W + GAP_X);
-                                            const yRack = PADDING + 24 + iEst * (RACK_H + GAP_Y);
-                                            const estaSeleccionado = seleccionado?.pasillo === pasillo && seleccionado?.estanteria === est;
-                                            const tieneSkuBuscado = skuResaltado && racks.some(r => r.sku === skuResaltado);
-
-                                            return (
-                                                <g key={est}>
-                                                    {/* Halo de resaltado para búsqueda */}
-                                                    {tieneSkuBuscado && (
-                                                        <rect
-                                                            x={xRack - 4} y={yRack - 4}
-                                                            width={RACK_W + 8} height={RACK_H + 8}
-                                                            rx={6}
-                                                            fill="none"
-                                                            stroke="var(--accent-gold)"
-                                                            strokeWidth={2}
-                                                            strokeDasharray="4 2"
-                                                        />
-                                                    )}
-                                                    <RackSVG
-                                                        x={xRack} y={yRack}
-                                                        w={RACK_W} h={RACK_H}
-                                                        label={racks.length > 0 ? `${est}` : '—'}
-                                                        racks={racks}
-                                                        seleccionado={estaSeleccionado}
-                                                        onClick={() => {
-                                                            if (racks.length === 0) return;
-                                                            setSeleccionado(estaSeleccionado ? null : { pasillo, estanteria: est, racks });
-                                                        }}
-                                                    />
-                                                </g>
-                                            );
-                                        })}
-                                    </g>
-                                );
-                            })}
-
-                            {/* Línea ENTRADA / SALIDA */}
-                            <text
-                                x={svgWidth / 2}
-                                y={svgHeight - 6}
-                                textAnchor="middle"
-                                fill="var(--text-muted)"
-                                fontSize={10}
-                                fontFamily="var(--font-mono)"
-                                letterSpacing={3}
-                            >
-                                ↑ ENTRADA / SALIDA ↑
-                            </text>
-                            <line
-                                x1={PADDING} y1={svgHeight - 16}
-                                x2={svgWidth - PADDING} y2={svgHeight - 16}
-                                stroke="var(--border-default)"
-                                strokeWidth={1}
-                                strokeDasharray="4 4"
+                        ))}
+                        <div style={{ display:'flex', gap:'6px' }}>
+                            <input
+                                type="text" placeholder="SKU..." value={busqueda}
+                                onChange={e => setBusqueda(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleBuscar()}
+                                style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:'5px', padding:'4px 10px', outline:'none', width:'120px', caretColor:'var(--accent-cyan)' }}
+                                onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
+                                onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
                             />
-                        </svg>
+                            <button onClick={handleBuscar} style={{ fontFamily:'var(--font-display)', fontSize:'10px', fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase', padding:'4px 10px', background:'transparent', color:'var(--accent-cyan)', border:'1px solid var(--accent-cyan)', borderRadius:'5px', cursor:'pointer' }}>
+                                BUSCAR
+                            </button>
+                            {skuResaltado && (
+                                <button onClick={() => { setSkuResaltado(''); setBusqueda(''); setSeleccionado(null); }} style={{ fontFamily:'var(--font-mono)', fontSize:'10px', padding:'4px 8px', background:'transparent', color:'var(--text-muted)', border:'1px solid var(--border-subtle)', borderRadius:'5px', cursor:'pointer' }}>✕</button>
+                            )}
+                        </div>
                     </div>
+                </div>
 
-                    {/* Panel lateral de detalle */}
-                    {seleccionado && (
-                        <div className="card" style={{ position: 'sticky', top: '80px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)', borderBottom: '1px solid var(--border-subtle)', paddingBottom: 'var(--space-3)' }}>
-                                <div>
-                                    <div style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-base)', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-                                        {seleccionado.pasillo} — {seleccionado.estanteria}
-                                    </div>
-                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
-                                        {seleccionado.racks.filter(r => r.id_producto).length} producto{seleccionado.racks.filter(r => r.id_producto).length !== 1 ? 's' : ''}
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setSeleccionado(null)}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '16px', lineHeight: 1 }}
-                                >✕</button>
+                {/* ── Cuerpo principal: panel info (izq) + mapa (dcha) ───── */}
+                <div style={{ flex:1, minHeight:0, display:'flex', gap:'8px' }}>
+
+                    {/* Panel de información — siempre visible, ancho fijo */}
+                    <InfoPanel
+                        sel={seleccionado}
+                        skuResaltado={skuResaltado}
+                        onClose={() => setSeleccionado(null)}
+                    />
+
+                    {/* Mapa del almacén — ocupa el resto */}
+                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:'8px', paddingBottom:'120px' }}>
+
+                        {/* Grid de pasillos + corredor */}
+                        <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 52px 1fr', gap:'8px' }}>
+
+                            {/* Izquierda: P4 P3 P2 P1 */}
+                            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                                {LEFT_SIDE.map(p => (
+                                    <PasilloRow key={p} pasillo={p} side="left" mapa={mapa}
+                                        seleccionado={seleccionado} skuResaltado={skuResaltado}
+                                        onSelect={setSeleccionado} />
+                                ))}
                             </div>
 
-                            {/* Lista de productos en el rack */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                                {seleccionado.racks
-                                    .filter(r => r.id_producto !== null)
-                                    .sort((a, b) => a.nivel - b.nivel)
-                                    .map(rack => {
-                                        const esResaltado = skuResaltado && rack.sku === skuResaltado;
-                                        return (
-                                            <div
-                                                key={rack.nivel}
-                                                style={{
-                                                    background: esResaltado ? 'var(--accent-gold-glow)' : 'var(--bg-elevated)',
-                                                    border: `1px solid ${esResaltado ? 'var(--accent-gold)' : rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--border-subtle)'}`,
-                                                    borderRadius: 'var(--radius-base)',
-                                                    padding: 'var(--space-3)',
-                                                }}
-                                            >
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'var(--space-1)' }}>
-                                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--accent-cyan)', letterSpacing: '0.06em' }}>
-                                                        Nivel {rack.nivel} · {rack.sku}
-                                                    </span>
-                                                    {rack.tipo_producto === 'RETRO' && (
-                                                        <span className="badge badge-gold" style={{ fontSize: '9px' }}>RETRO</span>
-                                                    )}
-                                                    {rack.bajo_minimo && (
-                                                        <span className="badge badge-danger" style={{ fontSize: '9px' }}>⚠ CRÍTICO</span>
-                                                    )}
-                                                </div>
-                                                <div style={{ fontFamily: 'var(--font-body)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)', fontWeight: 500, marginBottom: 'var(--space-2)' }}>
-                                                    {rack.nombre}
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-                                                    <div>
-                                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>STOCK</div>
-                                                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', fontWeight: 700, color: rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--accent-primary)' }}>
-                                                            {rack.stock_actual}
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>MÍNIMO</div>
-                                                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--text-secondary)' }}>
-                                                            {rack.stock_minimo}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
+                            {/* Centro: CORREDOR */}
+                            <div style={{
+                                display:        'flex',
+                                flexDirection:  'column',
+                                alignItems:     'center',
+                                justifyContent: 'space-between',
+                                background:     'var(--bg-surface)',
+                                border:         '1px solid var(--border-subtle)',
+                                borderRadius:   '8px',
+                                padding:        '8px 0',
+                            }}>
+                                <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', fontWeight:600, letterSpacing:'0.18em', color:'var(--text-muted)', textTransform:'uppercase', writingMode:'vertical-rl', transform:'rotate(180deg)' }}>
+                                    CORREDOR
+                                </span>
+                                <div style={{ flex:1, display:'flex', flexDirection:'column', justifyContent:'space-evenly', alignItems:'center' }}>
+                                    {[0,1,2].map(i => (
+                                        <div key={i} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'clamp(10px,1.2vh,14px)', color:'var(--accent-cyan)', opacity:0.5 }}>↑</span>
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'clamp(10px,1.2vh,14px)', color:'var(--accent-cyan)', opacity:0.3 }}>↓</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', fontWeight:600, letterSpacing:'0.18em', color:'var(--text-muted)', textTransform:'uppercase', writingMode:'vertical-rl', transform:'rotate(180deg)' }}>
+                                    CORREDOR
+                                </span>
+                            </div>
 
-                                {seleccionado.racks.filter(r => r.id_producto !== null).length === 0 && (
-                                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-sm)', color: 'var(--text-muted)', textAlign: 'center', padding: 'var(--space-6)', letterSpacing: '0.06em' }}>
-                                        RACK VACÍO
-                                    </div>
-                                )}
+                            {/* Derecha: P8 P7 P6 P5 */}
+                            <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                                {RIGHT_SIDE.map(p => (
+                                    <PasilloRow key={p} pasillo={p} side="right" mapa={mapa}
+                                        seleccionado={seleccionado} skuResaltado={skuResaltado}
+                                        onSelect={setSeleccionado} />
+                                ))}
                             </div>
                         </div>
-                    )}
+
+                        {/* Barra ENTRADA / SALIDA */}
+                        <div style={{
+                            flexShrink:     0,
+                            height:         '28px',
+                            display:        'flex',
+                            alignItems:     'center',
+                            justifyContent: 'center',
+                            background:     'var(--bg-surface)',
+                            border:         '1px solid var(--border-subtle)',
+                            borderRadius:   '6px',
+                        }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', fontWeight:600, letterSpacing:'0.20em', color:'var(--text-muted)', textTransform:'uppercase' }}>
+                                ↑ ENTRADA / SALIDA ↑
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </>

@@ -12,7 +12,7 @@ import type { Producto, TipoProducto, EstadoConservacion } from '../../types/mod
 // ── Tipos ─────────────────────────────────────────────────────────────
 
 /** Datos del formulario — Partial de Producto sin campos de auditoría */
-interface ProductForm {
+export interface ProductForm {
     sku:                string;
     nombre:             string;
     descripcion:        string;
@@ -28,10 +28,12 @@ interface ProductForm {
 
 export interface ProductModalProps {
     /** null = modo alta, Producto = modo edición */
-    producto:  Producto | null;
-    isOpen:    boolean;
-    onClose:   () => void;
-    onSave:    (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>) => void;
+    producto:       Producto | null;
+    isOpen:         boolean;
+    onClose:        () => void;
+    onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>) => void;
+    /** Valores precargados por IA (solo en modo alta) */
+    initialValues?: Partial<ProductForm>;
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -50,12 +52,11 @@ const EMPTY_FORM: ProductForm = {
 
 // ── Componente ────────────────────────────────────────────────────────
 
-export function ProductModal({ producto, isOpen, onClose, onSave }: ProductModalProps): JSX.Element | null {
+export function ProductModal({ producto, isOpen, onClose, onSave, initialValues }: ProductModalProps): JSX.Element | null {
 
     const [form, setForm]     = useState<ProductForm>(EMPTY_FORM);
     const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
 
-    // Rellena el formulario al abrir en modo edición
     useEffect(() => {
         if (producto) {
             setForm({
@@ -71,11 +72,13 @@ export function ProductModal({ producto, isOpen, onClose, onSave }: ProductModal
                 estadoConservacion: producto.estadoConservacion ?? '',
                 activo:             producto.activo,
             });
+        } else if (initialValues) {
+            setForm({ ...EMPTY_FORM, ...initialValues });
         } else {
             setForm(EMPTY_FORM);
         }
         setErrors({});
-    }, [producto, isOpen]);
+    }, [producto, isOpen, initialValues]);
 
     if (!isOpen) return null;
 
@@ -144,29 +147,36 @@ export function ProductModal({ producto, isOpen, onClose, onSave }: ProductModal
 
     return (
         <>
-            {/* Overlay */}
+            {/* Overlay + centrado: un único contenedor fixed que hace de backdrop y flex-center */}
             <div
                 onClick={onClose}
-                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, backdropFilter: 'blur(4px)' }}
-            />
-
-            {/* Modal */}
-            <div style={{
-                position:    'fixed',
-                top:         '50%',
-                left:        '50%',
-                transform:   'translate(-50%, -50%)',
-                zIndex:      101,
-                width:       '100%',
-                maxWidth:    '560px',
-                maxHeight:   '90dvh',
-                overflowY:   'auto',
-                background:  'var(--bg-surface)',
-                border:      '1px solid var(--border-default)',
-                borderRadius:'12px',
-                boxShadow:   '0 24px 64px rgba(0,0,0,0.6)',
-                animation:   'fadeInUp 0.2s ease both',
-            }}>
+                style={{
+                    position:        'fixed',
+                    inset:           0,
+                    zIndex:          100,
+                    background:      'rgba(0,0,0,0.7)',
+                    backdropFilter:  'blur(4px)',
+                    display:         'flex',
+                    alignItems:      'center',
+                    justifyContent:  'center',
+                    padding:         '16px',
+                }}
+            >
+            {/* Modal — detenemos la propagación para que click interior no cierre */}
+            <div
+                onClick={e => e.stopPropagation()}
+                style={{
+                    width:        '100%',
+                    maxWidth:     '560px',
+                    maxHeight:    '90dvh',
+                    overflowY:    'auto',
+                    background:   'var(--bg-surface)',
+                    border:       '1px solid var(--border-default)',
+                    borderRadius: '12px',
+                    boxShadow:    '0 24px 64px rgba(0,0,0,0.6)',
+                    animation:    'fadeInUp 0.2s ease both',
+                    flexShrink:   0,
+                }}>
 
                 {/* Cabecera */}
                 <div style={{
@@ -290,6 +300,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave }: ProductModal
                         </button>
                     </div>
                 </form>
+            </div>
             </div>
         </>
     );

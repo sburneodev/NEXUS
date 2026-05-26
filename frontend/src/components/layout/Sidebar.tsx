@@ -10,6 +10,7 @@
 import { useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { Logo } from '../brand/Logo';
 
 interface NavItem {
     path:     string;
@@ -83,55 +84,47 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
             zIndex:        20,
         }}>
 
-            {/* Logo corporativo */}
+            {/* Logo corporativo NEXUS — isotipo SVG + wordmark HTML
+                (texto HTML usa Rajdhani real, no escala raro como SVG text) */}
             <div style={{
-                height:       '56px',
+                height:       '64px',
                 display:      'flex',
                 alignItems:   'center',
-                padding:      collapsed ? '0 14px' : '0 16px',
+                justifyContent: collapsed ? 'center' : 'flex-start',
+                padding:      collapsed ? '0' : '0 14px',
                 borderBottom: '1px solid var(--border-subtle)',
                 flexShrink:   0,
-                gap:          '10px',
+                gap:          '12px',
                 overflow:     'hidden',
             }}>
-                {/* Isotipo SVG */}
-                <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                    <rect width="28" height="28" rx="6" fill="url(#logoGrad)"/>
-                    <path d="M6 20V8l5 6 5-6v12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M17 14h5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <path d="M17 11h5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <path d="M17 17h5" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                    <defs>
-                        <linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
-                            <stop stopColor="#00ff88"/>
-                            <stop offset="1" stopColor="#00d4ff"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
+                <Logo variant="mark" size={collapsed ? 34 : 38} style={{ flexShrink: 0 }} />
 
                 {!collapsed && (
-                    <div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                         <div style={{
-                            fontFamily:    'var(--font-display)',
-                            fontSize:      '15px',
-                            fontWeight:    700,
-                            letterSpacing: '0.10em',
-                            background:    'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                            WebkitBackgroundClip:'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip:'text',
-                            lineHeight:    1,
+                            fontFamily:           'var(--font-display)',
+                            fontSize:             '22px',
+                            fontWeight:           700,
+                            letterSpacing:        '0.14em',
+                            lineHeight:           1,
+                            background:           'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor:  'transparent',
+                            backgroundClip:       'text',
                         }}>
                             NEXUS
                         </div>
                         <div style={{
                             fontFamily:    'var(--font-mono)',
-                            fontSize:      '9px',
-                            color:         'var(--text-muted)',
-                            letterSpacing: '0.18em',
+                            fontSize:      '9.5px',
+                            fontWeight:    500,
+                            color:         'var(--text-secondary)',
+                            letterSpacing: '0.22em',
                             textTransform: 'uppercase',
+                            lineHeight:    1,
+                            opacity:       0.85,
                         }}>
-                            ERP SYSTEM
+                            ERP · LEVELUP
                         </div>
                     </div>
                 )}
@@ -166,16 +159,39 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                         display: 'flex', alignItems: 'center', gap: '12px',
                                         padding: '9px 20px', margin: '1px 8px',
                                         borderRadius: '6px', textDecoration: 'none',
-                                        color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                        background: active ? 'var(--accent-primary-glow)' : 'transparent',
-                                        border: active ? '1px solid var(--border-accent)' : '1px solid transparent',
-                                        transition: 'all 140ms ease',
+                                        // Color del texto SIEMPRE el normal — sin verde sólido
+                                        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                        background: 'transparent',
+                                        // Glow inset sutil en color NEXUS para el item activo
+                                        boxShadow: active
+                                            ? 'inset 0 0 0 1px rgba(0,212,255,0.28), inset 0 0 14px rgba(0,212,255,0.12)'
+                                            : 'none',
+                                        border: '1px solid transparent',
+                                        transition: 'box-shadow 160ms ease, color 160ms ease',
                                         position: 'relative', overflow: 'hidden', whiteSpace: 'nowrap',
                                     }}
-                                    onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'var(--bg-overlay)'; (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; } }}
-                                    onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--text-secondary)'; } }}
+                                    onMouseEnter={e => {
+                                        const el = e.currentTarget as HTMLElement;
+                                        el.style.color = 'var(--text-primary)';
+                                        if (!active) {
+                                            el.style.boxShadow = 'inset 0 0 0 1px rgba(0,212,255,0.18), inset 0 0 10px rgba(0,212,255,0.07)';
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        const el = e.currentTarget as HTMLElement;
+                                        if (!active) {
+                                            el.style.color = 'var(--text-secondary)';
+                                            el.style.boxShadow = 'none';
+                                        }
+                                    }}
                                 >
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '15px', flexShrink: 0, textShadow: active ? '0 0 8px var(--accent-primary)' : 'none' }}>
+                                    <span style={{
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize: '15px',
+                                        flexShrink: 0,
+                                        color: active ? 'var(--accent-cyan)' : 'inherit',
+                                        textShadow: active ? '0 0 8px rgba(0,212,255,0.55)' : 'none',
+                                    }}>
                                         {item.icon}
                                     </span>
 
@@ -193,7 +209,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                     )}
 
                                     {active && (
-                                        <div style={{ position: 'absolute', left: 0, top: '20%', height: '60%', width: '2px', background: 'var(--accent-primary)', borderRadius: '0 2px 2px 0', boxShadow: '0 0 8px var(--accent-primary)' }} />
+                                        <div style={{ position: 'absolute', left: 0, top: '20%', height: '60%', width: '2px', background: 'var(--accent-cyan)', borderRadius: '0 2px 2px 0', boxShadow: '0 0 8px var(--accent-cyan)' }} />
                                     )}
                                 </NavLink>
                             );

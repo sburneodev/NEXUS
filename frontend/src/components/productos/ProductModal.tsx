@@ -24,6 +24,9 @@ export interface ProductForm {
     tipoProducto:       TipoProducto;
     estadoConservacion: EstadoConservacion | '';
     activo:             boolean;
+    idProveedor:        string;   // string para el input, convertido a number|null al guardar
+    idCategoria:        string;
+    idUbicacion:        string;
 }
 
 export interface ProductModalProps {
@@ -52,6 +55,9 @@ const EMPTY_FORM: ProductForm = {
     tipoProducto:       'ESTANDAR',
     estadoConservacion: '',
     activo:             true,
+    idProveedor:        '',
+    idCategoria:        '',
+    idUbicacion:        '',
 };
 
 // ── Componente ────────────────────────────────────────────────────────
@@ -75,6 +81,9 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                 tipoProducto:       producto.tipoProducto,
                 estadoConservacion: producto.estadoConservacion ?? '',
                 activo:             producto.activo,
+                idProveedor:        producto.idProveedor != null ? String(producto.idProveedor) : '',
+                idCategoria:        producto.idCategoria != null ? String(producto.idCategoria) : '',
+                idUbicacion:        producto.idUbicacion != null ? String(producto.idUbicacion) : '',
             });
         } else if (initialValues) {
             setForm({ ...EMPTY_FORM, ...initialValues });
@@ -107,7 +116,9 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
             sku:                  form.sku.trim().toUpperCase(),
             nombre:               form.nombre.trim(),
             descripcion:          form.descripcion.trim() || null,
-            idProveedor:          null,   // TODO: añadir selector de proveedor al formulario
+            idProveedor:          form.idProveedor ? Number(form.idProveedor) : null,
+            idCategoria:          form.idCategoria ? Number(form.idCategoria) : null,
+            idUbicacion:          form.idUbicacion ? Number(form.idUbicacion) : null,
             precioCoste:          Number(form.precioCoste),
             precioVenta:          Number(form.precioVenta),
             stockActual:          Number(form.stockActual),
@@ -252,6 +263,13 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                                 <option value="LOOSE">LOOSE</option>
                                 <option value="LOOSE_D">LOOSE_D</option>
                             </select>
+                        </div>
+
+                        {/* IDs de relaciones FK */}
+                        {field('ID Proveedor', 'idProveedor', 'number', '1')}
+                        {field('ID Categoría', 'idCategoria', 'number', '1')}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            {field('ID Ubicación en Almacén', 'idUbicacion', 'number', '1')}
                         </div>
 
                         {/* Descripción — ancho completo */}

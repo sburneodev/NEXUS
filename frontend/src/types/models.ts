@@ -33,6 +33,9 @@ export interface Producto extends Auditable {
     descripcion: string | null;
     idProveedor: number | null;          // FK para escritura (POST/PUT)
     proveedorNombre: string | null;      // Solo lectura — join del backend (GET)
+    idCategoria: number | null;          // FK para escritura (POST/PUT)
+    categoriaNombre: string | null;      // Solo lectura — join del backend (GET)
+    idUbicacion: number | null;          // FK para escritura (POST/PUT)
     precioCoste: number;
     precioVenta: number;
     stockActual: number;

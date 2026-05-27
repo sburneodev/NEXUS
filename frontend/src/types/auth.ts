@@ -40,17 +40,22 @@ export interface AuthState {
     isAuthenticated: boolean;
 }
 
-/** Payload que devuelve el backend en POST /auth/login */
-export interface LoginResponse {
-    token: string;
-    email: string;
-    roles: string;
+/** Payload que devuelve el backend en POST /auth/login y POST /auth/register */
+export interface AuthBackendResponse {
+    message: string;
+    token: string | null;
+    usuario: {
+        id: number;
+        username: string;
+        email: string;
+        nombreCompleto: string;
+    } | null;
 }
 
-/** Payload que devuelve el backend en POST /auth/register */
-export interface RegisterResponse {
-    message: string;
-}
+/** @deprecated — usar AuthBackendResponse. Mantenido por compatibilidad. */
+export type LoginResponse  = AuthBackendResponse;
+/** @deprecated — usar AuthBackendResponse. Mantenido por compatibilidad. */
+export type RegisterResponse = Pick<AuthBackendResponse, 'message'>;
 
 /** Body para POST /auth/login */
 export interface LoginRequest {

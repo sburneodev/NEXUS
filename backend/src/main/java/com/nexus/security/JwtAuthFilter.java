@@ -35,7 +35,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
 
         final String authHeader = request.getHeader("Authorization");
-        System.out.println(">>> AUTH HEADER: " + authHeader);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
@@ -46,43 +45,24 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         try {
             final String userEmail = jwtUtil.extractUsername(jwt);
-            System.out.println(">>> EMAIL EXTRAIDO: " + userEmail);
 
             if (userEmail != null) {
-                System.out.println(">>> ENTRANDO AL IF...");
-
-                // CAPTURAMOS LA AUTENTICACIÓN ACTUAL DEL CONTEXTO
                 Authentication currentAuth = SecurityContextHolder.getContext().getAuthentication();
 
-                // EVALUAMOS SI ES NULA O SI SPRING LE ASIGNÓ EL USUARIO "ANÓNIMO"
                 if (currentAuth == null || currentAuth instanceof AnonymousAuthenticationToken) {
-                    System.out.println(">>> CONTEXTO ES NULL O ANÓNIMO, BUSCANDO EN BD...");
-
                     UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                    if (userDetails == null) {
-                        System.out.println(">>> ❌ ERROR: userDetailsService devolvió NULL en lugar de lanzar excepción.");
-                    } else {
-                        System.out.println(">>> AUTHORITIES BD: " + userDetails.getAuthorities());
-
-                        if (jwtUtil.isTokenValid(jwt, userDetails)) {
-                            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                                    userDetails, null, userDetails.getAuthorities()
-                            );
-                            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                            SecurityContextHolder.getContext().setAuthentication(authToken);
-                            System.out.println(">>> ✅ AUTENTICACIÓN EXITOSA");
-                        } else {
-                            System.out.println(">>> ❌ TOKEN INVÁLIDO PARA ESTE USUARIO");
-                        }
+                    if (userDetails != null && jwtUtil.isTokenValid(jwt, userDetails)) {
+                        UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                                userDetails, null, userDetails.getAuthorities()
+                        );
+                        authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                        SecurityContextHolder.getContext().setAuthentication(authToken);
                     }
-                } else {
-                    System.out.println(">>> ⚠️ EL CONTEXTO YA ESTABA AUTENTICADO COMO: " + currentAuth.getName());
                 }
             }
-        } catch (Throwable t) { 
-            System.out.println(">>> 🚨 ERROR CRÍTICO CAPTURADO: " + t.getClass().getName() + " - " + t.getMessage());
-            t.printStackTrace();
+        } catch (Throwable t) {
+            // Token inválido o expirado — la petición continúa como no autenticada
         }
 
         filterChain.doFilter(request, response);

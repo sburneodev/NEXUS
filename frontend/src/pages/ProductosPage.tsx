@@ -110,24 +110,8 @@ export function ProductosPage(): JSX.Element {
                 </div>
                 <button
                     onClick={openNew}
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        padding: '10px 20px',
-                        background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))',
-                        color: 'var(--text-inverse)',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        boxShadow: '0 0 16px var(--accent-primary-glow)',
-                        transition: 'opacity 160ms ease',
-                        flexShrink: 0,
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                    className="btn btn-primary"
+                    style={{ letterSpacing: '0.12em', fontSize: '12px', flexShrink: 0 }}
                 >
                     + AÑADIR PRODUCTO
                 </button>

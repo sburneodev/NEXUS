@@ -174,7 +174,7 @@ export function BovedaRetroPage(): JSX.Element {
     }
 
     const handleSave = useCallback((
-        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>
+        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>
     ): void => {
         // En un caso real haríamos api.post('/productos', data)
         // Por ahora solo cerramos el modal

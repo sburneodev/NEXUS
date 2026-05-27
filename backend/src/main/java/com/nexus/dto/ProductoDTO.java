@@ -18,7 +18,8 @@ public class ProductoDTO {
     private String estadoConservacion;
     private Map<String, Object> atributosEspecificos;
     private Boolean activo;
-    private String proveedorNombre;
+    private Long   idProveedor;      // FK — se usa en POST/PUT para asignar proveedor
+    private String proveedorNombre;  // Campo de solo lectura — join con tabla proveedores
 
     // Getters y Setters
     public Long getId() { return id; }
@@ -47,6 +48,8 @@ public class ProductoDTO {
     public void setAtributosEspecificos(Map<String, Object> a) { this.atributosEspecificos = a; }
     public Boolean getActivo() { return activo; }
     public void setActivo(Boolean activo) { this.activo = activo; }
+    public Long getIdProveedor() { return idProveedor; }
+    public void setIdProveedor(Long idProveedor) { this.idProveedor = idProveedor; }
     public String getProveedorNombre() { return proveedorNombre; }
     public void setProveedorNombre(String proveedorNombre) { this.proveedorNombre = proveedorNombre; }
 }

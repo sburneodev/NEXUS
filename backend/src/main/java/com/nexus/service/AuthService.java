@@ -86,8 +86,20 @@ public class AuthService {
                     HttpStatus.FORBIDDEN, "Cuenta desactivada. Contacta con el administrador.");
         }
 
+        // Normalizar nombres de rol: "ROLE_ADMIN" → "ADMIN"
+        // ── POR QUÉ AQUÍ ─────────────────────────────────────────────────────
+        // Este es el único punto donde se genera el JWT y la LoginResponse.
+        // Si los roles llegan al JWT con prefijo ROLE_, el frontend los
+        // decodifica y obtiene ["ROLE_ADMIN"], pero el tipo Role del TS espera
+        // ["ADMIN"] → hasRole('ADMIN') devuelve false → UI incorrecta.
+        // La normalización aquí garantiza coherencia en toda la cadena:
+        //   BD (ROLE_ADMIN) → AuthService (ADMIN) → JWT → Frontend → Spring Security
+        // ─────────────────────────────────────────────────────────────────────
         String roles = usuario.getRoles().stream()
-                .map(r -> r.getNombre())
+                .map(r -> {
+                    String n = r.getNombre();
+                    return n.startsWith("ROLE_") ? n.substring(5) : n;
+                })
                 .reduce((a, b) -> a + "," + b)
                 .orElse("");
 

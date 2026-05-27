@@ -236,10 +236,11 @@ export function ProductosPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading ? (
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && (
                                 <SkeletonRows rows={Math.min(filters.limit, 10)} cols={7} />
-                            ) : rows.length === 0 ? (
+                            )}
+                            {!isLoading && rows.length === 0 && (
                                 <tr>
                                     <td colSpan={7} style={{
                                         padding:       '48px',
@@ -254,7 +255,8 @@ export function ProductosPage(): JSX.Element {
                                             : 'SIN PRODUCTOS'}
                                     </td>
                                 </tr>
-                            ) : rows.map(p => (
+                            )}
+                            {rows.map(p => (
                                 <tr
                                     key={p.id}
                                     style={{

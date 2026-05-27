@@ -27,6 +27,8 @@ import { useState, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import type { Producto, TipoMovimiento, TipoProducto } from '../types/models';
 import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
+import { AlbaranModal } from '../components/stock/AlbaranModal';
+import type { AlbaranInfo } from '../components/stock/AlbaranModal';
 
 // ── Helpers de estado de stock ─────────────────────────────────────────
 
@@ -159,15 +161,18 @@ export function StockPage(): JSX.Element {
     const [form,      setForm]            = useState<MovimientoForm>(EMPTY_FORM);
     const [isSaving,  setIsSaving]        = useState(false);
     const [result,    setResult]          = useState<OpResult | null>(null);
-    const [filterTipo,    setFilterTipo]    = useState<TipoProducto | 'TODOS'>('TODOS');
-    const [filterEstado,  setFilterEstado]  = useState<StockEstado | 'TODOS'>('TODOS');
+    // Filtro único — un solo botón activo a la vez, sin solapamiento de estados
+    const [activeFilter, setActiveFilter] = useState<'TODOS' | 'ESTANDAR' | 'RETRO' | 'OK' | 'BAJO' | 'CRITICO'>('TODOS');
+    const [albaranOpen,   setAlbaranOpen]   = useState(false);
+    const [albaranInfo,   setAlbaranInfo]   = useState<AlbaranInfo | null>(null);
 
     // ── Filtrado de la tabla ───────────────────────────────────────────
     const filtered = useMemo(() => productos.filter(p => {
-        const okTipo   = filterTipo   === 'TODOS' || p.tipoProducto === filterTipo;
-        const okEstado = filterEstado === 'TODOS' || getEstado(p)   === filterEstado;
-        return okTipo && okEstado;
-    }), [productos, filterTipo, filterEstado]);
+        if (activeFilter === 'TODOS')    return true;
+        if (activeFilter === 'ESTANDAR') return p.tipoProducto === 'ESTANDAR';
+        if (activeFilter === 'RETRO')    return p.tipoProducto === 'RETRO';
+        return getEstado(p) === activeFilter; // OK | BAJO | CRITICO
+    }), [productos, activeFilter]);
 
     // ── Selección de producto ──────────────────────────────────────────
     const handleSelect = useCallback((p: Producto) => {
@@ -212,13 +217,19 @@ export function StockPage(): JSX.Element {
             body.idProveedor = parseInt(form.idProveedor, 10);
 
         try {
-            const { data } = await api.post<{ resultado: string; stockNuevo: number }>(
-                '/stock/movimiento',
-                body
-            );
+            interface MovResponse {
+                resultado:      string;
+                stockNuevo:     number;
+                albaranCodigo?: string;
+                albaranFecha?:  string;
+            }
+
+            const { data } = await api.post<MovResponse>('/stock/movimiento', body);
 
             // El SP devuelve "OK: 42 → 41" o similar
-            console.log('[NEXUS:Stock] SP resultado:', data.resultado, '| stockNuevo:', data.stockNuevo);
+            console.log('[NEXUS:Stock] SP resultado:', data.resultado,
+                        '| stockNuevo:', data.stockNuevo,
+                        '| albarán:', data.albaranCodigo);
 
             // Actualizar el stockActual en la lista local con el valor ACID del SP
             setProductos(prev =>
@@ -228,6 +239,22 @@ export function StockPage(): JSX.Element {
             setSelected(prev =>
                 prev?.id === selected.id ? { ...prev, stockActual: data.stockNuevo } : prev
             );
+
+            // Mostrar modal de albarán para ENTRADA y SALIDA (AJUSTE no genera albarán)
+            if (form.tipoMovimiento !== 'AJUSTE' && data.albaranCodigo) {
+                setAlbaranInfo({
+                    codigo:         data.albaranCodigo,
+                    fecha:          data.albaranFecha ?? new Date().toISOString(),
+                    tipoMovimiento: form.tipoMovimiento,
+                    producto:       selected,
+                    cantidad:       cantidadNum,
+                    precioUnitario: !isNaN(precio) && precio > 0 ? precio : null,
+                    referencia:     form.referencia.trim(),
+                    notas:          form.notas.trim(),
+                    stockNuevo:     data.stockNuevo,
+                });
+                setAlbaranOpen(true);
+            }
 
             setResult({ ok: true, mensaje: data.resultado, stockNuevo: data.stockNuevo });
             setForm(EMPTY_FORM);
@@ -267,6 +294,7 @@ export function StockPage(): JSX.Element {
 
     // ── Render ─────────────────────────────────────────────────────────
     return (
+        <>
         <div style={{
             display:             'grid',
             gridTemplateColumns: '62% 38%',
@@ -297,29 +325,35 @@ export function StockPage(): JSX.Element {
 
                 {/* Filtros */}
                 <div style={{ flexShrink: 0, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => (
-                        <button key={t} onClick={() => setFilterTipo(t)} style={{
-                            fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
-                            letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
-                            background:  filterTipo === t ? 'var(--accent-primary)' : 'transparent',
-                            color:       filterTipo === t ? 'var(--text-inverse)'   : 'var(--text-muted)',
-                            border:      `1px solid ${filterTipo === t ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                            borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
-                        }}>{t}</button>
-                    ))}
+                    {/* Grupo tipo: TODOS · ESTANDAR · RETRO */}
+                    {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => {
+                        const isActive = activeFilter === t;
+                        const color    = t === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-primary)';
+                        return (
+                            <button key={t} onClick={() => setActiveFilter(t)} style={{
+                                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                                letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
+                                background:   isActive ? color : 'transparent',
+                                color:        isActive ? 'var(--text-inverse)' : 'var(--text-muted)',
+                                border:       `1px solid ${isActive ? color : 'var(--border-default)'}`,
+                                borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
+                            }}>{t}</button>
+                        );
+                    })}
 
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)' }} />
 
-                    {(['TODOS', 'CRITICO', 'BAJO', 'OK'] as const).map(e => {
-                        const color = e !== 'TODOS' ? ESTADO_COLOR[e] : 'var(--accent-cyan)';
-                        const active = filterEstado === e;
+                    {/* Grupo estado: OK · BAJO · CRÍTICO — click activo → vuelve a TODOS */}
+                    {(['OK', 'BAJO', 'CRITICO'] as const).map(e => {
+                        const isActive = activeFilter === e;
+                        const color    = ESTADO_COLOR[e];
                         return (
-                            <button key={e} onClick={() => setFilterEstado(e)} style={{
+                            <button key={e} onClick={() => setActiveFilter(isActive ? 'TODOS' : e)} style={{
                                 fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
-                                background:   active ? color : 'transparent',
-                                color:        active ? 'var(--text-inverse)' : color,
-                                border:       `1px solid ${active ? color : 'var(--border-default)'}`,
+                                background:   isActive ? color : 'transparent',
+                                color:        isActive ? 'var(--text-inverse)' : color,
+                                border:       `1px solid ${isActive ? color : 'var(--border-default)'}`,
                                 borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
                             }}>{e}</button>
                         );
@@ -668,5 +702,13 @@ export function StockPage(): JSX.Element {
                 </div>
             </div>
         </div>
+
+        {/* ══ Modal de albarán (ENTRADA / SALIDA) ══ */}
+        <AlbaranModal
+            isOpen={albaranOpen}
+            onClose={() => setAlbaranOpen(false)}
+            data={albaranInfo}
+        />
+        </>
     );
 }

@@ -189,8 +189,8 @@ export function ClientesPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={6} />}
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={6} />}
 
                             {!isLoading && rows.length === 0 && (
                                 <tr>
@@ -202,7 +202,7 @@ export function ClientesPage(): JSX.Element {
                                 </tr>
                             )}
 
-                            {!isLoading && rows.map(c => (
+                            {rows.map(c => (
                                 <tr
                                     key={c.id}
                                     style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}

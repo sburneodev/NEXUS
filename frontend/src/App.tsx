@@ -2,10 +2,13 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage }         from './pages/LoginPage';
 import { DashboardPage }     from './pages/DashboardPage';
 import { ProductosPage }     from './pages/ProductosPage';
+import { StockPage }         from './pages/StockPage';
 import { BovedaRetroPage }   from './pages/BovedaRetroPage';
 import { AlmacenPage }       from './pages/AlmacenPage';
 import { ClientesPage }      from './pages/ClientesPage';
 import { ProveedoresPage }   from './pages/ProveedoresPage';
+import { UsuariosPage }      from './pages/UsuariosPage';
+import { AuditoriaPage }     from './pages/AuditoriaPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 import { AiPanelProvider }   from './context/AiPanelContext';
@@ -48,7 +51,7 @@ function App(): JSX.Element {
                         <Route path="/productos"   element={<ProductosPage />} />
                         <Route path="/clientes"    element={<ClientesPage />} />
                         <Route path="/proveedores" element={<ProveedoresPage />} />
-                        <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />
+                        <Route path="/stock"       element={<StockPage />} />
                         <Route path="/boveda"      element={<BovedaRetroPage />} />
                         <Route path="/almacen"     element={<AlmacenPage />} />
                         <Route path="/ai"          element={<ComingSoon name="IA & Analytics" />} />
@@ -57,7 +60,8 @@ function App(): JSX.Element {
 
                 <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                     <Route element={<Layout />}>
-                        <Route path="/usuarios" element={<ComingSoon name="Gestión de Usuarios" />} />
+                        <Route path="/usuarios"  element={<UsuariosPage />} />
+                        <Route path="/auditoria" element={<AuditoriaPage />} />
                     </Route>
                 </Route>
 

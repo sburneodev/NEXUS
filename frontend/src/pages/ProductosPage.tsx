@@ -1,16 +1,12 @@
 /**
  * pages/ProductosPage.tsx — UI-05
- *
- * Página de gestión de productos.
- * Mock data funcional hasta conectar con el backend.
- * Búsqueda por nombre/SKU + filtro por tipo.
- * Paginación preparada para integrarse con la API.
+ * Conectado al backend real via productoService
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import type { Producto, TipoProducto } from '../types/models';
 import { ProductModal } from '../components/productos/ProductModal';
-import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
+import { productoService } from '../services/productoService';
 
 const PAGE_SIZE = 8;
 
@@ -20,44 +16,61 @@ export function ProductosPage(): JSX.Element {
     const [page, setPage] = useState(1);
     const [modalOpen, setModalOpen] = useState(false);
     const [selected, setSelected] = useState<Producto | null>(null);
-    const [products, setProducts] = useState<Producto[]>(MOCK_PRODUCTOS);
+    const [products, setProducts] = useState<Producto[]>([]);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(true);
 
-    // Filtrado y búsqueda
-    const filtered = useMemo(() => {
-        return products.filter(p => {
-            const matchSearch = search === '' ||
-                p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-                p.sku.toLowerCase().includes(search.toLowerCase());
-            const matchTipo = filterTipo === 'TODOS' || p.tipoProducto === filterTipo;
-            return matchSearch && matchTipo;
-        });
-    }, [products, search, filterTipo]);
+    const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
 
-    // Paginación
-    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    // ── Cargar datos del backend ──────────────────────────────────────
+    useEffect(() => {
+        setLoading(true);
+        productoService.listar(
+            page - 1,
+            PAGE_SIZE,
+            filterTipo !== 'TODOS' ? filterTipo : undefined,
+            search || undefined
+        )
+            .then(data => {
+                setProducts(data.content);
+                setTotalElements(data.totalElements);
+            })
+            .catch(err => console.error('Error cargando productos:', err))
+            .finally(() => setLoading(false));
+    }, [page, filterTipo, search]);
 
-    function handleSave(data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>): void {
-        if (selected) {
-            setProducts(prev => prev.map(p =>
-                p.id === selected.id ? { ...p, ...data } : p
-            ));
-        } else {
-            const newProduct: Producto = {
-                ...data,
-                id: Date.now(),
-                creadoEn: new Date().toISOString(),
-                actualizadoEn: new Date().toISOString(),
-            };
-            setProducts(prev => [newProduct, ...prev]);
+    // ── Guardar (crear o editar) ──────────────────────────────────────
+    async function handleSave(data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>): Promise<void> {
+        try {
+            if (selected) {
+                await productoService.editar(selected.id, data as any);
+            } else {
+                await productoService.crear(data as any);
+            }
+            const result = await productoService.listar(
+                page - 1, PAGE_SIZE,
+                filterTipo !== 'TODOS' ? filterTipo : undefined,
+                search || undefined
+            );
+            setProducts(result.content);
+            setTotalElements(result.totalElements);
+            setModalOpen(false);
+            setSelected(null);
+        } catch (err) {
+            console.error('Error guardando producto:', err);
         }
-        setModalOpen(false);
-        setSelected(null);
     }
 
-    function handleDelete(id: number): void {
+    // ── Eliminar ──────────────────────────────────────────────────────
+    async function handleDelete(id: number): Promise<void> {
         if (window.confirm('¿Eliminar este producto?')) {
-            setProducts(prev => prev.filter(p => p.id !== id));
+            try {
+                await productoService.eliminar(id);
+                setProducts(prev => prev.filter(p => p.id !== id));
+                setTotalElements(prev => prev - 1);
+            } catch (err) {
+                console.error('Error eliminando producto:', err);
+            }
         }
     }
 
@@ -92,7 +105,7 @@ export function ProductosPage(): JSX.Element {
                         Productos
                     </h1>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                        {filtered.length} producto{filtered.length !== 1 ? 's' : ''} encontrado{filtered.length !== 1 ? 's' : ''}
+                        {loading ? 'Cargando...' : `${totalElements} producto${totalElements !== 1 ? 's' : ''} encontrado${totalElements !== 1 ? 's' : ''}`}
                     </p>
                 </div>
                 <button
@@ -175,13 +188,19 @@ export function ProductosPage(): JSX.Element {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginated.length === 0 ? (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+                                        CARGANDO...
+                                    </td>
+                                </tr>
+                            ) : products.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
                                         SIN RESULTADOS
                                     </td>
                                 </tr>
-                            ) : paginated.map(p => (
+                            ) : products.map(p => (
                                 <tr
                                     key={p.id}
                                     style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
@@ -227,16 +246,8 @@ export function ProductosPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                        <button
-                                            onClick={() => openEdit(p)}
-                                            style={actionBtnStyle('#0088cc')}
-                                            title="Editar"
-                                        >EDITAR</button>
-                                        <button
-                                            onClick={() => handleDelete(p.id)}
-                                            style={actionBtnStyle('#cc2244')}
-                                            title="Eliminar"
-                                        >ELIMINAR</button>
+                                        <button onClick={() => openEdit(p)} style={actionBtnStyle('#0088cc')} title="Editar">EDITAR</button>
+                                        <button onClick={() => handleDelete(p.id)} style={actionBtnStyle('#cc2244')} title="Eliminar">ELIMINAR</button>
                                     </td>
                                 </tr>
                             ))}
@@ -256,7 +267,7 @@ export function ProductosPage(): JSX.Element {
                         gap: '8px',
                     }}>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                            Página {page} de {totalPages} · {filtered.length} resultados
+                            Página {page} de {totalPages} · {totalElements} resultados
                         </span>
                         <div style={{ display: 'flex', gap: '4px' }}>
                             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtnStyle(page === 1)}>◀</button>

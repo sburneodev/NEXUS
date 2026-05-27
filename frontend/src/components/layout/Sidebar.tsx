@@ -118,7 +118,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                             fontFamily:    'var(--font-mono)',
                             fontSize:      '9.5px',
                             fontWeight:    500,
-                            color:         'var(--text-secondary)',
+                            color:         'var(--sidebar-text)',
                             letterSpacing: '0.22em',
                             textTransform: 'uppercase',
                             lineHeight:    1,

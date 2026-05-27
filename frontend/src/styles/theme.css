@@ -154,8 +154,8 @@ html.theme-light {
        y separa el nav del contenido sin quedar "apagado".               */
     --sidebar-bg:          #1E293B;               /* Deep Slate            */
     --sidebar-border:      rgba(255,255,255,0.08); /* Borde sutil en oscuro */
-    --sidebar-text:        #94A3B8;               /* Slate-400 — 4.7:1 ✅  */
-    --sidebar-text-muted:  rgba(148,163,184,0.55); /* Suave para secciones  */
+    --sidebar-text:        rgba(255,255,255,0.80); /* Blanco suave — legible en Deep Slate */
+    --sidebar-text-muted:  rgba(255,255,255,0.45); /* Blanco muted para secciones         */
     --sidebar-text-active: #FFFFFF;               /* Blanco puro — activo  */
     --sidebar-icon-active: #00D4FF;               /* Cian neón — igual dark */
     --sidebar-glow:        rgba(0,212,255,0.32);
@@ -278,19 +278,19 @@ html.theme-light .card:hover {
     box-shadow:   0 4px 15px rgba(0,0,0,0.10), 0 0 20px rgba(0,212,255,0.16);
 }
 
-/* ── BOTÓN PRIMARIO — Mismo gradiente neón que el modo oscuro ───── *
-   #00FF88 → #00D4FF con texto near-black para máximo contraste.     *
-   Glow verde neón: misma "luminosidad" que en dark mode.            *
-   Aplica a todos los botones de acción: "Añadir Producto", etc.     */
+/* ── BOTÓN PRIMARIO — Degradado profesional Esmeralda → Cian ────── *
+   Usa los acentos WCAG del light mode: Emerald-600 → Sky-600.       *
+   Más suave que el neón del FAB pero claramente vivo y branded.     *
+   El FAB conserva sus propias --fab-gradient vars (neón completo).  */
 html.theme-light .btn-primary {
-    background:   linear-gradient(90deg, #00FF88, #00D4FF);
-    color:        #020617;   /* Near-black: alto contraste sobre neón */
+    background:   linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
+    color:        #FFFFFF;
     border-color: transparent;
-    box-shadow:   0 0 20px rgba(0,255,136,0.30), 0 4px 12px rgba(0,0,0,0.10);
+    box-shadow:   0 2px 10px rgba(5,150,105,0.28), 0 4px 12px rgba(0,0,0,0.08);
 }
 html.theme-light .btn-primary:hover {
-    background:   linear-gradient(90deg, #00E07A, #00BFDD);
-    box-shadow:   0 0 32px rgba(0,255,136,0.45), 0 6px 18px rgba(0,0,0,0.12);
+    background:   linear-gradient(90deg, var(--accent-primary-dim), var(--accent-cyan-dim));
+    box-shadow:   0 4px 18px rgba(5,150,105,0.38), 0 6px 18px rgba(0,0,0,0.10);
     transform:    translateY(-1px);
 }
 

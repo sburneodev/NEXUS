@@ -29,11 +29,11 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
         line:       '#059669',
         lineGrad0:  'rgba(5,150,105,0.30)',
         lineGrad1:  'rgba(5,150,105,0.01)',
-        // ── Barras — gradiente Cian Neón → Verde Neón ──────────────────
-        // Los elementos de chart en canvas no son texto → pueden usar neones
-        // completos para mantener la energía visual del modo oscuro.
-        barTop:     'rgba(0,212,255,0.90)',  /* Electric Cyan */
-        barBot:     'rgba(0,255,136,0.65)',  /* Neon Green */
+        // ── Barras — misma paleta que el botón btn-primary ─────────────
+        // Emerald-600 (#059669) → Sky-600 (#0891B2): idéntico al degradado
+        // del botón de acción. Sólidos y vivos sin llegar al neón del FAB.
+        barTop:     'rgba(5,150,105,0.80)',   /* Emerald-600 — inicio del btn-primary */
+        barBot:     'rgba(8,145,178,0.65)',   /* Sky-600 — fin del btn-primary        */
         // ── Doughnut — rellenos saturados + bordes vivos ────────────────
         // Segmentos más opacos para que destaquen en canvas blanco.
         dBg:    ['rgba(5,150,105,0.28)', 'rgba(0,212,255,0.28)', 'rgba(220,38,38,0.28)', 'rgba(180,83,9,0.28)'],

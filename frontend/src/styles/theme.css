@@ -35,13 +35,15 @@
     --accent-danger-glow: rgba(255, 68, 102, 0.12);
 
     /* WCAG AA — ratio ≥ 4.5:1 sobre --bg-surface */
-    --text-primary: #e8e8f0;
-    /* 14.2:1 ✅ */
-    --text-secondary: #aaaacc;
-    /* 5.6:1  ✅ */
-    --text-muted: #6666aa;
-    /* 4.6:1  ✅ */
-    --text-inverse: #05050a;
+    --text-primary:   #e8e8f0;  /* 14.2:1 ✅ */
+    --text-secondary: #aaaacc;  /*  5.6:1 ✅ */
+    --text-muted:     #9090bb;  /*  6.7:1 ✅ — lila claro legible */
+    --text-inverse:   #05050a;
+
+    /* ── Alias semánticos (acceso uniforme desde componentes) ───────── */
+    --text-main: var(--text-primary);   /* Alias principal de texto     */
+    --bg-panel:  var(--bg-surface);     /* Fondo de tarjetas/paneles    */
+    --border:    var(--border-default); /* Borde estándar de componentes */
 
     --border-subtle: rgba(255, 255, 255, 0.07);
     --border-default: rgba(255, 255, 255, 0.12);
@@ -55,59 +57,123 @@
     --shadow-cyan: 0 0 20px rgba(0, 212, 255, 0.25), 0 0 60px rgba(0, 212, 255, 0.08);
     --shadow-gold: 0 0 20px rgba(255, 200, 69, 0.25), 0 0 60px rgba(255, 200, 69, 0.08);
 
+    /* ── Variables de Sidebar (dark mode defaults) ──────────────────── */
+    --sidebar-bg:          var(--bg-surface);
+    --sidebar-border:      var(--border-subtle);
+    --sidebar-text:        rgba(255,255,255,0.88); /* Blanco — labels nav items (Dashboard, Productos…) */
+    --sidebar-text-muted:  var(--text-muted);      /* Lila #9090bb — títulos de sección (PRINCIPAL, INVENTARIO…) */
+    --sidebar-text-active: var(--text-primary);
+    --sidebar-icon-active: var(--accent-cyan);
+    --sidebar-glow:        rgba(0, 212, 255, 0.28);
+    --sidebar-glow-fill:   rgba(0, 212, 255, 0.12);
+    --sidebar-glow-text:   rgba(0, 212, 255, 0.55);
+    --sidebar-active-bg:   transparent;  /* Dark mode: sin relleno (el glow basta) */
+    --sidebar-indicator:   var(--accent-cyan);
+    --sidebar-logo-from:   var(--accent-primary);
+    --sidebar-logo-to:     var(--accent-cyan);
+
+    /* ── Variables del FAB de IA ─────────────────────────────────────
+       Extraídas a CSS vars para que light mode pueda sobrescribir
+       el gradiente sin tocar el inline style de React.             */
+    --fab-gradient:        linear-gradient(135deg, var(--accent-primary), var(--accent-cyan));
+    --fab-gradient-active: linear-gradient(135deg, var(--accent-primary-dim), var(--accent-cyan-dim));
+    --fab-shadow:          0 4px 24px rgba(0,255,136,0.32), 0 0 0 1px rgba(0,255,136,0.18);
+    --fab-shadow-active:   0 4px 24px rgba(0,204,106,0.40), 0 0 0 2px rgba(0,204,106,0.25);
+    --fab-color:           #05050a;   /* Texto oscuro sobre gradiente neón */
+
     color-scheme: dark;
 }
 
-/* ── TEMA CLARO — Enterprise Premium Daylight ─────────────────────
-   Paleta pizarra fría al estilo Stripe / Vercel.
-   Fondos en escala de grises, acentos con contraste real, sombras
-   multicapa que elevan las tarjetas sobre el fondo sin usar neón.
-   WCAG 2.1 AA en todos los niveles de texto.
+/* ── TEMA CLARO — Electric Light ─────────────────────────────────
+   Inversión inteligente del dark mode: misma personalidad vibrante,
+   mismos acentos de identidad, fondos limpios con sombras reales.
+   "Ghost White" como base, paneles blancos que flotan sobre él.
+   La UI debe verse igual de viva que en modo oscuro.
 ────────────────────────────────────────────────────────────────── */
 html.theme-light {
-    /* ── Fondos: de más profundo a más elevado ────────────────────── */
-    --bg-void:     #E2E8F0;   /* Sidebar exterior — Slate-200          */
-    --bg-base:     #F1F5F9;   /* Fondo de página — Slate-100           */
-    --bg-surface:  #FFFFFF;   /* Cards, paneles — blanco real          */
-    --bg-elevated: #FFFFFF;   /* Modales, dropdowns — blanco + sombra  */
-    --bg-overlay:  #F8FAFC;   /* Hover, selecciones — Slate-50         */
+    /* ── Fondos: Ghost White base + paneles blancos flotantes ────────── */
+    --bg-void:     #E2E8F0;   /* Slate-200 — capa exterior               */
+    --bg-base:     #F8FAFC;   /* Slate-50 / Ghost White — fondo de página */
+    --bg-surface:  #FFFFFF;   /* Paneles y tarjetas — blanco real         */
+    --bg-elevated: #FFFFFF;   /* Modales y dropdowns                      */
+    --bg-overlay:  #F1F5F9;   /* Hover states — Slate-100                 */
 
-    /* ── Acentos: alto contraste sobre blanco (WCAG AA) ──────────── */
-    --accent-primary:      #059669;              /* Emerald-600 — 4.62:1 ✅ */
-    --accent-primary-dim:  #047857;              /* Emerald-700              */
-    --accent-primary-glow: rgba(5, 150, 105, 0.14);
+    /* ── Acentos: versiones WCAG-compliant para USO EN TEXTO ──────────
+       Los botones y el FAB usan los neones literales (#00FF88/#00D4FF)
+       definidos en las vars --fab-gradient y .btn-primary override.    */
 
-    --accent-cyan:      #0284c7;                 /* Sky-600  — 4.60:1 ✅    */
-    --accent-cyan-dim:  #0369a1;                 /* Sky-700                 */
-    --accent-cyan-glow: rgba(2, 132, 199, 0.12);
+    /* Verde éxito — Emerald-600, 4.62:1 sobre blanco ✅ */
+    --accent-primary:      #059669;
+    --accent-primary-dim:  #047857;
+    --accent-primary-glow: rgba(5, 150, 105, 0.20);
 
-    --accent-gold:      #b45309;                 /* Amber-700 — 5.87:1 ✅   */
-    --accent-gold-dim:  #92400e;                 /* Amber-800               */
-    --accent-gold-glow: rgba(180, 83, 9, 0.12);
+    /* Cian NEXUS — Sky-600 para texto, neón real en botones/FAB ✅ */
+    --accent-cyan:      #0891B2;
+    --accent-cyan-dim:  #0369A1;
+    --accent-cyan-glow: rgba(8, 145, 178, 0.20);
 
-    --accent-danger:      #dc2626;               /* Red-600 — 5.43:1 ✅     */
-    --accent-danger-dim:  #b91c1c;               /* Red-700                 */
-    --accent-danger-glow: rgba(220, 38, 38, 0.12);
+    /* Ámbar saturado — Amber-700, 4.58:1 ✅ */
+    --accent-gold:      #B45309;
+    --accent-gold-dim:  #92400E;
+    --accent-gold-glow: rgba(180, 83, 9, 0.18);
 
-    /* ── Texto: cuatro niveles, todos WCAG AA sobre #FFFFFF ────────── */
-    --text-primary:   #0F172A;   /* Slate-900 — 18.5:1 ✅ */
-    --text-secondary: #334155;   /* Slate-700 —  9.7:1 ✅ */
-    --text-muted:     #64748B;   /* Slate-500 —  4.5:1 ✅ */
-    --text-inverse:   #FFFFFF;   /* Texto sobre acentos oscuros */
+    /* Rojo saturado — Red-600, 5.43:1 ✅ */
+    --accent-danger:      #DC2626;
+    --accent-danger-dim:  #B91C1C;
+    --accent-danger-glow: rgba(220, 38, 38, 0.18);
 
-    /* ── Bordes: estilo Stripe — finos y sin peso visual excesivo ─── */
+    /* ── Texto: máximo contraste ─────────────────────────────────────── *
+       #020617 = Slate-950 — ratio ~21:1 sobre blanco — máxima jerarquía */
+    --text-primary:   #020617;   /* Slate-950 — ~21:1 ✅ — títulos       */
+    --text-secondary: #475569;   /* Slate-600 —  6.3:1 ✅ — texto normal */
+    --text-muted:     #64748B;   /* Slate-500 —  4.5:1 ✅ — subtexto     */
+    --text-inverse:   #FFFFFF;
+
+    /* ── Alias semánticos ────────────────────────────────────────────── */
+    --text-main: #020617;
+    --bg-panel:  #FFFFFF;
+    --border:    #E2E8F0;
+
+    /* ── Bordes ─────────────────────────────────────────────────────── */
     --border-subtle:  rgba(15, 23, 42, 0.06);
     --border-default: rgba(15, 23, 42, 0.12);
     --border-strong:  rgba(15, 23, 42, 0.22);
-    --border-accent:  rgba(5, 150, 105, 0.30);
+    --border-accent:  rgba(0, 212, 255, 0.45);   /* Neón cian para acento */
 
-    /* ── Sombras: multicapa, efecto "float" sin resplandor neón ───── */
-    --shadow-sm:   0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
-    --shadow-base: 0 1px 3px rgba(15,23,42,0.06), 0 4px 8px  rgba(15,23,42,0.06);
-    --shadow-lg:   0 2px 4px rgba(15,23,42,0.04), 0 8px 20px rgba(15,23,42,0.10);
-    --shadow-green: 0 0 0 1px rgba(5,150,105,0.15),  0 4px 12px rgba(5,150,105,0.12);
-    --shadow-cyan:  0 0 0 1px rgba(2,132,199,0.15),  0 4px 12px rgba(2,132,199,0.12);
-    --shadow-gold:  0 0 0 1px rgba(180,83,9,0.15),   0 4px 12px rgba(180,83,9,0.12);
+    /* ── Sombras con más profundidad ─────────────────────────────────── */
+    --shadow-sm:    0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-base:  0 4px 15px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg:    0 10px 28px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    --shadow-green: 0 0 0 2px rgba(0,255,136,0.25), 0 4px 20px rgba(0,255,136,0.18);
+    --shadow-cyan:  0 0 0 2px rgba(0,212,255,0.25), 0 4px 20px rgba(0,212,255,0.18);
+    --shadow-gold:  0 0 0 2px rgba(180,83,9,0.25),  0 4px 20px rgba(180,83,9,0.18);
+
+    /* ── Sidebar — Deep Slate con acento Cian Eléctrico ─────────────── *
+       Mismo concepto que el modo oscuro: fondo oscuro profundo          *
+       con los ítems activos en cian neón. Crea presencia visual         *
+       y separa el nav del contenido sin quedar "apagado".               */
+    --sidebar-bg:          #1E293B;               /* Deep Slate            */
+    --sidebar-border:      rgba(255,255,255,0.08); /* Borde sutil en oscuro */
+    --sidebar-text:        rgba(255,255,255,0.80); /* Blanco suave — legible en Deep Slate */
+    --sidebar-text-muted:  rgba(255,255,255,0.45); /* Blanco muted para secciones         */
+    --sidebar-text-active: #FFFFFF;               /* Blanco puro — activo  */
+    --sidebar-icon-active: #00D4FF;               /* Cian neón — igual dark */
+    --sidebar-glow:        rgba(0,212,255,0.32);
+    --sidebar-glow-fill:   rgba(0,212,255,0.14);
+    --sidebar-glow-text:   rgba(0,212,255,0.75);
+    --sidebar-active-bg:   rgba(0,212,255,0.14);  /* Lavado cian neón       */
+    --sidebar-indicator:   #00D4FF;               /* Indicador neón ✨      */
+    --sidebar-logo-from:   #00FF88;               /* Verde neón — igual dark */
+    --sidebar-logo-to:     #00D4FF;               /* Cian neón — igual dark  */
+
+    /* ── FAB IA — gradiente neón, igual que modo oscuro ─────────────── *
+       Sobrescribe las vars de `:root` para que el FAB use neones        *
+       aunque los acentos de texto del light sean más apagados.          */
+    --fab-gradient:        linear-gradient(135deg, #00FF88, #00D4FF);
+    --fab-gradient-active: linear-gradient(135deg, #00CC6A, #0099BB);
+    --fab-shadow:          0 4px 24px rgba(0,255,136,0.35), 0 0 0 1px rgba(0,255,136,0.22), 0 8px 24px rgba(0,0,0,0.15);
+    --fab-shadow-active:   0 4px 24px rgba(0,204,106,0.40), 0 0 0 2px rgba(0,204,106,0.25), 0 4px 12px rgba(0,0,0,0.12);
+    --fab-color:           #020617;               /* Texto oscuro sobre neón */
 
     color-scheme: light;
 }
@@ -167,64 +233,151 @@ html.theme-retro {
     color-scheme: dark;
 }
 
-/* ── MODO CLARO — Correcciones de componentes ─────────────────────
-   Sobreescrituras para colores hardcoded que no se adaptan solo
-   con variables CSS (gradientes de canvas, sombras inline, etc.).
-────────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════
+   MODO CLARO v3 — "Electric Light: Max Vibrancy"
 
-/* Body: gradiente ambiente discreto en lugar del neón oscuro */
+   Filosofía: misma energía que el modo oscuro, adaptada a fondos
+   claros. Los BOTONES DE ACCIÓN y el FAB usan literalmente el mismo
+   gradiente neón (#00FF88 → #00D4FF). El sidebar es Deep Slate para
+   crear presencia y separar el nav del contenido blanco.
+   Los textos y KPIs usan acentos WCAG-compliant pero saturados.
+══════════════════════════════════════════════════════════════════ */
+
+/* ── Body: ambiente neón sutil sobre Ghost White ─────────────────── */
 html.theme-light body {
     background-image:
-        radial-gradient(ellipse 120% 60% at 50% -10%, rgba(5,150,105,0.04) 0%, transparent 60%),
-        radial-gradient(ellipse 80% 40% at 100% 100%, rgba(2,132,199,0.03) 0%, transparent 50%);
+        radial-gradient(ellipse 120% 60% at 50% -10%, rgba(0,212,255,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 40% at 100% 100%, rgba(0,255,136,0.04) 0%, transparent 50%);
 }
 
-/* Selección de texto */
+/* ── Selección de texto ──────────────────────────────────────────── */
 html.theme-light ::selection {
-    background: rgba(5, 150, 105, 0.15);
-    color: #0F172A;
+    background: rgba(0, 212, 255, 0.18);
+    color: #020617;
 }
 
-/* Scrollbar — escala de grises clara */
-html.theme-light ::-webkit-scrollbar-track {
-    background: #F1F5F9;
-}
-html.theme-light ::-webkit-scrollbar-thumb {
-    background: #CBD5E1;
-}
-html.theme-light ::-webkit-scrollbar-thumb:hover {
-    background: #059669;
-}
+/* ── Scrollbar — cian neón en hover ─────────────────────────────── */
+html.theme-light ::-webkit-scrollbar-track { background: #F1F5F9; }
+html.theme-light ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
+html.theme-light ::-webkit-scrollbar-thumb:hover { background: #00D4FF; }
 
-/* Cards — sombra multicapa real, sin reflejo blanco-sobre-blanco */
+/* ── Cards / Paneles ─────────────────────────────────────────────── *
+   Sombra más definida que crea la misma "profundidad" del dark mode. *
+   Hover: borde cian neón + glow para que las cards respondan con     *
+   la misma energía que en el modo oscuro.                            */
 html.theme-light .card {
-    box-shadow: var(--shadow-sm);
+    background:   var(--bg-panel);    /* #FFFFFF */
+    border-color: rgba(15,23,42,0.08);
+    box-shadow:   0 4px 15px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06);
 }
 html.theme-light .card::before {
-    background: none;
+    background: none;   /* Shine blanco-sobre-blanco no aporta nada */
 }
 html.theme-light .card:hover {
-    border-color: rgba(5, 150, 105, 0.20);
-    box-shadow: var(--shadow-green);
+    border-color: rgba(0,212,255,0.40);   /* Cian neón en hover */
+    box-shadow:   0 4px 15px rgba(0,0,0,0.10), 0 0 20px rgba(0,212,255,0.16);
 }
 
-/* Botón primario — box-shadow corporativo sin neón */
+/* ── BOTÓN PRIMARIO — Degradado profesional Esmeralda → Cian ────── *
+   Usa los acentos WCAG del light mode: Emerald-600 → Sky-600.       *
+   Más suave que el neón del FAB pero claramente vivo y branded.     *
+   El FAB conserva sus propias --fab-gradient vars (neón completo).  */
 html.theme-light .btn-primary {
-    box-shadow: 0 1px 3px rgba(5,150,105,0.25), 0 4px 8px rgba(5,150,105,0.15);
+    background:   linear-gradient(90deg, var(--accent-primary), var(--accent-cyan));
+    color:        #FFFFFF;
+    border-color: transparent;
+    box-shadow:   0 2px 10px rgba(5,150,105,0.28), 0 4px 12px rgba(0,0,0,0.08);
 }
 html.theme-light .btn-primary:hover {
-    box-shadow: 0 2px 6px rgba(5,150,105,0.30), 0 6px 16px rgba(5,150,105,0.20);
-    transform: translateY(-1px);
+    background:   linear-gradient(90deg, var(--accent-primary-dim), var(--accent-cyan-dim));
+    box-shadow:   0 4px 18px rgba(5,150,105,0.38), 0 6px 18px rgba(0,0,0,0.10);
+    transform:    translateY(-1px);
 }
 
-/* Badge muted — fondo sutil coherente con el fondo claro */
+/* ── Botón secundario: outline cian neón ────────────────────────── */
+html.theme-light .btn-secondary {
+    color:        #0891B2;
+    border-color: rgba(0,212,255,0.50);
+    background:   transparent;
+}
+html.theme-light .btn-secondary:hover {
+    color:        #020617;
+    background:   rgba(0,212,255,0.08);
+    border-color: #00D4FF;
+    box-shadow:   0 0 0 3px rgba(0,212,255,0.12);
+}
+
+/* ── Botón ghost: sutil pero visible ────────────────────────────── */
+html.theme-light .btn-ghost {
+    color:        #475569;
+    border-color: #CBD5E1;
+    background:   transparent;
+}
+html.theme-light .btn-ghost:hover {
+    color:        #020617;
+    border-color: #94A3B8;
+    background:   rgba(15,23,42,0.04);
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────── */
+html.theme-light .input {
+    background:   #FFFFFF;
+    border-color: rgba(15,23,42,0.12);
+    color:        #020617;
+}
+html.theme-light .input:focus {
+    border-color: #00D4FF;
+    box-shadow:   0 0 0 3px rgba(0,212,255,0.14);
+}
+html.theme-light .input::placeholder {
+    color: #94A3B8;
+}
+
+/* ── Badges ──────────────────────────────────────────────────────── */
 html.theme-light .badge-muted {
-    background: rgba(15, 23, 42, 0.04);
+    background:   rgba(0, 212, 255, 0.07);
+    border-color: rgba(0,212,255,0.25);
+    color:        #475569;
 }
 
-/* Tabla — hover limpio sin oscurecer la fila */
+/* ── Tabla de datos ──────────────────────────────────────────────── */
+html.theme-light .data-table th {
+    color:               #475569;
+    border-bottom-color: rgba(15,23,42,0.10);
+}
+html.theme-light .data-table td {
+    color:               #020617;
+    border-bottom-color: rgba(15,23,42,0.06);
+}
 html.theme-light .data-table tr:hover td {
-    background: rgba(15, 23, 42, 0.03);
+    background: rgba(0, 212, 255, 0.04);   /* Lavado cian neón sutil */
+}
+
+/* ── Sidebar — fondo Deep Slate oscuro ───────────────────────────── *
+   El sidebar usa sus propias vars --sidebar-* desde Sidebar.tsx,    *
+   pero hay componentes externos (modales, tooltips) que heredan bg  *
+   del sidebar. Este bloque asegura que nada "filtre" blanco sobre   *
+   el panel oscuro.                                                   */
+html.theme-light aside {
+    /* El color de texto en aside usa las vars del sidebar ya definidas */
+    color: var(--sidebar-text);
+}
+
+/* ── Clase de utilidad: light-mode-fix ───────────────────────────── */
+html.theme-light .light-mode-fix {
+    color:        var(--text-main);
+    background:   var(--bg-panel);
+    border-color: var(--border);
+    box-shadow:   var(--shadow-base);
+}
+html.theme-light .light-mode-fix--text {
+    color:       var(--text-main) !important;
+    text-shadow: none            !important;
+}
+html.theme-light .light-mode-fix--panel {
+    background:   var(--bg-panel)    !important;
+    border-color: var(--border)      !important;
+    box-shadow:   var(--shadow-base) !important;
 }
 
 /* ── Animación de micro-interacción de bordes KPI ──────────────────

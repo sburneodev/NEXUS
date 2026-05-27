@@ -253,8 +253,8 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
 
     return (
         <div style={{
-            width:        '280px',
-            flexShrink:   0,
+            width:        '100%',
+            height:       '100%',
             display:      'flex',
             flexDirection:'column',
             background:   'var(--bg-surface)',
@@ -262,52 +262,60 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
             borderRadius: '10px',
             overflow:     'hidden',
         }}>
-            {/* Cabecera del panel */}
+            {/* Cabecera del panel — compacta para el 20% de ancho */}
             <div style={{
-                padding:      '14px 16px',
-                borderBottom: '1px solid var(--border-subtle)',
-                background:   'var(--bg-elevated)',
-                display:      'flex',
-                alignItems:   'center',
+                padding:        '9px 10px',
+                borderBottom:   '1px solid var(--border-subtle)',
+                background:     'var(--bg-elevated)',
+                display:        'flex',
+                alignItems:     'center',
                 justifyContent: 'space-between',
-                flexShrink:   0,
+                flexShrink:     0,
             }}>
-                <div>
+                <div style={{ minWidth: 0 }}>
                     <div style={{
                         fontFamily:    'var(--font-display)',
-                        fontSize:      '11px',
+                        fontSize:      '9px',
                         fontWeight:    700,
-                        letterSpacing: '0.14em',
+                        letterSpacing: '0.12em',
                         textTransform: 'uppercase',
                         color:         'var(--accent-cyan)',
                         marginBottom:  '2px',
+                        whiteSpace:    'nowrap',
+                        overflow:      'hidden',
+                        textOverflow:  'ellipsis',
                     }}>
-                        ◈ DETALLE DE ESTANTERÍA
+                        ◈ DETALLE
                     </div>
                     <div style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize:   '13px',
-                        fontWeight: 700,
-                        color:      sel ? 'var(--text-primary)' : 'var(--text-muted)',
+                        fontFamily:   'var(--font-mono)',
+                        fontSize:     '11px',
+                        fontWeight:   700,
+                        color:        sel ? 'var(--text-primary)' : 'var(--text-muted)',
+                        whiteSpace:   'nowrap',
+                        overflow:     'hidden',
+                        textOverflow: 'ellipsis',
                     }}>
-                        {sel ? `${sel.pasillo} — ${sel.estanteria}` : '— Sin selección —'}
+                        {sel ? `${sel.pasillo} — ${sel.estanteria}` : '— —'}
                     </div>
                     {sel && (
-                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', marginTop:'2px' }}>
-                            {ocupados.length} producto{ocupados.length !== 1 ? 's' : ''} almacenado{ocupados.length !== 1 ? 's' : ''}
+                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'9px', color:'var(--text-muted)', marginTop:'1px' }}>
+                            {ocupados.length} producto{ocupados.length !== 1 ? 's' : ''}
                         </div>
                     )}
                 </div>
                 {sel && (
                     <button
                         onClick={onClose}
-                        style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'16px', lineHeight:1, padding:'4px', flexShrink:0 }}
+                        style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:'13px', lineHeight:1, padding:'3px', flexShrink:0, marginLeft:'4px' }}
                     >✕</button>
                 )}
             </div>
 
             {/* Contenido */}
-            <div style={{ flex:1, overflowY:'auto', padding:'12px', display:'flex', flexDirection:'column', gap:'8px' }}>
+            {/* paddingBottom:104px garantiza que el FAB flotante nunca tape
+                el último elemento al hacer scroll en el panel derecho.     */}
+            <div style={{ flex:1, overflowY:'auto', padding:'8px', paddingBottom:'104px', display:'flex', flexDirection:'column', gap:'6px' }}>
                 {!sel ? (
                     /* Estado vacío */
                     <div style={{
@@ -316,33 +324,33 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                         flexDirection:  'column',
                         alignItems:     'center',
                         justifyContent: 'center',
-                        gap:            '12px',
-                        padding:        '24px 16px',
+                        gap:            '8px',
+                        padding:        '16px 8px',
                         textAlign:      'center',
                     }}>
-                        <div style={{ fontSize:'36px', opacity:0.2 }}>▦</div>
+                        <div style={{ fontSize:'22px', opacity:0.18 }}>▦</div>
                         <div style={{
                             fontFamily:    'var(--font-display)',
-                            fontSize:      '11px',
+                            fontSize:      '9px',
                             fontWeight:    700,
-                            letterSpacing: '0.12em',
+                            letterSpacing: '0.10em',
                             textTransform: 'uppercase',
                             color:         'var(--text-muted)',
                             lineHeight:    1.5,
                         }}>
-                            Selecciona una celda del mapa para ver su contenido
+                            Selecciona una celda para ver su contenido
                         </div>
                         <div style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize:   '10px',
-                            color:      'var(--border-default)',
-                            letterSpacing: '0.06em',
+                            fontFamily:    'var(--font-mono)',
+                            fontSize:      '9px',
+                            color:         'var(--border-default)',
+                            letterSpacing: '0.04em',
                         }}>
-                            Solo celdas ocupadas son interactivas
+                            Solo celdas ocupadas
                         </div>
                     </div>
                 ) : ocupados.length === 0 ? (
-                    <div style={{ textAlign:'center', padding:'24px', fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-muted)', letterSpacing:'0.08em' }}>
+                    <div style={{ textAlign:'center', padding:'16px 8px', fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.08em' }}>
                         RACK VACÍO
                     </div>
                 ) : (
@@ -352,42 +360,46 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                             <div key={rack.nivel} style={{
                                 background:   hl ? 'var(--accent-gold-glow)' : 'var(--bg-elevated)',
                                 border:       `1px solid ${hl ? 'var(--accent-gold)' : rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--border-subtle)'}`,
-                                borderRadius: '8px',
-                                padding:      '12px 14px',
+                                borderRadius: '6px',
+                                padding:      '7px 9px',
                             }}>
-                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'6px' }}>
-                                    <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--accent-cyan)', letterSpacing:'0.06em' }}>
-                                        Niv.{rack.nivel} · {rack.sku}
+                                {/* SKU + badges */}
+                                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'3px', gap:'4px' }}>
+                                    <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', color:'var(--accent-cyan)', letterSpacing:'0.04em', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                        N{rack.nivel} · {rack.sku}
                                     </span>
-                                    <div style={{ display:'flex', gap:'4px', flexShrink:0, marginLeft:'6px' }}>
+                                    <div style={{ display:'flex', gap:'2px', flexShrink:0 }}>
                                         {rack.tipo_producto === 'RETRO' && (
-                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', color:'var(--accent-gold)', border:'1px solid var(--accent-gold)', borderRadius:'3px', padding:'1px 5px' }}>RETRO</span>
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'7px', color:'var(--accent-gold)', border:'1px solid var(--accent-gold)', borderRadius:'2px', padding:'0 3px', lineHeight:'13px' }}>R</span>
                                         )}
                                         {rack.bajo_minimo && (
-                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'8px', color:'var(--accent-danger)', border:'1px solid var(--accent-danger)', borderRadius:'3px', padding:'1px 5px' }}>⚠ CRÍTICO</span>
+                                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'7px', color:'var(--accent-danger)', border:'1px solid var(--accent-danger)', borderRadius:'2px', padding:'0 3px', lineHeight:'13px' }}>!</span>
                                         )}
                                     </div>
                                 </div>
-                                <div style={{ fontFamily:'var(--font-body)', fontSize:'13px', color:'var(--text-primary)', fontWeight:500, marginBottom:'10px', lineHeight:1.35 }}>
+                                {/* Nombre del producto */}
+                                <div style={{ fontFamily:'var(--font-body)', fontSize:'10px', color:'var(--text-primary)', fontWeight:500, marginBottom:'5px', lineHeight:1.3,
+                                    display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' as const, overflow:'hidden' }}>
                                     {rack.nombre}
                                 </div>
-                                <div style={{ display:'flex', gap:'20px' }}>
+                                {/* Métricas en fila compacta */}
+                                <div style={{ display:'flex', gap:'10px' }}>
                                     <div>
-                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Stock</div>
-                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'20px', fontWeight:700, color: rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--accent-primary)', lineHeight:1 }}>
+                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'1px' }}>Stock</div>
+                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color: rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--accent-primary)', lineHeight:1 }}>
                                             {rack.stock_actual}
                                         </div>
                                     </div>
                                     <div>
-                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Mínimo</div>
-                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'20px', fontWeight:700, color:'var(--text-secondary)', lineHeight:1 }}>
+                                        <div style={{ fontFamily:'var(--font-display)', fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'1px' }}>Mín.</div>
+                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color:'var(--text-secondary)', lineHeight:1 }}>
                                             {rack.stock_minimo}
                                         </div>
                                     </div>
                                     {rack.estado_conservacion && (
                                         <div>
-                                            <div style={{ fontFamily:'var(--font-display)', fontSize:'9px', fontWeight:700, letterSpacing:'0.10em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'2px' }}>Estado</div>
-                                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color:'var(--accent-gold)', lineHeight:1 }}>
+                                            <div style={{ fontFamily:'var(--font-display)', fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'1px' }}>Est.</div>
+                                            <div style={{ fontFamily:'var(--font-mono)', fontSize:'12px', fontWeight:700, color:'var(--accent-gold)', lineHeight:1 }}>
                                                 {rack.estado_conservacion}
                                             </div>
                                         </div>
@@ -441,7 +453,13 @@ export function AlmacenPage(): JSX.Element {
 
     return (
         <>
-            <style>{`@keyframes terminalBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+            <style>{`
+                @keyframes terminalBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+                /* Responsive: tablet/móvil → columna única, mapa arriba info abajo */
+                @media (max-width: 900px) {
+                    .almacen-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
 
             <div style={{
                 height:        'calc(100dvh - 104px)',
@@ -515,18 +533,11 @@ export function AlmacenPage(): JSX.Element {
                     </div>
                 </div>
 
-                {/* ── Cuerpo principal: panel info (izq) + mapa (dcha) ───── */}
-                <div style={{ flex:1, minHeight:0, display:'flex', gap:'8px' }}>
+                {/* ── Cuerpo principal: Mapa 70% (izq) + Panel Info 30% (dcha) ── */}
+                <div className="almacen-grid" style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'80% 20%', gap:'8px' }}>
 
-                    {/* Panel de información — siempre visible, ancho fijo */}
-                    <InfoPanel
-                        sel={seleccionado}
-                        skuResaltado={skuResaltado}
-                        onClose={() => setSeleccionado(null)}
-                    />
-
-                    {/* Mapa del almacén — ocupa el resto */}
-                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:'8px', paddingBottom:'120px' }}>
+                    {/* Mapa del almacén — columna izquierda 70% */}
+                    <div style={{ minWidth:0, minHeight:0, display:'flex', flexDirection:'column', gap:'8px', overflow:'hidden' }}>
 
                         {/* Grid de pasillos + corredor */}
                         <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 52px 1fr', gap:'8px' }}>
@@ -593,6 +604,14 @@ export function AlmacenPage(): JSX.Element {
                             </span>
                         </div>
                     </div>
+
+                    {/* Panel de información — columna derecha 30% */}
+                    <InfoPanel
+                        sel={seleccionado}
+                        skuResaltado={skuResaltado}
+                        onClose={() => setSeleccionado(null)}
+                    />
+
                 </div>
             </div>
         </>

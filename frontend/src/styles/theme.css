@@ -211,7 +211,7 @@ html.theme-retro {
     --text-primary: #ffe8b0;
     /* Crema cálida */
     --text-secondary: #ccaa66;
-    --text-muted: #886633;
+    --text-muted: #aa8844;   /* #aa8844 sobre #1a1000 = 5.5:1 ✅ WCAG AA (era #886633 = 3.5:1 ✗) */
     --text-inverse: #0a0500;
 
     --border-subtle: rgba(255, 170, 0, 0.10);

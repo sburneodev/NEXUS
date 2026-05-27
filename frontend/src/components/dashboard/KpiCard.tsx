@@ -73,7 +73,7 @@ export function KpiCard({
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: trendColor, fontWeight: 600 }}>
                     {trendIcon}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                     {sub}
                 </span>
             </div>

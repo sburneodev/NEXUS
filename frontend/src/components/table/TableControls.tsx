@@ -105,19 +105,22 @@ function SkeletonBar({ width = '100%', height = 12 }: { width?: string | number;
 // ── Botón de página ───────────────────────────────────────────────────────────
 
 interface PageBtnProps {
-    label:     string;
-    onClick:   () => void;
-    active?:   boolean;
-    disabled?: boolean;
-    title?:    string;
+    label:      string;
+    onClick:    () => void;
+    active?:    boolean;
+    disabled?:  boolean;
+    title?:     string;
+    ariaLabel?: string;
 }
 
-function PageBtn({ label, onClick, active = false, disabled = false, title }: PageBtnProps): JSX.Element {
+function PageBtn({ label, onClick, active = false, disabled = false, title, ariaLabel }: PageBtnProps): JSX.Element {
     return (
         <button
             onClick={onClick}
             disabled={disabled}
             title={title}
+            aria-label={ariaLabel ?? title}
+            aria-current={active ? 'page' : undefined}
             className={`tc-page-btn${active ? ' tc-page-active' : ''}`}
             style={{
                 fontFamily:  'var(--font-mono)',
@@ -196,6 +199,9 @@ export function TableControls({
                     to   { transform: rotate(360deg); }
                 }
                 .tc-search:focus { outline: none; border-color: var(--accent-cyan) !important; box-shadow: 0 0 0 3px rgba(0,212,255,0.10); }
+                .tc-search:focus-visible { outline: 2px solid var(--accent-cyan) !important; outline-offset: 2px; }
+                .tc-page-btn:focus-visible, .tc-limit-btn:focus-visible { outline: 2px solid var(--accent-primary) !important; outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-primary-glow) !important; }
+                .tc-clear-btn:focus-visible { outline: 2px solid var(--accent-danger) !important; outline-offset: 2px; }
                 .tc-page-btn:hover:not(:disabled):not(.tc-page-active) {
                     border-color: var(--accent-cyan) !important;
                     color:        var(--accent-cyan) !important;
@@ -243,7 +249,9 @@ export function TableControls({
 
                     <input
                         ref={searchRef}
-                        type="text"
+                        type="search"
+                        role="searchbox"
+                        aria-label={placeholder}
                         className="tc-search"
                         placeholder={placeholder}
                         value={searchInput}
@@ -270,6 +278,7 @@ export function TableControls({
                             className="tc-clear-btn"
                             onClick={() => { filters.setSearchInput(''); searchRef.current?.focus(); }}
                             title="Limpiar búsqueda"
+                            aria-label="Limpiar búsqueda"
                             style={{
                                 position:   'absolute',
                                 right:      '9px',
@@ -300,6 +309,8 @@ export function TableControls({
                                 key={opt}
                                 className={`tc-limit-btn${limit === opt ? ' tc-limit-active' : ''}`}
                                 onClick={() => filters.setLimit(opt)}
+                                aria-label={`Mostrar ${opt} ${plural} por página`}
+                                aria-pressed={limit === opt}
                                 style={{
                                     fontFamily:    'var(--font-mono)',
                                     fontSize:      '11px',
@@ -397,6 +408,7 @@ export function TableControls({
                             disabled={page === 0}
                             onClick={() => filters.setPage(page - 1)}
                             title="Página anterior"
+                            ariaLabel="Ir a la página anterior"
                         />
 
                         {/* Ventana de páginas con ellipsis */}
@@ -422,6 +434,7 @@ export function TableControls({
                                         active={p === page}
                                         onClick={() => filters.setPage(p)}
                                         title={`Página ${p + 1}`}
+                                        ariaLabel={`Ir a la página ${p + 1}`}
                                     />
                                 )
                         )}
@@ -432,6 +445,7 @@ export function TableControls({
                             disabled={page >= totalPages - 1}
                             onClick={() => filters.setPage(page + 1)}
                             title="Página siguiente"
+                            ariaLabel="Ir a la página siguiente"
                         />
                     </div>
                 )}

@@ -46,7 +46,7 @@ export function ProductosPage(): JSX.Element {
 
     // ── Guardar (crear o editar) ──────────────────────────────────────────────
     async function handleSave(
-        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>,
+        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
     ): Promise<void> {
         try {
             if (selected) {
@@ -159,7 +159,8 @@ export function ProductosPage(): JSX.Element {
             }}>
                 {/* Buscador */}
                 <input
-                    type="text"
+                    type="search"
+                    aria-label="Buscar productos por nombre o SKU"
                     placeholder="Buscar por nombre o SKU..."
                     value={search}
                     onChange={e => { setSearch(e.target.value); setPage(1); }}
@@ -181,6 +182,7 @@ export function ProductosPage(): JSX.Element {
                 {/* Filtro por tipo */}
                 <select
                     value={filterTipo}
+                    aria-label="Filtrar por tipo de producto"
                     onChange={e => {
                         setFilterTipo(e.target.value as TipoProducto | 'TODOS');
                         setPage(1);
@@ -390,6 +392,7 @@ export function ProductosPage(): JSX.Element {
                             <button
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
+                                aria-label="Ir a la página anterior"
                                 style={pageBtnStyle(page === 1)}
                             >
                                 ◀
@@ -398,6 +401,8 @@ export function ProductosPage(): JSX.Element {
                                 <button
                                     key={n}
                                     onClick={() => setPage(n)}
+                                    aria-label={`Ir a la página ${n}`}
+                                    aria-current={n === page ? 'page' : undefined}
                                     style={pageBtnStyle(false, n === page)}
                                 >
                                     {n}
@@ -406,6 +411,7 @@ export function ProductosPage(): JSX.Element {
                             <button
                                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                                 disabled={page === totalPages}
+                                aria-label="Ir a la página siguiente"
                                 style={pageBtnStyle(page === totalPages)}
                             >
                                 ▶

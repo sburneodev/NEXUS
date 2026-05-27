@@ -130,27 +130,27 @@ export function ProductosPage(): JSX.Element {
             {/* ── Cabecera ──────────────────────────────────────────────── */}
             <div style={{
                 display:        'flex',
-                alignItems:     'flex-start',
+                alignItems:     'center',
                 justifyContent: 'space-between',
-                marginBottom:   '20px',
+                marginBottom:   '14px',
                 flexWrap:       'wrap',
-                gap:            '12px',
+                gap:            '8px',
             }}>
                 <div>
                     <h1 style={{
                         fontFamily:    'var(--font-display)',
-                        fontSize:      '1.5rem',
+                        fontSize:      '1rem',
                         fontWeight:    700,
                         letterSpacing: '0.06em',
                         textTransform: 'uppercase',
                         color:         'var(--text-primary)',
-                        marginBottom:  '4px',
+                        marginBottom:  '2px',
                     }}>
                         Productos
                     </h1>
                     <p style={{
                         fontFamily:    'var(--font-mono)',
-                        fontSize:      '12px',
+                        fontSize:      '11px',
                         color:         'var(--text-muted)',
                         letterSpacing: '0.04em',
                     }}>
@@ -162,7 +162,7 @@ export function ProductosPage(): JSX.Element {
                 <button
                     onClick={openNew}
                     className="btn btn-primary"
-                    style={{ letterSpacing: '0.12em', fontSize: '12px', flexShrink: 0 }}
+                    style={{ letterSpacing: '0.10em', fontSize: '11px', padding: '6px 14px', flexShrink: 0 }}
                 >
                     + AÑADIR PRODUCTO
                 </button>

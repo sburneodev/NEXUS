@@ -32,7 +32,13 @@ import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
 
 type StockEstado = 'OK' | 'BAJO' | 'CRITICO';
 
+/**
+ * Los productos RETRO siempre tienen stock = 1 por diseño (son piezas únicas).
+ * No se consideran críticos aunque stock === stockMinimo — se tratan como OK.
+ * Esto alinea con la lógica de AlmacenPage (criticos excluye RETRO).
+ */
 function getEstado(p: Producto): StockEstado {
+    if (p.tipoProducto === 'RETRO')              return 'OK';
     if (p.stockActual <= p.stockMinimo)          return 'CRITICO';
     if (p.stockActual <= p.stockMinimo * 2)      return 'BAJO';
     return 'OK';
@@ -43,6 +49,32 @@ const ESTADO_COLOR: Record<StockEstado, string> = {
     BAJO:    'var(--accent-gold)',
     CRITICO: 'var(--accent-danger)',
 };
+
+/**
+ * Color del número de stock en la tabla:
+ * · RETRO   → siempre dorado (stock=1 es normal, no es alerta)
+ * · ESTÁNDAR → rojo/amarillo/verde según nivel
+ */
+function getStockColor(p: Producto): string {
+    if (p.tipoProducto === 'RETRO') return 'var(--accent-gold)';
+    return ESTADO_COLOR[getEstado(p)];
+}
+
+/**
+ * Badge del estado:
+ * · RETRO   → "★ RETRO" en dorado (pieza única, sin semáforo de stock)
+ * · ESTÁNDAR → ● OK / ⚠ BAJO / ⛔ CRÍTICO con su color habitual
+ */
+function getEstadoBadge(p: Producto): { text: string; color: string } {
+    if (p.tipoProducto === 'RETRO') {
+        return { text: '★ RETRO', color: 'var(--accent-gold)' };
+    }
+    const e = getEstado(p);
+    return {
+        text:  e === 'OK' ? '● OK' : e === 'BAJO' ? '⚠ BAJO' : '⛔ CRÍTICO',
+        color: ESTADO_COLOR[e],
+    };
+}
 
 const TIPO_COLOR: Record<TipoMovimiento, string> = {
     ENTRADA: 'var(--accent-primary)',
@@ -82,7 +114,7 @@ interface OpResult {
 
 const labelStyle: React.CSSProperties = {
     fontFamily:    'var(--font-display)',
-    fontSize:      '10px',
+    fontSize:      '12px',
     fontWeight:    700,
     letterSpacing: '0.10em',
     textTransform: 'uppercase',
@@ -371,28 +403,43 @@ export function StockPage(): JSX.Element {
                                         </td>
                                         {/* Stock actual */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '15px', fontWeight: 700, color: ESTADO_COLOR[estado] }}>
+                                            <span style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                fontSize:   '13px',
+                                                fontWeight: 700,
+                                                color:      getStockColor(p),
+                                                letterSpacing: '-0.01em',
+                                            }}>
                                                 {p.stockActual}
                                             </span>
                                         </td>
                                         {/* Stock mínimo */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
                                                 {p.stockMinimo}
                                             </span>
                                         </td>
                                         {/* Estado badge */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{
-                                                fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
-                                                color:      ESTADO_COLOR[estado],
-                                                background: `${ESTADO_COLOR[estado]}18`,
-                                                border:     `1px solid ${ESTADO_COLOR[estado]}`,
-                                                borderRadius: '3px', padding: '2px 8px',
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                                {estado === 'OK' ? '● OK' : estado === 'BAJO' ? '⚠ BAJO' : '⛔ CRÍTICO'}
-                                            </span>
+                                            {(() => {
+                                                const badge = getEstadoBadge(p);
+                                                return (
+                                                    <span style={{
+                                                        fontFamily:    'var(--font-mono)',
+                                                        fontSize:      '10px',
+                                                        fontWeight:    700,
+                                                        letterSpacing: '0.06em',
+                                                        color:         badge.color,
+                                                        background:    `${badge.color}18`,
+                                                        border:        `1px solid ${badge.color}`,
+                                                        borderRadius:  '3px',
+                                                        padding:       '2px 8px',
+                                                        whiteSpace:    'nowrap',
+                                                    }}>
+                                                        {badge.text}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 );
@@ -418,14 +465,14 @@ export function StockPage(): JSX.Element {
                     borderBottom: '1px solid var(--border-subtle)',
                     flexShrink: 0,
                 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
                         ◈ REGISTRAR MOVIMIENTO
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, color: selected ? 'var(--text-primary)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: selected ? 'var(--text-primary)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
                         {selected ? selected.sku : '— Selecciona un producto —'}
                     </div>
                     {selected && (
-                        <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {selected.nombre}
                         </div>
                     )}
@@ -463,15 +510,15 @@ export function StockPage(): JSX.Element {
                                 borderRadius: '8px',
                             }}>
                                 {[
-                                    { label: 'STOCK ACTUAL', value: String(selected.stockActual), color: ESTADO_COLOR[getEstado(selected)] },
-                                    { label: 'MÍNIMO',       value: String(selected.stockMinimo), color: 'var(--text-secondary)' },
-                                    { label: 'ESTADO',       value: getEstado(selected),          color: ESTADO_COLOR[getEstado(selected)] },
+                                    { label: 'STOCK ACTUAL', value: String(selected.stockActual),         color: getStockColor(selected) },
+                                    { label: 'MÍNIMO',       value: String(selected.stockMinimo),         color: 'var(--text-secondary)' },
+                                    { label: 'ESTADO',       value: getEstadoBadge(selected).text.replace(/^[^\s]+\s/, ''), color: getEstadoBadge(selected).color },
                                 ].map((item, i) => (
                                     <div key={i} style={{
                                         flex: 1, padding: '10px 12px', textAlign: 'center',
                                         borderRight: i < 2 ? '1px solid var(--border-subtle)' : 'none',
                                     }}>
-                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>
+                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>
                                             {item.label}
                                         </div>
                                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: i === 2 ? '13px' : '22px', fontWeight: 700, color: item.color, lineHeight: 1 }}>
@@ -489,7 +536,7 @@ export function StockPage(): JSX.Element {
                                         const active = form.tipoMovimiento === t;
                                         return (
                                             <button key={t} onClick={() => setField('tipoMovimiento', t)} style={{
-                                                flex: 1, fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                                                flex: 1, fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700,
                                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '8px 4px',
                                                 background:   active ? TIPO_COLOR[t] : 'transparent',
                                                 color:        active ? 'var(--text-inverse)' : TIPO_COLOR[t],

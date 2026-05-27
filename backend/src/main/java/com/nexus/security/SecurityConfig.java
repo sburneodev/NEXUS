@@ -57,6 +57,10 @@ public class SecurityConfig {
                 // Rutas públicas — sin token requerido
                 .requestMatchers("/auth/login", "/auth/verify-email", "/auth/register").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // /error necesita ser público: Spring Boot reenvía aquí cualquier excepción
+                // interna. Sin esto, los errores 401/403/5xx aparecen siempre como 403
+                // porque Security bloquea el dispatch a /error para usuarios no autenticados.
+                .requestMatchers("/error").permitAll()
                 // Rutas exclusivas de administración — primera capa de defensa
                 // (segunda capa: @PreAuthorize a nivel de clase/método en cada Controller)
                 .requestMatchers("/admin/**", "/usuarios/**", "/audit/**").hasAuthority("ADMIN")

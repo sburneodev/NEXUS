@@ -1,10 +1,14 @@
 package com.nexus.service;
 
 import com.nexus.dto.ProductoDTO;
+import com.nexus.model.Categoria;
 import com.nexus.model.Producto;
 import com.nexus.model.Proveedor;
+import com.nexus.model.UbicacionAlmacen;
+import com.nexus.repository.CategoriaRepository;
 import com.nexus.repository.ProductoRepository;
 import com.nexus.repository.ProveedorRepository;
+import com.nexus.repository.UbicacionAlmacenRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -12,13 +16,19 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProductoService {
 
-    private final ProductoRepository productoRepository;
-    private final ProveedorRepository proveedorRepository;
+    private final ProductoRepository        productoRepository;
+    private final ProveedorRepository       proveedorRepository;
+    private final CategoriaRepository       categoriaRepository;
+    private final UbicacionAlmacenRepository ubicacionRepository;
 
     public ProductoService(ProductoRepository productoRepository,
-                           ProveedorRepository proveedorRepository) {
-        this.productoRepository = productoRepository;
+                           ProveedorRepository proveedorRepository,
+                           CategoriaRepository categoriaRepository,
+                           UbicacionAlmacenRepository ubicacionRepository) {
+        this.productoRepository  = productoRepository;
         this.proveedorRepository = proveedorRepository;
+        this.categoriaRepository = categoriaRepository;
+        this.ubicacionRepository = ubicacionRepository;
     }
 
     public ProductoDTO crear(ProductoDTO dto) {
@@ -52,6 +62,22 @@ public class ProductoService {
             p.setProveedor(prov);
         } else {
             p.setProveedor(null);
+        }
+        if (dto.getIdCategoria() != null) {
+            Categoria cat = categoriaRepository.findById(dto.getIdCategoria())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Categoría no encontrada con id: " + dto.getIdCategoria()));
+            p.setCategoria(cat);
+        } else {
+            p.setCategoria(null);
+        }
+        if (dto.getIdUbicacion() != null) {
+            UbicacionAlmacen ubic = ubicacionRepository.findById(dto.getIdUbicacion())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
+            p.setUbicacion(ubic);
+        } else {
+            p.setUbicacion(null);
         }
         return toDTO(productoRepository.save(p));
     }
@@ -100,6 +126,13 @@ public class ProductoService {
             dto.setIdProveedor(p.getProveedor().getId());
             dto.setProveedorNombre(p.getProveedor().getRazonSocial());
         }
+        if (p.getCategoria() != null) {
+            dto.setIdCategoria(p.getCategoria().getId());
+            dto.setCategoriaNombre(p.getCategoria().getNombre());
+        }
+        if (p.getUbicacion() != null) {
+            dto.setIdUbicacion(p.getUbicacion().getId());
+        }
         return dto;
     }
 
@@ -123,6 +156,18 @@ public class ProductoService {
                     .orElseThrow(() -> new RuntimeException(
                             "Proveedor no encontrado con id: " + dto.getIdProveedor()));
             p.setProveedor(prov);
+        }
+        if (dto.getIdCategoria() != null) {
+            Categoria cat = categoriaRepository.findById(dto.getIdCategoria())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Categoría no encontrada con id: " + dto.getIdCategoria()));
+            p.setCategoria(cat);
+        }
+        if (dto.getIdUbicacion() != null) {
+            UbicacionAlmacen ubic = ubicacionRepository.findById(dto.getIdUbicacion())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
+            p.setUbicacion(ubic);
         }
         return p;
     }

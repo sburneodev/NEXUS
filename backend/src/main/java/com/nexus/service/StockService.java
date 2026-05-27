@@ -66,8 +66,11 @@ public class StockService {
         Long idUsuario = getUsuarioAutenticadoId();
 
         // Llamada al SP con JDBC usando execute() y un PreparedStatementCallback
-        // Se usa {call ...} que es la sintaxis estándar JDBC para procedimientos almacenados
-        String sql = "{call sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)}";
+        // IMPORTANTE: PostgreSQL distingue entre PROCEDURE y FUNCTION.
+        // La sintaxis JDBC {call ...} intenta invocar como función (SELECT).
+        // Para un CREATE PROCEDURE se debe usar CALL directamente,
+        // o el driver JDBC lanza "is a procedure" BadSqlGrammarException.
+        String sql = "CALL sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)";
 
         final String[] oResultado  = new String[1];
         final int[]    oStockNuevo = new int[1];

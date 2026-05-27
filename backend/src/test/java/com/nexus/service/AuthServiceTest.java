@@ -1,6 +1,9 @@
 package com.nexus.service;
 
+import com.nexus.auth.AuthService;
+import com.nexus.auth.dto.AuthResponse;
 import com.nexus.dto.LoginRequest;
+import com.nexus.email.EmailService;
 import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
 import com.nexus.repository.UsuarioRepository;
@@ -16,14 +19,16 @@ import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
     @Mock private UsuarioRepository usuarioRepository;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private JwtUtil jwtUtil;
+    @Mock private PasswordEncoder   passwordEncoder;
+    @Mock private JwtUtil           jwtUtil;
+    @Mock private EmailService      emailService;       // requerido por com.nexus.auth.AuthService
     @InjectMocks private AuthService authService;
 
     private Usuario usuarioValido() {
@@ -32,6 +37,8 @@ class AuthServiceTest {
         u.setEmail("cajero@test.es");
         u.setPassword("$2a$12$hash");
         u.setVerified(true);
+        u.setActive(true);
+        u.setUsername("cajero01");
         u.setRoles(Set.of(rol));
         return u;
     }
@@ -46,7 +53,7 @@ class AuthServiceTest {
         when(passwordEncoder.matches("cajero123", "$2a$12$hash")).thenReturn(true);
         when(jwtUtil.generateToken(any(), eq("cajero@test.es"), anyString())).thenReturn("token.jwt");
 
-        var response = authService.login(req);
+        AuthResponse response = authService.login(req);
         assertEquals("token.jwt", response.getToken());
     }
 

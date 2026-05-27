@@ -527,7 +527,7 @@ export function AlmacenPage(): JSX.Element {
                                 BUSCAR
                             </button>
                             {skuResaltado && (
-                                <button onClick={() => { setSkuResaltado(''); setBusqueda(''); setSeleccionado(null); }} style={{ fontFamily:'var(--font-mono)', fontSize:'10px', padding:'4px 8px', background:'transparent', color:'var(--text-muted)', border:'1px solid var(--border-subtle)', borderRadius:'5px', cursor:'pointer' }}>✕</button>
+                                <button onClick={() => { setSkuResaltado(''); setBusqueda(''); setSeleccionado(null); }} aria-label="Limpiar filtro de SKU" style={{ fontFamily:'var(--font-mono)', fontSize:'10px', padding:'4px 8px', background:'transparent', color:'var(--text-muted)', border:'1px solid var(--border-subtle)', borderRadius:'5px', cursor:'pointer' }}>✕</button>
                             )}
                         </div>
                     </div>

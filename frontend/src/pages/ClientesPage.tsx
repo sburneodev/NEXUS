@@ -13,7 +13,7 @@ import type { CSSProperties }               from 'react';
 import type { PaginatedResponse }           from '../types/models';
 import { FormModal, FieldConfig }           from '../components/common/FormModal';
 import { clienteService, Cliente, ClienteForm } from '../services/entidadService';
-import { useTableFilters }                  from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit }  from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }      from '../components/table/TableControls';
 import api                                  from '../services/api';
 
@@ -32,7 +32,7 @@ const FIELDS: FieldConfig[] = [
 export function ClientesPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'clientes', initialLimit: 20 });
+    const filters = useTableFilters({ key: 'clientes', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────

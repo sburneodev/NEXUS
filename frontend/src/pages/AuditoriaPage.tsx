@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PaginatedResponse }      from '../types/models';
-import { useTableFilters }             from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
 import api from '../services/api';
 
@@ -49,7 +49,7 @@ const ACCIONES = ['', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE'] as const;
 export function AuditoriaPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'auditoria', initialLimit: 50 });
+    const filters = useTableFilters({ key: 'auditoria', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────

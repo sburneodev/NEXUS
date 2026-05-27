@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PaginatedResponse } from '../types/models';
-import { useTableFilters }        from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
 import api from '../services/api';
 
@@ -31,7 +31,7 @@ const ROLES_DISPONIBLES = ['ADMIN','GESTOR_INVENTARIO','CAJERO','MARKETING_ANALY
 export function UsuariosPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'usuarios', initialLimit: 20 });
+    const filters = useTableFilters({ key: 'usuarios', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────

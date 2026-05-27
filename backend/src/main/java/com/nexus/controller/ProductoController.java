@@ -25,12 +25,16 @@ public class ProductoController {
             @RequestParam(required = false) String buscar,
             Pageable pageable) {
 
-        if (buscar != null && !buscar.isBlank()) {
-            return ResponseEntity.ok(productoService.buscar(buscar, pageable));
-        }
-        if (tipo != null && !tipo.isBlank()) {
-            return ResponseEntity.ok(productoService.listarPorTipo(tipo, pageable));
-        }
+        final boolean hasBuscar = buscar != null && !buscar.isBlank();
+        final boolean hasTipo   = tipo   != null && !tipo.isBlank();
+
+        // Ambos filtros activos → búsqueda parcial dentro del tipo indicado
+        if (hasBuscar && hasTipo) return ResponseEntity.ok(productoService.buscarPorTipo(buscar, tipo, pageable));
+        // Solo texto libre
+        if (hasBuscar)            return ResponseEntity.ok(productoService.buscar(buscar, pageable));
+        // Solo tipo
+        if (hasTipo)              return ResponseEntity.ok(productoService.listarPorTipo(tipo, pageable));
+        // Sin filtros → listado completo
         return ResponseEntity.ok(productoService.listar(pageable));
     }
 

@@ -253,8 +253,8 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
 
     return (
         <div style={{
-            width:        '280px',
-            flexShrink:   0,
+            width:        '100%',
+            height:       '100%',
             display:      'flex',
             flexDirection:'column',
             background:   'var(--bg-surface)',
@@ -307,7 +307,9 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
             </div>
 
             {/* Contenido */}
-            <div style={{ flex:1, overflowY:'auto', padding:'12px', display:'flex', flexDirection:'column', gap:'8px' }}>
+            {/* paddingBottom:104px garantiza que el FAB flotante nunca tape
+                el último elemento al hacer scroll en el panel derecho.     */}
+            <div style={{ flex:1, overflowY:'auto', padding:'12px', paddingBottom:'104px', display:'flex', flexDirection:'column', gap:'8px' }}>
                 {!sel ? (
                     /* Estado vacío */
                     <div style={{
@@ -441,7 +443,13 @@ export function AlmacenPage(): JSX.Element {
 
     return (
         <>
-            <style>{`@keyframes terminalBlink{0%,100%{opacity:1}50%{opacity:0}}`}</style>
+            <style>{`
+                @keyframes terminalBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+                /* Responsive: tablet/móvil → columna única, mapa arriba */
+                @media (max-width: 768px) {
+                    .almacen-grid { grid-template-columns: 1fr !important; }
+                }
+            `}</style>
 
             <div style={{
                 height:        'calc(100dvh - 104px)',
@@ -515,18 +523,11 @@ export function AlmacenPage(): JSX.Element {
                     </div>
                 </div>
 
-                {/* ── Cuerpo principal: panel info (izq) + mapa (dcha) ───── */}
-                <div style={{ flex:1, minHeight:0, display:'flex', gap:'8px' }}>
+                {/* ── Cuerpo principal: Mapa 70% (izq) + Panel Info 30% (dcha) ── */}
+                <div className="almacen-grid" style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'70% 30%', gap:'8px' }}>
 
-                    {/* Panel de información — siempre visible, ancho fijo */}
-                    <InfoPanel
-                        sel={seleccionado}
-                        skuResaltado={skuResaltado}
-                        onClose={() => setSeleccionado(null)}
-                    />
-
-                    {/* Mapa del almacén — ocupa el resto */}
-                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:'8px', paddingBottom:'120px' }}>
+                    {/* Mapa del almacén — columna izquierda 70% */}
+                    <div style={{ minWidth:0, minHeight:0, display:'flex', flexDirection:'column', gap:'8px', overflow:'hidden' }}>
 
                         {/* Grid de pasillos + corredor */}
                         <div style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr 52px 1fr', gap:'8px' }}>
@@ -593,6 +594,14 @@ export function AlmacenPage(): JSX.Element {
                             </span>
                         </div>
                     </div>
+
+                    {/* Panel de información — columna derecha 30% */}
+                    <InfoPanel
+                        sel={seleccionado}
+                        skuResaltado={skuResaltado}
+                        onClose={() => setSeleccionado(null)}
+                    />
+
                 </div>
             </div>
         </>

@@ -11,6 +11,7 @@ import api from './api';
 // ── Interfaces de dominio ─────────────────────────────────────────────
 
 export interface Cliente {
+    [key: string]:   unknown;           // index signature requerido por FormModal<T>
     id:              number;
     nombre:          string;
     email:           string | null;
@@ -22,6 +23,7 @@ export interface Cliente {
 }
 
 export interface Proveedor {
+    [key: string]:   unknown;           // index signature requerido por FormModal<T>
     id:              number;
     razonSocial:     string;
     cif:             string | null;
@@ -45,7 +47,7 @@ export interface PageResponse<T> {
 
 // ── Formularios (sin campos de auditoría) ────────────────────────────
 
-export type ClienteForm = Omit<Cliente, 'id' | 'creadoEn' | 'actualizadoEn'>;
+export type ClienteForm   = Omit<Cliente,   'id' | 'creadoEn' | 'actualizadoEn'>;
 export type ProveedorForm = Omit<Proveedor, 'id'>;
 
 // ── Servicio de Clientes ─────────────────────────────────────────────

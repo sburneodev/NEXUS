@@ -3,70 +3,38 @@
  * Conectado al backend real via productoService
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, CSSProperties } from 'react';
 import type { Producto, TipoProducto } from '../types/models';
 import { ProductModal } from '../components/productos/ProductModal';
 import { productoService } from '../services/productoService';
 
-// ── Helper: simulación server-side sobre datos mock ──────────────────────────
-// Se usa como fallback cuando el backend no está disponible.
-// En producción solo se usa el API real; este bloque se puede eliminar.
-function simulateServerFilter(
-    data:   Producto[],
-    search: string,
-    tipo:   TipoProducto | 'TODOS',
-    page:   number,
-    size:   number,
-): { content: Producto[]; totalElements: number; totalPages: number } {
-    const q = search.toLowerCase();
-
-    const filtered = data.filter(p => {
-        const matchSearch = !q
-            || p.nombre.toLowerCase().includes(q)
-            || p.sku.toLowerCase().includes(q);
-        const matchTipo = tipo === 'TODOS' || p.tipoProducto === tipo;
-        return matchSearch && matchTipo;
-    });
-
-    const totalElements = filtered.length;
-    const totalPages    = Math.ceil(totalElements / size) || 1;
-    const content       = filtered.slice(page * size, (page + 1) * size);
-
-    return { content, totalElements, totalPages };
-}
+// ── Constante de paginación ───────────────────────────────────────────────────
+const PAGE_SIZE = 20;
 
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export function ProductosPage(): JSX.Element {
 
-    // ── SUFP — estado de filtrado centralizado ────────────────────────────────
-    const filters = useTableFilters({ key: 'productos', initialLimit: 20 });
-
-    // Desestructuramos las funciones estables (useCallback) para declararlas
-    // como dependencias del useEffect sin provocar re-renders innecesarios.
-    const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
-
     // ── Estado local ──────────────────────────────────────────────────────────
-    const [rows,       setRows]       = useState<Producto[]>([]);
-    const [isLoading,  setIsLoading]  = useState(true);
-    const [filterTipo, setFilterTipo] = useState<TipoProducto | 'TODOS'>('TODOS');
-    const [page, setPage] = useState(1);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selected, setSelected] = useState<Producto | null>(null);
-    const [products, setProducts] = useState<Producto[]>([]);
+    const [search,        setSearch]        = useState('');
+    const [filterTipo,    setFilterTipo]    = useState<TipoProducto | 'TODOS'>('TODOS');
+    const [page,          setPage]          = useState(1);
+    const [modalOpen,     setModalOpen]     = useState(false);
+    const [selected,      setSelected]      = useState<Producto | null>(null);
+    const [products,      setProducts]      = useState<Producto[]>([]);
     const [totalElements, setTotalElements] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading,       setLoading]       = useState(true);
 
     const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
 
-    // ── Cargar datos del backend ──────────────────────────────────────
+    // ── Cargar datos del backend ──────────────────────────────────────────────
     useEffect(() => {
         setLoading(true);
         productoService.listar(
             page - 1,
             PAGE_SIZE,
             filterTipo !== 'TODOS' ? filterTipo : undefined,
-            search || undefined
+            search || undefined,
         )
             .then(data => {
                 setProducts(data.content);
@@ -76,8 +44,10 @@ export function ProductosPage(): JSX.Element {
             .finally(() => setLoading(false));
     }, [page, filterTipo, search]);
 
-    // ── Guardar (crear o editar) ──────────────────────────────────────
-    async function handleSave(data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>): Promise<void> {
+    // ── Guardar (crear o editar) ──────────────────────────────────────────────
+    async function handleSave(
+        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>,
+    ): Promise<void> {
         try {
             if (selected) {
                 await productoService.editar(selected.id, data as any);
@@ -85,9 +55,10 @@ export function ProductosPage(): JSX.Element {
                 await productoService.crear(data as any);
             }
             const result = await productoService.listar(
-                page - 1, PAGE_SIZE,
+                page - 1,
+                PAGE_SIZE,
                 filterTipo !== 'TODOS' ? filterTipo : undefined,
-                search || undefined
+                search || undefined,
             );
             setProducts(result.content);
             setTotalElements(result.totalElements);
@@ -98,7 +69,7 @@ export function ProductosPage(): JSX.Element {
         }
     }
 
-    // ── Eliminar ──────────────────────────────────────────────────────
+    // ── Eliminar ──────────────────────────────────────────────────────────────
     async function handleDelete(id: number): Promise<void> {
         if (window.confirm('¿Eliminar este producto?')) {
             try {
@@ -109,13 +80,13 @@ export function ProductosPage(): JSX.Element {
                 console.error('Error eliminando producto:', err);
             }
         }
-    }, []);
+    }
 
     const openNew  = (): void => { setSelected(null);  setModalOpen(true); };
-    const openEdit = (p: Produto): void => { setSelected(p); setModalOpen(true); };
+    const openEdit = (p: Producto): void => { setSelected(p); setModalOpen(true); };
 
     // ── Renderer de badge de stock ────────────────────────────────────────────
-    const stockBadge = (p: Produto): JSX.Element => {
+    const stockBadge = (p: Producto): JSX.Element => {
         const critico = p.stockActual <= p.stockMinimo;
         return (
             <span style={{
@@ -135,7 +106,6 @@ export function ProductosPage(): JSX.Element {
     };
 
     // ── Render ────────────────────────────────────────────────────────────────
-
     return (
         <div>
             {/* ── Cabecera ─────────────────────────────────────────────── */}
@@ -159,8 +129,15 @@ export function ProductosPage(): JSX.Element {
                     }}>
                         Productos
                     </h1>
-                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                        {loading ? 'Cargando...' : `${totalElements} producto${totalElements !== 1 ? 's' : ''} encontrado${totalElements !== 1 ? 's' : ''}`}
+                    <p style={{
+                        fontFamily:    'var(--font-mono)',
+                        fontSize:      '12px',
+                        color:         'var(--text-muted)',
+                        letterSpacing: '0.04em',
+                    }}>
+                        {loading
+                            ? 'Cargando...'
+                            : `${totalElements} producto${totalElements !== 1 ? 's' : ''} encontrado${totalElements !== 1 ? 's' : ''}`}
                     </p>
                 </div>
                 <button
@@ -172,41 +149,62 @@ export function ProductosPage(): JSX.Element {
                 </button>
             </div>
 
-            {/* ── TableControls: buscador · tipo · filas · paginación ───── */}
-            <div style={{ marginBottom: '16px' }}>
-                <TableControls
-                    filters={filters}
-                    isLoading={isLoading}
-                    entityLabel="producto"
-                    extraFilters={
-                        <select
-                            value={filterTipo}
-                            onChange={e => {
-                                setFilterTipo(e.target.value as TipoProducto | 'TODOS');
-                                filters.setPage(0); // resetea página al cambiar tipo
-                            }}
-                            style={{
-                                fontFamily:    'var(--font-display)',
-                                fontSize:      '12px',
-                                fontWeight:    600,
-                                letterSpacing: '0.08em',
-                                textTransform: 'uppercase',
-                                color:         'var(--text-primary)',
-                                background:    'var(--bg-surface)',
-                                border:        '1px solid var(--border-default)',
-                                borderRadius:  '6px',
-                                padding:       '8px 12px',
-                                outline:       'none',
-                                cursor:        'pointer',
-                                flexShrink:    0,
-                            }}
-                        >
-                            <option value="TODOS">Todos los tipos</option>
-                            <option value="ESTANDAR">ESTÁNDAR</option>
-                            <option value="RETRO">RETRO — La Bóveda</option>
-                        </select>
-                    }
+            {/* ── Barra de filtros ──────────────────────────────────────── */}
+            <div style={{
+                display:      'flex',
+                gap:          '10px',
+                marginBottom: '16px',
+                flexWrap:     'wrap',
+                alignItems:   'center',
+            }}>
+                {/* Buscador */}
+                <input
+                    type="text"
+                    placeholder="Buscar por nombre o SKU..."
+                    value={search}
+                    onChange={e => { setSearch(e.target.value); setPage(1); }}
+                    style={{
+                        fontFamily:    'var(--font-mono)',
+                        fontSize:      '12px',
+                        letterSpacing: '0.04em',
+                        color:         'var(--text-primary)',
+                        background:    'var(--bg-surface)',
+                        border:        '1px solid var(--border-default)',
+                        borderRadius:  '6px',
+                        padding:       '8px 12px',
+                        outline:       'none',
+                        flex:          '1 1 220px',
+                        minWidth:      '180px',
+                    }}
                 />
+
+                {/* Filtro por tipo */}
+                <select
+                    value={filterTipo}
+                    onChange={e => {
+                        setFilterTipo(e.target.value as TipoProducto | 'TODOS');
+                        setPage(1);
+                    }}
+                    style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '12px',
+                        fontWeight:    600,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color:         'var(--text-primary)',
+                        background:    'var(--bg-surface)',
+                        border:        '1px solid var(--border-default)',
+                        borderRadius:  '6px',
+                        padding:       '8px 12px',
+                        outline:       'none',
+                        cursor:        'pointer',
+                        flexShrink:    0,
+                    }}
+                >
+                    <option value="TODOS">Todos los tipos</option>
+                    <option value="ESTANDAR">ESTÁNDAR</option>
+                    <option value="RETRO">RETRO — La Bóveda</option>
+                </select>
             </div>
 
             {/* ── Tabla ─────────────────────────────────────────────────── */}
@@ -241,25 +239,29 @@ export function ProductosPage(): JSX.Element {
                         <tbody>
                             {loading ? (
                                 <tr>
-                                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+                                    <td colSpan={7} style={{
+                                        padding:    '32px',
+                                        textAlign:  'center',
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize:   '12px',
+                                        color:      'var(--text-muted)',
+                                        letterSpacing: '0.06em',
+                                    }}>
                                         CARGANDO...
                                     </td>
                                 </tr>
                             ) : products.length === 0 ? (
                                 <tr>
-                                    <td
-                                        colSpan={7}
-                                        style={{
-                                            padding:       '48px',
-                                            textAlign:     'center',
-                                            fontFamily:    'var(--font-mono)',
-                                            fontSize:      '12px',
-                                            color:         'var(--text-muted)',
-                                            letterSpacing: '0.08em',
-                                        }}
-                                    >
-                                        {filters.search
-                                            ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
+                                    <td colSpan={7} style={{
+                                        padding:       '48px',
+                                        textAlign:     'center',
+                                        fontFamily:    'var(--font-mono)',
+                                        fontSize:      '12px',
+                                        color:         'var(--text-muted)',
+                                        letterSpacing: '0.08em',
+                                    }}>
+                                        {search
+                                            ? `SIN RESULTADOS PARA "${search.toUpperCase()}"`
                                             : 'SIN PRODUCTOS'}
                                     </td>
                                 </tr>
@@ -344,8 +346,20 @@ export function ProductosPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                        <button onClick={() => openEdit(p)} style={actionBtnStyle('#0088cc')} title="Editar">EDITAR</button>
-                                        <button onClick={() => handleDelete(p.id)} style={actionBtnStyle('#cc2244')} title="Eliminar">ELIMINAR</button>
+                                        <button
+                                            onClick={() => openEdit(p)}
+                                            style={actionBtnStyle('#0088cc')}
+                                            title="Editar"
+                                        >
+                                            EDITAR
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(p.id)}
+                                            style={actionBtnStyle('#cc2244')}
+                                            title="Eliminar"
+                                        >
+                                            ELIMINAR
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
@@ -353,26 +367,49 @@ export function ProductosPage(): JSX.Element {
                     </table>
                 </div>
 
-                {/* Paginación */}
+                {/* ── Paginación ────────────────────────────────────────── */}
                 {totalPages > 1 && (
                     <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
+                        display:        'flex',
+                        alignItems:     'center',
                         justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        borderTop: '1px solid var(--border-subtle)',
-                        flexWrap: 'wrap',
-                        gap: '8px',
+                        padding:        '12px 16px',
+                        borderTop:      '1px solid var(--border-subtle)',
+                        flexWrap:       'wrap',
+                        gap:            '8px',
                     }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                        <span style={{
+                            fontFamily:    'var(--font-mono)',
+                            fontSize:      '11px',
+                            color:         'var(--text-muted)',
+                            letterSpacing: '0.04em',
+                        }}>
                             Página {page} de {totalPages} · {totalElements} resultados
                         </span>
                         <div style={{ display: 'flex', gap: '4px' }}>
-                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtnStyle(page === 1)}>◀</button>
+                            <button
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                style={pageBtnStyle(page === 1)}
+                            >
+                                ◀
+                            </button>
                             {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                                <button key={n} onClick={() => setPage(n)} style={pageBtnStyle(false, n === page)}>{n}</button>
+                                <button
+                                    key={n}
+                                    onClick={() => setPage(n)}
+                                    style={pageBtnStyle(false, n === page)}
+                                >
+                                    {n}
+                                </button>
                             ))}
-                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={pageBtnStyle(page === totalPages)}>▶</button>
+                            <button
+                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                disabled={page === totalPages}
+                                style={pageBtnStyle(page === totalPages)}
+                            >
+                                ▶
+                            </button>
                         </div>
                     </div>
                 )}
@@ -380,7 +417,7 @@ export function ProductosPage(): JSX.Element {
 
             {/* ── Modal ────────────────────────────────────────────────── */}
             <ProductModal
-                produto={selected}
+                producto={selected}
                 isOpen={modalOpen}
                 onClose={() => { setModalOpen(false); setSelected(null); }}
                 onSave={handleSave}
@@ -412,5 +449,25 @@ function actionBtnStyle(color: string): CSSProperties {
         marginRight:   '6px',
         opacity:       0.75,
         transition:    'opacity 120ms ease',
+    };
+}
+
+function pageBtnStyle(disabled: boolean, active = false): CSSProperties {
+    return {
+        fontFamily:    'var(--font-mono)',
+        fontSize:      '11px',
+        fontWeight:    active ? 700 : 400,
+        padding:       '4px 9px',
+        background:    active ? 'var(--accent-primary)' : 'transparent',
+        color:         disabled
+            ? 'var(--text-muted)'
+            : active
+                ? 'var(--bg-base)'
+                : 'var(--text-secondary)',
+        border:        `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+        borderRadius:  '4px',
+        cursor:        disabled ? 'not-allowed' : 'pointer',
+        opacity:       disabled ? 0.4 : 1,
+        transition:    'all 120ms ease',
     };
 }

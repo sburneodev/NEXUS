@@ -21,28 +21,11 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.usuarioRepository = usuarioRepository;
     }
 
-  /*  @Override
-    @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
-
-        return new User(
-                usuario.getEmail(),
-                usuario.getPassword(),
-                usuario.getRoles().stream()
-                        .map(rol -> new SimpleGrantedAuthority(rol.getNombre()))
-                        .collect(Collectors.toList())
-        );
-    }*/
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + email));
-
-        // LOG TEMPORAL
-        System.out.println(">>> Roles cargados para " + email + ": " + usuario.getRoles());
 
         return new User(
                 usuario.getEmail(),

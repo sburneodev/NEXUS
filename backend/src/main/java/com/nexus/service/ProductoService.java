@@ -44,6 +44,15 @@ public class ProductoService {
         p.setEstadoConservacion(dto.getEstadoConservacion());
         p.setAtributosEspecificos(dto.getAtributosEspecificos());
         p.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
+        // Actualiza proveedor: si idProveedor es null se desvincula; si tiene valor se busca en DB
+        if (dto.getIdProveedor() != null) {
+            Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Proveedor no encontrado con id: " + dto.getIdProveedor()));
+            p.setProveedor(prov);
+        } else {
+            p.setProveedor(null);
+        }
         return toDTO(productoRepository.save(p));
     }
 
@@ -81,7 +90,10 @@ public class ProductoService {
         dto.setEstadoConservacion(p.getEstadoConservacion());
         dto.setAtributosEspecificos(p.getAtributosEspecificos());
         dto.setActivo(p.getActivo());
-        if (p.getProveedor() != null) dto.setProveedorNombre(p.getProveedor().getRazonSocial());
+        if (p.getProveedor() != null) {
+            dto.setIdProveedor(p.getProveedor().getId());
+            dto.setProveedorNombre(p.getProveedor().getRazonSocial());
+        }
         return dto;
     }
 
@@ -99,6 +111,13 @@ public class ProductoService {
         p.setEstadoConservacion(dto.getEstadoConservacion());
         p.setAtributosEspecificos(dto.getAtributosEspecificos());
         p.setActivo(true);
+        // Asignación de proveedor por FK — integridad referencial garantizada
+        if (dto.getIdProveedor() != null) {
+            Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
+                    .orElseThrow(() -> new RuntimeException(
+                            "Proveedor no encontrado con id: " + dto.getIdProveedor()));
+            p.setProveedor(prov);
+        }
         return p;
     }
 }

@@ -31,7 +31,11 @@ export interface ProductModalProps {
     producto:       Producto | null;
     isOpen:         boolean;
     onClose:        () => void;
-    onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>) => void;
+    /**
+     * Datos del formulario listos para enviar al backend.
+     * Excluye campos de solo lectura: id, creadoEn, actualizadoEn, proveedorNombre.
+     */
+    onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>) => void;
     /** Valores precargados por IA (solo en modo alta) */
     initialValues?: Partial<ProductForm>;
 }
@@ -100,20 +104,18 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
         e.preventDefault();
         if (!validate()) return;
         onSave({
-            sku:                form.sku.trim().toUpperCase(),
-            nombre:             form.nombre.trim(),
-            descripcion:        form.descripcion.trim() || null,
-            idCategoria:        null,
-            idProveedor:        null,
-            idUbicacion:        null,
-            precioCoste:        Number(form.precioCoste),
-            precioVenta:        Number(form.precioVenta),
-            stockActual:        Number(form.stockActual),
-            stockMinimo:        Number(form.stockMinimo) || 0,
-            stockMaximo:        Number(form.stockMaximo) || 999,
-            tipoProducto:       form.tipoProducto,
-            estadoConservacion: form.estadoConservacion || null,
-            activo:             form.activo,
+            sku:                  form.sku.trim().toUpperCase(),
+            nombre:               form.nombre.trim(),
+            descripcion:          form.descripcion.trim() || null,
+            idProveedor:          null,   // TODO: añadir selector de proveedor al formulario
+            precioCoste:          Number(form.precioCoste),
+            precioVenta:          Number(form.precioVenta),
+            stockActual:          Number(form.stockActual),
+            stockMinimo:          Number(form.stockMinimo) || 0,
+            stockMaximo:          Number(form.stockMaximo) || 999,
+            tipoProducto:         form.tipoProducto,
+            estadoConservacion:   form.estadoConservacion || null,
+            activo:               form.activo,
             atributosEspecificos: null,
         });
     }

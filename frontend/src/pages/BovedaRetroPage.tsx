@@ -12,7 +12,7 @@ import { MOCK_PRODUCTOS }      from '../mocks/mockProductos';
 import { TasadorIA }           from '../components/boveda/TasadorIA';
 import { ProductModal }        from '../components/productos/ProductModal';
 import type { ProductForm }    from '../components/productos/ProductModal';
-import { useTableFilters }     from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls }       from '../components/table/TableControls';
 import api                     from '../services/api';
 
@@ -114,7 +114,7 @@ function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
 export function BovedaRetroPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'boveda', initialLimit: 20 });
+    const filters = useTableFilters({ key: 'boveda', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────

@@ -64,8 +64,14 @@ public class ProductoService {
         return productoRepository.findByTipoProductoAndActivoTrue(tipo, pageable).map(this::toDTO);
     }
 
+    /** Búsqueda parcial (contiene) en nombre, SKU y descripción. */
     public Page<ProductoDTO> buscar(String query, Pageable pageable) {
-        return productoRepository.buscarFullText(query, pageable).map(this::toDTO);
+        return productoRepository.buscarContains(query, pageable).map(this::toDTO);
+    }
+
+    /** Búsqueda parcial filtrada además por tipo de producto. */
+    public Page<ProductoDTO> buscarPorTipo(String query, String tipo, Pageable pageable) {
+        return productoRepository.buscarContainsPorTipo(query, tipo, pageable).map(this::toDTO);
     }
 
     public void softDelete(Long id) {

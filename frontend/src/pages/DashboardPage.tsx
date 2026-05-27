@@ -46,10 +46,13 @@ export function DashboardPage(): JSX.Element {
     const [kpiData,    setKpiData]    = useState<KpiData>(BASE_KPI);
     const [loadState,  setLoadState]  = useState<'loading'|'ok'|'error'>('loading');
 
-    // Glow values adapt to theme: neon in dark, muted accent in light
+    // Glow values — en light mode usamos los neones reales para que
+    // el text-shadow de los KPIs tenga el mismo impacto visual que dark.
+    // El color del texto es WCAG-compliant (#059669 etc.) pero el resplandor
+    // usa los neones para crear la misma "luminosidad" de datos que en oscuro.
     const glow = isDark
         ? { green: 'rgba(0,255,136,0.40)', cyan: 'rgba(0,212,255,0.40)', gold: 'rgba(255,200,69,0.40)', danger: 'rgba(255,68,102,0.40)' }
-        : { green: 'rgba(5,150,105,0.25)', cyan: 'rgba(2,132,199,0.25)', gold: 'rgba(180,83,9,0.25)',   danger: 'rgba(220,38,38,0.25)'  };
+        : { green: 'rgba(0,255,136,0.32)', cyan: 'rgba(0,212,255,0.32)', gold: 'rgba(255,200,69,0.35)', danger: 'rgba(255,68,102,0.35)' };
 
     useEffect(() => {
         let cancelled = false;

@@ -1,21 +1,22 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LoginPage }      from './pages/LoginPage';
-import { DashboardPage }  from './pages/DashboardPage';
-import { ProductosPage }  from './pages/ProductosPage';
-import { Layout }         from './components/layout/Layout';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LoginPage }         from './pages/LoginPage';
+import { DashboardPage }     from './pages/DashboardPage';
+import { ProductosPage }     from './pages/ProductosPage';
+import { BovedaRetroPage }   from './pages/BovedaRetroPage';
+import { AlmacenPage }       from './pages/AlmacenPage';
+import { ClientesPage }      from './pages/ClientesPage';
+import { ProveedoresPage }   from './pages/ProveedoresPage';
+import { Layout }            from './components/layout/Layout';
+import { ProtectedRoute }    from './components/auth/ProtectedRoute';
+import { AiPanelProvider }   from './context/AiPanelContext';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
             <div style={{ textAlign: 'center' }}>
                 <div style={{ fontFamily: 'var(--font-mono)', fontSize: '48px', marginBottom: '12px', opacity: 0.2 }}>◈</div>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                    {name}
-                </div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-                    MÓDULO EN DESARROLLO
-                </div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.16em', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '6px' }}>{name}</div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>MÓDULO EN DESARROLLO</div>
             </div>
         </div>
     );
@@ -23,6 +24,7 @@ function ComingSoon({ name }: { name: string }): JSX.Element {
 
 function App(): JSX.Element {
     return (
+        <AiPanelProvider>
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
@@ -32,10 +34,11 @@ function App(): JSX.Element {
                     <Route element={<Layout />}>
                         <Route path="/dashboard"   element={<DashboardPage />} />
                         <Route path="/productos"   element={<ProductosPage />} />
-                        <Route path="/clientes"    element={<ComingSoon name="Clientes" />} />
-                        <Route path="/proveedores" element={<ComingSoon name="Proveedores" />} />
+                        <Route path="/clientes"    element={<ClientesPage />} />
+                        <Route path="/proveedores" element={<ProveedoresPage />} />
                         <Route path="/stock"       element={<ComingSoon name="Control de Stock" />} />
-                        <Route path="/boveda"      element={<ComingSoon name="La Bóveda Retro" />} />
+                        <Route path="/boveda"      element={<BovedaRetroPage />} />
+                        <Route path="/almacen"     element={<AlmacenPage />} />
                         <Route path="/ai"          element={<ComingSoon name="IA & Analytics" />} />
                     </Route>
                 </Route>
@@ -49,6 +52,7 @@ function App(): JSX.Element {
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
         </BrowserRouter>
+        </AiPanelProvider>
     );
 }
 

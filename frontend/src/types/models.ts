@@ -89,6 +89,7 @@ export interface KpiData {
     clientesActivos: number;
     clientesNuevosSemana: number;
     piezasRetroDisponibles: number;
+    productosStockBajo: number;
     productosStockCritico: number;
     /**
      * Datos para el gráfico de línea del dashboard.

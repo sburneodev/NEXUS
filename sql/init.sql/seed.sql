@@ -50,13 +50,18 @@ ON CONFLICT (nombre) DO NOTHING;
 -- ── SEED 3 · USUARIOS ────────────────────────────────────────
 
 INSERT INTO usuarios (email, username, nombre_completo, password_hash, is_active, is_verified) VALUES
-    ('admin@levelupnexus.es',    'admin',    'Administrador General',       '$2a$12$K7JL9wPqG.Ht8BzX3mNlkOV5bRp2qH6sZ0cM9xD4nT1eY7uA3fWi', TRUE, TRUE),
-    ('gestor@levelupnexus.es',   'gestor',   'Gestor de Inventario',        '$2a$12$M9Kp2nRqH7Lt0DzY4oPlmNW6cSr3tI8vB1eN5xF2gU0fQ4hXk6jAb', TRUE, TRUE),
-    ('cajero@levelupnexus.es',   'cajero',   'Cajero Tienda',               '$2a$12$Q3Ls5pTrJ8Mv2FaZ6rQnpOX7dUs4uJ9wC2fO6yG3hV1gR5iYl7kBc', TRUE, TRUE),
-    ('mkt@levelupnexus.es',      'mkt',      'Analista de Marketing',       '$2a$12$R4Mt6qUsK9Nw3GbA7sRoqPY8eVt5vK0xD3gP7zH4iW2hS6jZm8lCd', TRUE, TRUE),
-    ('contable@levelupnexus.es', 'contable', 'Responsable de Contabilidad', '$2a$12$S5Nu7rVtL0Ox4HcB8tSpqQZ9fWu6wL1yE4hQ8AI5jX3iT7kAn9mDe', TRUE, TRUE)
-ON CONFLICT (username) DO NOTHING;
-
+    ('admin@levelupnexus.es',    'admin',    'Administrador General',
+        '$2a$12$gkncmExba6MgeKR0cb8noO2aJTxEfk60QqrId5XbPgRPJG2Hfoe9O', TRUE, TRUE),
+    ('gestor@levelupnexus.es',   'gestor',   'Gestor de Inventario',
+        '$2a$12$7bOMLe7JqD1ClihOTbkJUe1No3plNYpCaLj5sOEc4CPJ52z0GGhPe', TRUE, TRUE),
+    ('cajero@levelupnexus.es',   'cajero',   'Cajero Tienda',
+        '$2a$12$9QM9c.ByEDW5CbCxEVnyJ.JhmhhYQkF8yrDRPSNY6ZHfKSxTKHlgu', TRUE, TRUE),
+    ('mkt@levelupnexus.es',      'mkt',      'Analista de Marketing',
+        '$2a$12$0LoR.vQZCUITFfPcqOYbVuERwlyURLVJxlCc59NAnRq9jjycWOUh6', TRUE, TRUE),
+    ('contable@levelupnexus.es', 'contable', 'Responsable de Contabilidad',
+        '$2a$12$kh9DvHl5dY51LaC4uUkmIuD2N/xzcuVSFWDlCNJ2Bft4Jvon34xz.', TRUE, TRUE)
+ON CONFLICT (username)
+DO UPDATE SET password_hash = EXCLUDED.password_hash;
 -- Roles por nombre (sin IDs hardcodeados → portátil entre entornos)
 INSERT INTO usuarios_roles (id_usuario, id_rol)
 SELECT u.id, r.id FROM usuarios u, roles r

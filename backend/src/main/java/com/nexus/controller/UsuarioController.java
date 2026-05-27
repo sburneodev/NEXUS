@@ -3,6 +3,8 @@ package com.nexus.controller;
 import com.nexus.dto.AsignarRolRequest;
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.service.UsuarioService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -20,8 +22,10 @@ public class UsuarioController {
     }
 
     @GetMapping
-    public ResponseEntity<List<UsuarioDTO>> listar() {
-        return ResponseEntity.ok(usuarioService.listar());
+    public ResponseEntity<Page<UsuarioDTO>> listar(
+            @RequestParam(required = false) String buscar,
+            Pageable pageable) {
+        return ResponseEntity.ok(usuarioService.listar(buscar, pageable));
     }
 
     @GetMapping("/{id}")

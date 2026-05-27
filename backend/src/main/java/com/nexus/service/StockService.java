@@ -62,8 +62,7 @@ public class StockService {
 
         // Llamada al SP con JDBC usando execute() y un PreparedStatementCallback
         // Se usa {call ...} que es la sintaxis estándar JDBC para procedimientos almacenados
-        String sql = "{call sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)}";
-
+        String sql = "CALL sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)";
         final String[] oResultado  = new String[1];
         final int[]    oStockNuevo = new int[1];
 

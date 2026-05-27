@@ -12,16 +12,36 @@
 import { useState, useEffect } from 'react';
 import { useAuth }  from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
+import type { Role } from '../../types/auth';
+
+// ── Jerarquía de roles: el primero en la lista tiene mayor precedencia ────
+// Resuelve el bug visual donde un usuario con roles ["GESTOR_INVENTARIO","ADMIN"]
+// (el gestor ascendido a admin) mostraba "GESTOR_INVENTARIO" en la Navbar.
+// Ahora siempre se muestra el rol de mayor autoridad.
+const ROLE_PRIORITY: Role[] = [
+    'ADMIN',
+    'CONTABLE',
+    'MARKETING_ANALYST',
+    'GESTOR_INVENTARIO',
+    'CAJERO',
+];
+
+function getPrimaryRole(roles: Role[]): string {
+    for (const r of ROLE_PRIORITY) {
+        if (roles.includes(r)) return r;
+    }
+    return roles[0] ?? '—';
+}
 
 interface NavbarProps {
     title?: string;
 }
 
 export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
-    const { user, logout }          = useAuth();
-    const { theme, toggle } = useTheme();
-    const [time, setTime]           = useState('');
-    const [showMenu, setShowMenu]   = useState(false);
+    const { user, logout }   = useAuth();
+    const { theme, toggle }  = useTheme();
+    const [time, setTime]    = useState('');
+    const [showMenu, setShowMenu] = useState(false);
 
     // Reloj en tiempo real
     useEffect(() => {
@@ -35,11 +55,21 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
         return () => clearInterval(id);
     }, []);
 
-    // Iniciales del email: admin@levelupnexus.es → "AD"
-    const email     = user?.email ?? 'admin@levelupnexus.es';
-    const initials  = email.slice(0, 2).toUpperCase();
-    const username  = email.split('@')[0].toUpperCase();
-    const role      = user?.roles[0] ?? '—';
+    // Cierra el dropdown automáticamente cuando el usuario cambia (login/logout).
+    // Previene que el menú quede abierto mostrando el email de la sesión anterior.
+    useEffect(() => {
+        setShowMenu(false);
+    }, [user]);
+
+    // ── Derivados del usuario — completamente null-safe ──────────────────
+    // Ningún fallback hardcodeado: si user es null, strings vacíos.
+    // El guard {user && (...)} en el JSX impide que se rendericen.
+    const email       = user?.email ?? '';
+    const initials    = email ? email.slice(0, 2).toUpperCase() : '';
+    const username    = email ? email.split('@')[0].toUpperCase() : '';
+    // Rol de mayor jerarquía — evita mostrar "GESTOR_INVENTARIO" para un admin
+    // cuyo JWT lista los roles en orden de creación (no de importancia).
+    const primaryRole = user ? getPrimaryRole(user.roles) : '—';
 
     return (
         <header style={{
@@ -126,7 +156,9 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                 </button>
             )}
 
-            {/* Menú de usuario — datos reales */}
+            {/* Menú de usuario — solo se renderiza si user no es null.
+                Previene cualquier display de datos residuales de sesión anterior. */}
+            {user && (
             <div style={{ position: 'relative' }}>
                 <div
                     onClick={() => setShowMenu(v => !v)}
@@ -141,7 +173,7 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                     onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-default)'; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-subtle)'; }}
                 >
-                    {/* Avatar con iniciales reales */}
+                    {/* Avatar con iniciales del usuario real */}
                     <div style={{
                         width: '26px', height: '26px', borderRadius: '50%',
                         background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
@@ -152,12 +184,17 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                         {initials}
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                        {/* username = email sin dominio. Siempre correcto porque
+                            viene del JWT del usuario activo, nunca de fallback. */}
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.06em', color: 'var(--text-primary)', textTransform: 'uppercase', lineHeight: 1.2 }}>
                             {username}
                         </div>
-                        {role.toUpperCase() !== username && (
+                        {/* primaryRole = rol de mayor jerarquía del usuario.
+                            Solo muestra si es distinto del propio username
+                            (ej. no mostrar "ADMIN" bajo un username "ADMIN"). */}
+                        {primaryRole.toUpperCase() !== username && (
                             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>
-                                {role}
+                                {primaryRole}
                             </div>
                         )}
                     </div>
@@ -180,7 +217,7 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                             animation: 'fadeInUp 0.15s ease both',
                         }}>
                             <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
-                                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+                                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.06em', wordBreak: 'break-all' }}>
                                     {email}
                                 </div>
                             </div>
@@ -209,6 +246,7 @@ export function Navbar({ title = 'DASHBOARD' }: NavbarProps): JSX.Element {
                     </>
                 )}
             </div>
+            )}
         </header>
     );
 }

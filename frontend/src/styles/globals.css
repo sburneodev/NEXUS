@@ -49,10 +49,10 @@
     /* Texto — jerarquía de 4 niveles */
     --text-primary: #e8e8f0;
     /* Contenido principal */
-    --text-secondary: #8888aa;
-    /* Texto secundario, labels */
-    --text-muted: #4a4a6a;
-    /* Placeholders, deshabilitado */
+    --text-secondary: #bebee0;
+    /* Texto secundario, labels — lila claro accesible */
+    --text-muted: #ababd0;
+    /* Placeholders, deshabilitado — lila medio legible */
     --text-inverse: #05050a;
     /* Texto sobre fondos claros */
 

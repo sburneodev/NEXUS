@@ -270,7 +270,7 @@ export function BovedaRetroPage(): JSX.Element {
 
             {/* Modal de alta precargado */}
             <ProductModal
-                produto={null}
+                producto={null}
                 isOpen={modalOpen}
                 onClose={() => { setModalOpen(false); setPrefill(undefined); }}
                 onSave={handleSave}

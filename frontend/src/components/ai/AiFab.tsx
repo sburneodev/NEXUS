@@ -551,7 +551,12 @@ export function AiFab(): JSX.Element {
                 </div>
             </div>
 
-            {/* ── FAB — píldora ────────────────────────────────────── */}
+            {/* ── FAB — píldora ────────────────────────────────────── *
+              El gradiente y sombra usan CSS vars --fab-gradient /    *
+              --fab-shadow definidas en theme.css. En modo oscuro      *
+              heredan los acentos neón del :root. En modo claro se     *
+              sobrescriben con literales #00FF88/#00D4FF para que el   *
+              FAB sea igual de brillante que en dark mode.             */}
             <button
                 onClick={toggle}
                 aria-label={isOpen ? 'Cerrar NEXUS AI' : 'Abrir NEXUS AI'}
@@ -567,19 +572,19 @@ export function AiFab(): JSX.Element {
                     padding:       '11px 22px 11px 18px',
                     borderRadius:  'var(--radius-full)',
                     background:    isOpen
-                        ? 'linear-gradient(135deg, var(--accent-primary-dim), var(--accent-cyan-dim))'
-                        : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                        ? 'var(--fab-gradient-active)'
+                        : 'var(--fab-gradient)',
                     border:        'none',
                     cursor:        'pointer',
-                    color:         '#05050a',
+                    color:         'var(--fab-color)',
                     boxShadow:     isOpen
-                        ? '0 4px 24px rgba(0,204,106,0.4), 0 0 0 2px rgba(0,204,106,0.25)'
-                        : '0 4px 24px rgba(0,255,136,0.32), 0 0 0 1px rgba(0,255,136,0.18)',
+                        ? 'var(--fab-shadow-active)'
+                        : 'var(--fab-shadow)',
                     transition:    'all 220ms var(--ease-smooth)',
                     userSelect:    'none',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.02)'; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
             >
                 <span style={{ fontSize: '15px', lineHeight: 1, flexShrink: 0 }}>
                     {isOpen ? '✕' : '◇'}

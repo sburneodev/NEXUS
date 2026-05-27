@@ -73,8 +73,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
         <aside style={{
             width:         `${width}px`,
             minHeight:     '100dvh',
-            background:    'var(--bg-surface)',
-            borderRight:   '1px solid var(--border-subtle)',
+            background:    'var(--sidebar-bg)',
+            borderRight:   '1px solid var(--sidebar-border)',
             display:       'flex',
             flexDirection: 'column',
             flexShrink:    0,
@@ -92,7 +92,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                 alignItems:   'center',
                 justifyContent: collapsed ? 'center' : 'flex-start',
                 padding:      collapsed ? '0' : '0 14px',
-                borderBottom: '1px solid var(--border-subtle)',
+                borderBottom: '1px solid var(--sidebar-border)',
                 flexShrink:   0,
                 gap:          '12px',
                 overflow:     'hidden',
@@ -107,7 +107,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                             fontWeight:           700,
                             letterSpacing:        '0.14em',
                             lineHeight:           1,
-                            background:           'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                            background:           'linear-gradient(135deg, var(--sidebar-logo-from), var(--sidebar-logo-to))',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor:  'transparent',
                             backgroundClip:       'text',
@@ -142,7 +142,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                 fontWeight:    700,
                                 letterSpacing: '0.16em',
                                 textTransform: 'uppercase',
-                                color:         'var(--text-muted)',
+                                color:         'var(--sidebar-text-muted)',
                                 padding:       '12px 20px 4px',
                             }}>
                                 {section.title}
@@ -159,12 +159,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                         display: 'flex', alignItems: 'center', gap: '12px',
                                         padding: '9px 20px', margin: '1px 8px',
                                         borderRadius: '6px', textDecoration: 'none',
-                                        // Color del texto SIEMPRE el normal — sin verde sólido
-                                        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                        background: 'transparent',
-                                        // Glow inset sutil en color NEXUS para el item activo
+                                        color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+                                        background: active ? 'var(--sidebar-active-bg)' : 'transparent',
                                         boxShadow: active
-                                            ? 'inset 0 0 0 1px rgba(0,212,255,0.28), inset 0 0 14px rgba(0,212,255,0.12)'
+                                            ? 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 14px var(--sidebar-glow-fill)'
                                             : 'none',
                                         border: '1px solid transparent',
                                         transition: 'box-shadow 160ms ease, color 160ms ease',
@@ -172,15 +170,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                     }}
                                     onMouseEnter={e => {
                                         const el = e.currentTarget as HTMLElement;
-                                        el.style.color = 'var(--text-primary)';
+                                        el.style.color = 'var(--sidebar-text-active)';
                                         if (!active) {
-                                            el.style.boxShadow = 'inset 0 0 0 1px rgba(0,212,255,0.18), inset 0 0 10px rgba(0,212,255,0.07)';
+                                            el.style.boxShadow = 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 10px var(--sidebar-glow-fill)';
                                         }
                                     }}
                                     onMouseLeave={e => {
                                         const el = e.currentTarget as HTMLElement;
                                         if (!active) {
-                                            el.style.color = 'var(--text-secondary)';
+                                            el.style.color = 'var(--sidebar-text)';
                                             el.style.boxShadow = 'none';
                                         }
                                     }}
@@ -189,8 +187,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                         fontFamily: 'var(--font-mono)',
                                         fontSize: '15px',
                                         flexShrink: 0,
-                                        color: active ? 'var(--accent-cyan)' : 'inherit',
-                                        textShadow: active ? '0 0 8px rgba(0,212,255,0.55)' : 'none',
+                                        color: active ? 'var(--sidebar-icon-active)' : 'inherit',
+                                        textShadow: active ? '0 0 8px var(--sidebar-glow-text)' : 'none',
                                     }}>
                                         {item.icon}
                                     </span>
@@ -209,7 +207,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                     )}
 
                                     {active && (
-                                        <div style={{ position: 'absolute', left: 0, top: '20%', height: '60%', width: '2px', background: 'var(--accent-cyan)', borderRadius: '0 2px 2px 0', boxShadow: '0 0 8px var(--accent-cyan)' }} />
+                                        <div style={{ position: 'absolute', left: 0, top: '20%', height: '60%', width: '2px', background: 'var(--sidebar-indicator)', borderRadius: '0 2px 2px 0', boxShadow: '0 0 8px var(--sidebar-glow-text)' }} />
                                     )}
                                 </NavLink>
                             );
@@ -219,7 +217,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
             </nav>
 
             {/* Footer colapsar */}
-            <div style={{ borderTop: '1px solid var(--border-subtle)', padding: '10px 8px' }}>
+            <div style={{ borderTop: '1px solid var(--sidebar-border)', padding: '10px 8px' }}>
                 <button
                     onClick={onToggle}
                     title={collapsed ? 'Expandir' : 'Colapsar'}
@@ -227,13 +225,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                         width: '100%', display: 'flex', alignItems: 'center',
                         justifyContent: collapsed ? 'center' : 'flex-start',
                         gap: '10px', padding: '7px 12px',
-                        background: 'transparent', border: '1px solid var(--border-subtle)',
-                        borderRadius: '6px', color: 'var(--text-muted)',
+                        background: 'transparent', border: '1px solid var(--sidebar-border)',
+                        borderRadius: '6px', color: 'var(--sidebar-text)',
                         cursor: 'pointer', fontFamily: 'var(--font-mono)',
                         fontSize: '13px', transition: 'all 140ms ease',
                     }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sidebar-glow)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sidebar-text-active)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--sidebar-border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--sidebar-text)'; }}
                 >
                     <span>{collapsed ? '▶▶' : '◀◀'}</span>
                     {!collapsed && <span style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600, letterSpacing: '0.10em', textTransform: 'uppercase' }}>COLAPSAR</span>}

@@ -25,19 +25,23 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
 
     // ── Paleta de colores según tema ─────────────────────────────────
     const pal = isLight ? {
-        // Colores sólidos para ejes y líneas
+        // ── Línea — trazo Emerald-600 sólido, bien visible sobre blanco ─
         line:       '#059669',
-        lineGrad0:  'rgba(5,150,105,0.22)',
+        lineGrad0:  'rgba(5,150,105,0.30)',
         lineGrad1:  'rgba(5,150,105,0.01)',
-        barTop:     'rgba(2,132,199,0.80)',
-        barBot:     'rgba(5,150,105,0.55)',
-        // Doughnut — versiones más oscuras para contraste sobre fondo blanco
-        dBg:    ['rgba(5,150,105,0.14)', 'rgba(2,132,199,0.14)', 'rgba(220,38,38,0.14)', 'rgba(180,83,9,0.14)'],
-        dBorder:['#059669',              '#0284c7',              '#dc2626',              '#b45309'            ],
-        dHover: ['rgba(5,150,105,0.28)', 'rgba(2,132,199,0.28)', 'rgba(220,38,38,0.28)', 'rgba(180,83,9,0.28)'],
-        // Etiquetas
-        titleColor: '#64748B',
-        labelColor: '#334155',
+        // ── Barras — gradiente Cian Neón → Verde Neón ──────────────────
+        // Los elementos de chart en canvas no son texto → pueden usar neones
+        // completos para mantener la energía visual del modo oscuro.
+        barTop:     'rgba(0,212,255,0.90)',  /* Electric Cyan */
+        barBot:     'rgba(0,255,136,0.65)',  /* Neon Green */
+        // ── Doughnut — rellenos saturados + bordes vivos ────────────────
+        // Segmentos más opacos para que destaquen en canvas blanco.
+        dBg:    ['rgba(5,150,105,0.28)', 'rgba(0,212,255,0.28)', 'rgba(220,38,38,0.28)', 'rgba(180,83,9,0.28)'],
+        dBorder:['#059669',              '#0891B2',              '#DC2626',              '#B45309'            ],
+        dHover: ['rgba(5,150,105,0.48)', 'rgba(0,212,255,0.48)', 'rgba(220,38,38,0.48)', 'rgba(180,83,9,0.48)'],
+        // Etiquetas — texto con contraste máximo
+        titleColor: '#020617',
+        labelColor: '#475569',
     } : {
         line:       CHART_COLORS.green,
         lineGrad0:  'rgba(0,255,136,0.30)',

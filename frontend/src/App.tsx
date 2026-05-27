@@ -9,6 +9,7 @@ import { ProveedoresPage }   from './pages/ProveedoresPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 import { AiPanelProvider }   from './context/AiPanelContext';
+import { AuthProvider }      from './context/AuthContext';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
@@ -26,6 +27,17 @@ function App(): JSX.Element {
     return (
         <AiPanelProvider>
         <BrowserRouter>
+            {/*
+              AuthProvider debe vivir DENTRO de BrowserRouter porque
+              internamente usa useNavigate() para las redirecciones de
+              logout y token expirado.
+
+              Al estar aquí, un único estado de autenticación es
+              compartido por TODOS los componentes del árbol:
+              ProtectedRoute, Navbar, páginas — sin estados residuales
+              de sesiones anteriores.
+            */}
+            <AuthProvider>
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<LoginPage />} />
@@ -51,6 +63,7 @@ function App(): JSX.Element {
 
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
+            </AuthProvider>
         </BrowserRouter>
         </AiPanelProvider>
     );

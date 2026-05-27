@@ -359,7 +359,12 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                         return (
                             <div key={rack.nivel} style={{
                                 background:   hl ? 'var(--accent-gold-glow)' : 'var(--bg-elevated)',
-                                border:       `1px solid ${hl ? 'var(--accent-gold)' : rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--border-subtle)'}`,
+                                border:       `1px solid ${
+                                    hl                                ? 'var(--accent-gold)'   :
+                                    rack.tipo_producto === 'RETRO'   ? 'var(--accent-gold)'   :
+                                    rack.bajo_minimo                 ? 'var(--accent-danger)'  :
+                                                                       'var(--border-subtle)'
+                                }`,
                                 borderRadius: '6px',
                                 padding:      '7px 9px',
                             }}>
@@ -372,7 +377,7 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                                         {rack.tipo_producto === 'RETRO' && (
                                             <span style={{ fontFamily:'var(--font-mono)', fontSize:'7px', color:'var(--accent-gold)', border:'1px solid var(--accent-gold)', borderRadius:'2px', padding:'0 3px', lineHeight:'13px' }}>R</span>
                                         )}
-                                        {rack.bajo_minimo && (
+                                        {rack.bajo_minimo && rack.tipo_producto !== 'RETRO' && (
                                             <span style={{ fontFamily:'var(--font-mono)', fontSize:'7px', color:'var(--accent-danger)', border:'1px solid var(--accent-danger)', borderRadius:'2px', padding:'0 3px', lineHeight:'13px' }}>!</span>
                                         )}
                                     </div>
@@ -386,7 +391,11 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                                 <div style={{ display:'flex', gap:'10px' }}>
                                     <div>
                                         <div style={{ fontFamily:'var(--font-display)', fontSize:'7px', fontWeight:700, letterSpacing:'0.08em', color:'var(--text-muted)', textTransform:'uppercase', marginBottom:'1px' }}>Stock</div>
-                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color: rack.bajo_minimo ? 'var(--accent-danger)' : 'var(--accent-primary)', lineHeight:1 }}>
+                                        <div style={{ fontFamily:'var(--font-mono)', fontSize:'14px', fontWeight:700, color:
+                                            rack.tipo_producto === 'RETRO'  ? 'var(--accent-gold)'    :
+                                            rack.bajo_minimo                ? 'var(--accent-danger)'  :
+                                                                              'var(--accent-primary)',
+                                        lineHeight:1 }}>
                                             {rack.stock_actual}
                                         </div>
                                     </div>
@@ -486,12 +495,12 @@ export function AlmacenPage(): JSX.Element {
                         <span style={{ fontFamily:'var(--font-display)', fontSize:'13px', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-primary)' }}>
                             ▦ PLANO DEL ALMACÉN
                         </span>
-                        {/* Ocupación */}
-                        <div style={{ display:'flex', flexDirection:'column', lineHeight:1 }}>
+                        {/* Ocupación — todo en una línea */}
+                        <div style={{ display:'flex', alignItems:'baseline', gap:'10px', lineHeight:1 }}>
                             <span style={{ fontFamily:'var(--font-mono)', fontSize:'13px', fontWeight:700, color: pctOcupado > 85 ? 'var(--accent-danger)' : pctOcupado > 60 ? 'var(--accent-gold)' : 'var(--accent-primary)', letterSpacing:'0.04em' }}>
                                 {pctOcupado}% ocupado
                             </span>
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.04em', marginTop:'2px' }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.04em' }}>
                                 {ocupados} en uso · {libres} libres de {MAX_RACKS}
                             </span>
                         </div>

@@ -12,6 +12,7 @@ import { AuditoriaPage }     from './pages/AuditoriaPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 import { AiPanelProvider }   from './context/AiPanelContext';
+import './styles/ia-avatar.css';
 import { AuthProvider }      from './context/AuthContext';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {

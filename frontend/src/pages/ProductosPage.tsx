@@ -1,32 +1,12 @@
 /**
- * pages/ProductosPage.tsx — SUFP reference implementation
- *
- * Demuestra la integración completa del Sistema Universal de Filtrado
- * y Paginación (SUFP):
- *
- *   1. useTableFilters  → estado centralizado (search/limit/page/sort)
- *   2. TableControls    → barra de búsqueda + selector de filas + paginación
- *   3. SkeletonRows     → skeleton loader en el <tbody> durante la carga
- *   4. useEffect        → dispara petición GET server-side en cada cambio
- *                         de `filters.querySignal` o de `filterTipo`
- *
- * Flujo de datos:
- *   input del usuario → debounce 300ms → querySignal cambia
- *   → useEffect dispara GET /productos?page=0&size=20&search=xxx
- *   → respuesta: data.content → setRows / data.totalElements → setPagination
- *
- * Fallback: si el backend no está disponible, filtra MOCK_PRODUCTOS
- * localmente con la misma lógica server-side (útil en desarrollo).
+ * pages/ProductosPage.tsx — UI-05
+ * Conectado al backend real via productoService
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import type { CSSProperties }               from 'react';
-import type { Producto, TipoProducto, PaginatedResponse } from '../types/models';
-import { useTableFilters }                               from '../hooks/useTableFilters';
-import { TableControls, SkeletonRows }                  from '../components/table/TableControls';
-import { ProductModal }                                  from '../components/productos/ProductModal';
-import { MOCK_PRODUCTOS }                               from '../mocks/mockProductos';
-import api                                              from '../services/api';
+import { useState, useEffect } from 'react';
+import type { Producto, TipoProducto } from '../types/models';
+import { ProductModal } from '../components/productos/ProductModal';
+import { productoService } from '../services/productoService';
 
 // ── Helper: simulación server-side sobre datos mock ──────────────────────────
 // Se usa como fallback cuando el backend no está disponible.
@@ -70,82 +50,64 @@ export function ProductosPage(): JSX.Element {
     const [rows,       setRows]       = useState<Producto[]>([]);
     const [isLoading,  setIsLoading]  = useState(true);
     const [filterTipo, setFilterTipo] = useState<TipoProducto | 'TODOS'>('TODOS');
-    const [modalOpen,  setModalOpen]  = useState(false);
-    const [selected,   setSelected]   = useState<Producto | null>(null);
+    const [page, setPage] = useState(1);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selected, setSelected] = useState<Producto | null>(null);
+    const [products, setProducts] = useState<Producto[]>([]);
+    const [totalElements, setTotalElements] = useState(0);
+    const [loading, setLoading] = useState(true);
 
-    // Dataset local para operaciones CRUD optimistas (mock o caché local).
-    // Cuando cambia (handleSave / handleDelete), el useEffect se re-ejecuta
-    // automáticamente porque `localData` está en su array de dependencias.
-    const [localData, setLocalData] = useState<Producto[]>(MOCK_PRODUCTOS);
+    const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
 
-    // ── Fetching server-side ──────────────────────────────────────────────────
+    // ── Cargar datos del backend ──────────────────────────────────────
     useEffect(() => {
-        let cancelled = false;
-        setIsLoading(true);
-
-        const params = buildParams();
-        // Filtros adicionales fuera del hook (tipo de producto)
-        if (filterTipo !== 'TODOS') params.set('tipo', filterTipo);
-
-        api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
-            .then(({ data }) => {
-                if (!cancelled) {
-                    setRows(data.content);
-                    setPagination(data.totalElements, data.totalPages);
-                }
+        setLoading(true);
+        productoService.listar(
+            page - 1,
+            PAGE_SIZE,
+            filterTipo !== 'TODOS' ? filterTipo : undefined,
+            search || undefined
+        )
+            .then(data => {
+                setProducts(data.content);
+                setTotalElements(data.totalElements);
             })
-            .catch(() => {
-                // Fallback: filtrado local sobre MOCK_PRODUCTOS
-                if (!cancelled) {
-                    const result = simulateServerFilter(
-                        localData, activeSearch, filterTipo, activePage, activeLimit
-                    );
-                    setRows(result.content);
-                    setPagination(result.totalElements, result.totalPages);
-                }
-            })
-            .finally(() => {
-                if (!cancelled) setIsLoading(false);
-            });
+            .catch(err => console.error('Error cargando productos:', err))
+            .finally(() => setLoading(false));
+    }, [page, filterTipo, search]);
 
-        return (): void => { cancelled = true; };
-    }, [
-        filters.querySignal, // ← se actualiza cuando search/page/limit/sort cambian
-        filterTipo,          // ← filtro extra fuera del hook
-        buildParams,
-        setPagination,
-        activeSearch,
-        activePage,
-        activeLimit,
-        localData,           // ← al editar/borrar localmente, re-filtra automáticamente
-    ]);
-
-    // ── Handlers CRUD ─────────────────────────────────────────────────────────
-
-    const handleSave = useCallback((
-        data: Omit<Produto, 'id' | 'creadoEn' | 'actualizadoEn'>
-    ): void => {
-        setLocalData(prev => {
+    // ── Guardar (crear o editar) ──────────────────────────────────────
+    async function handleSave(data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>): Promise<void> {
+        try {
             if (selected) {
-                // Edición: actualiza el elemento existente
-                return prev.map(p => p.id === selected.id ? { ...p, ...data } : p);
+                await productoService.editar(selected.id, data as any);
+            } else {
+                await productoService.crear(data as any);
             }
-            // Alta: prepend con id temporal
-            const newProduct: Produto = {
-                ...data,
-                id:           Date.now(),
-                creadoEn:     new Date().toISOString(),
-                actualizadoEn: new Date().toISOString(),
-            };
-            return [newProduct, ...prev];
-        });
-        setModalOpen(false);
-        setSelected(null);
-    }, [selected]);
+            const result = await productoService.listar(
+                page - 1, PAGE_SIZE,
+                filterTipo !== 'TODOS' ? filterTipo : undefined,
+                search || undefined
+            );
+            setProducts(result.content);
+            setTotalElements(result.totalElements);
+            setModalOpen(false);
+            setSelected(null);
+        } catch (err) {
+            console.error('Error guardando producto:', err);
+        }
+    }
 
-    const handleDelete = useCallback((id: number): void => {
-        if (window.confirm('¿Eliminar este produto?')) {
-            setLocalData(prev => prev.filter(p => p.id !== id));
+    // ── Eliminar ──────────────────────────────────────────────────────
+    async function handleDelete(id: number): Promise<void> {
+        if (window.confirm('¿Eliminar este producto?')) {
+            try {
+                await productoService.eliminar(id);
+                setProducts(prev => prev.filter(p => p.id !== id));
+                setTotalElements(prev => prev - 1);
+            } catch (err) {
+                console.error('Error eliminando producto:', err);
+            }
         }
     }, []);
 
@@ -197,13 +159,8 @@ export function ProductosPage(): JSX.Element {
                     }}>
                         Productos
                     </h1>
-                    <p style={{
-                        fontFamily:    'var(--font-mono)',
-                        fontSize:      '12px',
-                        color:         'var(--text-muted)',
-                        letterSpacing: '0.04em',
-                    }}>
-                        Gestión de catálogo y stock
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                        {loading ? 'Cargando...' : `${totalElements} producto${totalElements !== 1 ? 's' : ''} encontrado${totalElements !== 1 ? 's' : ''}`}
                     </p>
                 </div>
                 <button
@@ -282,11 +239,13 @@ export function ProductosPage(): JSX.Element {
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Skeleton loader durante carga */}
-                            {isLoading && <SkeletonRows rows={filters.limit > 8 ? 8 : filters.limit} cols={7} />}
-
-                            {/* Estado vacío */}
-                            {!isLoading && rows.length === 0 && (
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
+                                        CARGANDO...
+                                    </td>
+                                </tr>
+                            ) : products.length === 0 ? (
                                 <tr>
                                     <td
                                         colSpan={7}
@@ -304,10 +263,7 @@ export function ProductosPage(): JSX.Element {
                                             : 'SIN PRODUCTOS'}
                                     </td>
                                 </tr>
-                            )}
-
-                            {/* Filas de datos */}
-                            {!isLoading && rows.map(p => (
+                            ) : products.map(p => (
                                 <tr
                                     key={p.id}
                                     style={{
@@ -388,22 +344,38 @@ export function ProductosPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                        <button
-                                            onClick={() => openEdit(p)}
-                                            style={actionBtnStyle('#0088cc')}
-                                            title="Editar producto"
-                                        >EDITAR</button>
-                                        <button
-                                            onClick={() => handleDelete(p.id)}
-                                            style={actionBtnStyle('#cc2244')}
-                                            title="Eliminar producto"
-                                        >ELIMINAR</button>
+                                        <button onClick={() => openEdit(p)} style={actionBtnStyle('#0088cc')} title="Editar">EDITAR</button>
+                                        <button onClick={() => handleDelete(p.id)} style={actionBtnStyle('#cc2244')} title="Eliminar">ELIMINAR</button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
+
+                {/* Paginación */}
+                {totalPages > 1 && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 16px',
+                        borderTop: '1px solid var(--border-subtle)',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                    }}>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                            Página {page} de {totalPages} · {totalElements} resultados
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                            <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={pageBtnStyle(page === 1)}>◀</button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                                <button key={n} onClick={() => setPage(n)} style={pageBtnStyle(false, n === page)}>{n}</button>
+                            ))}
+                            <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={pageBtnStyle(page === totalPages)}>▶</button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── Modal ────────────────────────────────────────────────── */}

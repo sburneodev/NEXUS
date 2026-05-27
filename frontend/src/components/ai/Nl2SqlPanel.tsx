@@ -1,334 +1,324 @@
-/**
- * components/ai/Nl2SqlPanel.tsx — UI-04
- *
- * Panel de consulta NL2SQL.
- * El usuario escribe una pregunta en lenguaje natural y la IA
- * la convierte en SQL, la ejecuta y devuelve los resultados.
- *
- * Endpoint: POST /api/ai/nl2sql  { pregunta: string }
- * Respuesta: { sql: string, resultados: TableRow[], error?: string }
- *
- * Estados:
- *   idle    → formulario vacío esperando input
- *   loading → skeleton mientras la IA procesa
- *   success → tabla con resultados
- *   error   → mensaje de error sin romper el layout
- */
-
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import api from '../../services/api';
 import { DynamicTable, type TableRow } from './DynamicTable';
 
-// ── Tipos de la respuesta del backend ────────────────────────────────
 interface Nl2SqlResponse {
-    sql: string;
+    sql:        string;
     resultados: TableRow[];
-    mensaje?: string;
-    error?: string;
+    mensaje?:   string;
+    error?:     string;
 }
 
 type PanelState = 'idle' | 'loading' | 'success' | 'error';
 
-// ── Skeleton loader ───────────────────────────────────────────────────
+const EXAMPLES = [
+    '¿Cuáles son los 5 productos más vendidos?',
+    '¿Clientes con más de 500 puntos de fidelidad?',
+    '¿Piezas retro disponibles en La Bóveda?',
+    '¿Productos por debajo del stock mínimo?',
+];
+
 function SkeletonRow(): JSX.Element {
     return (
         <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-            {[40, 25, 35].map((w, i) => (
+            {[45, 30, 25].map((w, i) => (
                 <div key={i} style={{
-                    height: '14px',
-                    width: `${w}%`,
-                    borderRadius: '3px',
-                    background: 'var(--bg-overlay)',
-                    animation: 'skeletonPulse 1.4s ease-in-out infinite',
-                    animationDelay: `${i * 120}ms`,
+                    height:          '12px',
+                    width:           `${w}%`,
+                    borderRadius:    '3px',
+                    background:      'var(--bg-overlay)',
+                    animation:       'skeletonPulse 1.4s ease-in-out infinite',
+                    animationDelay:  `${i * 110}ms`,
                 }} />
             ))}
         </div>
     );
 }
 
-// ── Ejemplos de consultas ─────────────────────────────────────────────
-const EXAMPLES = [
-    '¿Cuáles son los 5 productos más vendidos este mes?',
-    '¿Qué clientes tienen más de 500 puntos de fidelidad?',
-    '¿Cuántas piezas retro quedan en La Bóveda?',
-    '¿Qué productos están por debajo del stock mínimo?',
-];
-
 export function Nl2SqlPanel(): JSX.Element {
-    const [pregunta, setPregunta] = useState('');
-    const [state, setState] = useState<PanelState>('idle');
-    const [result, setResult] = useState<Nl2SqlResponse | null>(null);
-    const [errorMsg, setErrorMsg] = useState('');
+    const [pregunta,   setPregunta]   = useState('');
+    const [lastQuery,  setLastQuery]  = useState('');
+    const [state,      setState]      = useState<PanelState>('idle');
+    const [result,     setResult]     = useState<Nl2SqlResponse | null>(null);
+    const [errorMsg,   setErrorMsg]   = useState('');
 
     async function handleSubmit(e: FormEvent<HTMLFormElement>): Promise<void> {
         e.preventDefault();
-        if (!pregunta.trim()) return;
+        const q = pregunta.trim();
+        if (!q) return;
 
+        setLastQuery(q);
         setState('loading');
         setResult(null);
         setErrorMsg('');
 
         try {
-            const { data } = await api.post<Nl2SqlResponse>('/ai/nl2sql', {
-                pregunta: pregunta.trim(),
-            });
-
-            if (data.error) {
-                setErrorMsg(data.error);
-                setState('error');
-            } else {
-                setResult(data);
-                setState('success');
-            }
+            const { data } = await api.post<Nl2SqlResponse>('/ai/nl2sql', { pregunta: q });
+            if (data.error) { setErrorMsg(data.error); setState('error'); }
+            else            { setResult(data);           setState('success'); }
         } catch {
-            setErrorMsg('No se pudo conectar con el asistente IA. Inténtalo de nuevo.');
+            setErrorMsg('No se pudo conectar con el asistente. Inténtalo de nuevo.');
             setState('error');
         }
     }
 
+    const canSubmit = state !== 'loading' && pregunta.trim().length > 0;
+
     return (
         <>
             <style>{`
-        @keyframes skeletonPulse {
-          0%, 100% { opacity: 0.4; }
-          50%       { opacity: 0.8; }
-        }
-      `}</style>
+                @keyframes skeletonPulse {
+                    0%, 100% { opacity: 0.3; }
+                    50%      { opacity: 0.7; }
+                }
+            `}</style>
 
-            <div style={{
-                background: 'var(--bg-surface)',
-                border: '1px solid var(--border-subtle)',
-                borderRadius: '10px',
-                overflow: 'hidden',
-            }}>
+            {/* ── Formulario ────────────────────────────────────────────── */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
 
-                {/* Cabecera */}
-                <div style={{
-                    padding: '16px 20px',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                }}>
-                    <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '16px',
-                        color: 'var(--accent-cyan)',
-                        textShadow: '0 0 10px rgba(0,212,255,0.4)',
-                    }}>◇</span>
-                    <div>
-                        <div style={{
-                            fontFamily: 'var(--font-display)',
-                            fontSize: '13px',
-                            fontWeight: 700,
-                            letterSpacing: '0.12em',
-                            textTransform: 'uppercase',
-                            color: 'var(--text-primary)',
-                        }}>
-                            ASISTENTE IA — NL2SQL
-                        </div>
-                        <div style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '10px',
-                            color: 'var(--text-muted)',
-                            letterSpacing: '0.04em',
-                        }}>
-                            Pregunta en lenguaje natural · Gemini + PostgreSQL
-                        </div>
-                    </div>
-                </div>
+                <textarea
+                    value={pregunta}
+                    onChange={e => setPregunta(e.target.value)}
+                    placeholder="¿Qué datos necesitas consultar?"
+                    disabled={state === 'loading'}
+                    rows={3}
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                            e.preventDefault();
+                            if (canSubmit) e.currentTarget.form?.requestSubmit();
+                        }
+                    }}
+                    style={{
+                        width:        '100%',
+                        boxSizing:    'border-box',
+                        fontFamily:   'var(--font-body)',
+                        fontSize:     '14px',
+                        lineHeight:   1.6,
+                        color:        'var(--text-primary)',
+                        background:   'var(--bg-elevated)',
+                        border:       '1px solid var(--border-default)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding:      '14px 16px',
+                        outline:      'none',
+                        resize:       'vertical',
+                        caretColor:   'var(--accent-primary)',
+                        transition:   'border-color 160ms, box-shadow 160ms',
+                    }}
+                    onFocus={e => {
+                        e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                        e.currentTarget.style.boxShadow  = '0 0 0 3px var(--accent-primary-glow)';
+                    }}
+                    onBlur={e => {
+                        e.currentTarget.style.borderColor = 'var(--border-default)';
+                        e.currentTarget.style.boxShadow  = 'none';
+                    }}
+                />
 
-                {/* Formulario */}
-                <div style={{ padding: '20px' }}>
-                    <form onSubmit={handleSubmit}>
-                        <textarea
-                            value={pregunta}
-                            onChange={e => setPregunta(e.target.value)}
-                            placeholder="Ej: ¿Cuáles son los 5 productos más vendidos este mes?"
-                            disabled={state === 'loading'}
-                            rows={3}
-                            style={{
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: '13px',
-                                color: 'var(--text-primary)',
-                                background: 'var(--bg-elevated)',
-                                border: '1px solid var(--border-default)',
-                                borderRadius: '7px',
-                                padding: '12px 14px',
-                                outline: 'none',
-                                resize: 'vertical',
-                                caretColor: 'var(--accent-cyan)',
-                                lineHeight: 1.6,
-                                transition: 'border-color 160ms ease, box-shadow 160ms ease',
-                                marginBottom: '12px',
-                            }}
-                            onFocus={e => {
-                                e.currentTarget.style.borderColor = 'var(--accent-cyan)';
-                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0,212,255,0.10)';
-                            }}
-                            onBlur={e => {
-                                e.currentTarget.style.borderColor = 'var(--border-default)';
-                                e.currentTarget.style.boxShadow = 'none';
-                            }}
-                        />
-
-                        {/* Ejemplos rápidos */}
-                        <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '6px',
-                            marginBottom: '14px',
-                        }}>
-                            {EXAMPLES.map(ex => (
-                                <button
-                                    key={ex}
-                                    type="button"
-                                    onClick={() => setPregunta(ex)}
-                                    style={{
-                                        fontFamily: 'var(--font-mono)',
-                                        fontSize: '10px',
-                                        color: 'var(--text-muted)',
-                                        background: 'var(--bg-elevated)',
-                                        border: '1px solid var(--border-subtle)',
-                                        borderRadius: '4px',
-                                        padding: '3px 8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 160ms ease',
-                                        letterSpacing: '0.02em',
-                                    }}
-                                    onMouseEnter={e => {
-                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--accent-cyan)';
-                                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--accent-cyan)';
-                                    }}
-                                    onMouseLeave={e => {
-                                        (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)';
-                                        (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-                                    }}
-                                >
-                                    {ex.length > 40 ? ex.slice(0, 40) + '…' : ex}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Botón Analizar */}
+                {/* Ejemplos rápidos */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    {EXAMPLES.map(ex => (
                         <button
-                            type="submit"
-                            disabled={state === 'loading' || !pregunta.trim()}
+                            key={ex}
+                            type="button"
+                            onClick={() => setPregunta(ex)}
                             style={{
-                                fontFamily: 'var(--font-display)',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                                padding: '10px 24px',
-                                background: state === 'loading' || !pregunta.trim()
-                                    ? 'rgba(255,255,255,0.04)'
-                                    : 'linear-gradient(90deg, var(--accent-cyan), var(--accent-primary))',
-                                color: state === 'loading' || !pregunta.trim()
-                                    ? 'var(--text-muted)'
-                                    : '#05050a',
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: state === 'loading' || !pregunta.trim() ? 'not-allowed' : 'pointer',
-                                transition: 'all 200ms ease',
-                                boxShadow: state === 'loading' || !pregunta.trim()
-                                    ? 'none'
-                                    : '0 0 20px rgba(0,212,255,0.25)',
+                                fontFamily:    'var(--font-mono)',
+                                fontSize:      '10px',
+                                color:         'var(--text-muted)',
+                                background:    'var(--bg-elevated)',
+                                border:        '1px solid var(--border-subtle)',
+                                borderRadius:  'var(--radius-full)',
+                                padding:       '4px 10px',
+                                cursor:        'pointer',
+                                transition:    'all 160ms',
+                                letterSpacing: '0.02em',
+                                lineHeight:    1.4,
+                            }}
+                            onMouseEnter={e => {
+                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                                (e.currentTarget as HTMLButtonElement).style.color       = 'var(--text-secondary)';
+                            }}
+                            onMouseLeave={e => {
+                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)';
+                                (e.currentTarget as HTMLButtonElement).style.color       = 'var(--text-muted)';
                             }}
                         >
-                            {state === 'loading' ? '⏳ ANALIZANDO...' : '⚡ ANALIZAR'}
+                            {ex.length > 38 ? ex.slice(0, 38) + '…' : ex}
                         </button>
-                    </form>
+                    ))}
                 </div>
 
-                {/* ── Área de resultados ──────────────────────────────────────── */}
-
-                {/* Skeleton loader */}
-                {state === 'loading' && (
-                    <div style={{ padding: '0 20px 20px' }}>
-                        <div style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '10px',
-                            color: 'var(--accent-cyan)',
-                            letterSpacing: '0.08em',
-                            marginBottom: '12px',
-                        }}>
-                            GENERANDO SQL · EJECUTANDO CONSULTA...
-                        </div>
-                        {[1, 2, 3, 4, 5].map(i => <SkeletonRow key={i} />)}
-                    </div>
-                )}
-
-                {/* Error */}
-                {state === 'error' && (
-                    <div style={{
-                        margin: '0 20px 20px',
-                        padding: '12px 14px',
-                        background: 'rgba(255,68,102,0.08)',
-                        border: '1px solid var(--accent-danger)',
-                        borderRadius: '6px',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '12px',
-                        color: 'var(--accent-danger)',
-                        letterSpacing: '0.02em',
+                {/* Botón analizar — estilo corporativo primario */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                    <span style={{
+                        fontFamily:    'var(--font-mono)',
+                        fontSize:      '10px',
+                        color:         'var(--text-muted)',
+                        letterSpacing: '0.04em',
                     }}>
-                        ⚠ {errorMsg}
-                    </div>
-                )}
+                        {state === 'loading' ? 'Procesando consulta...' : 'Ctrl+Enter para enviar'}
+                    </span>
+                    <button
+                        type="submit"
+                        disabled={!canSubmit}
+                        className="btn btn-primary"
+                        style={{ flexShrink: 0, opacity: canSubmit ? 1 : 0.4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
+                    >
+                        {state === 'loading' ? 'ANALIZANDO' : 'ANALIZAR'}
+                    </button>
+                </div>
+            </form>
 
-                {/* Resultados */}
-                {state === 'success' && result && (
-                    <div style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            {/* ── Área de respuesta (estilo chat) ──────────────────────── */}
+            {(state === 'loading' || state === 'success' || state === 'error') && (
+                <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-                        {/* SQL generado */}
+                    {/* Separador */}
+                    <div style={{ height: '1px', background: 'var(--border-subtle)' }} />
+
+                    {/* Burbuja de usuario (derecha) */}
+                    {lastQuery && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                            <div style={{
+                                maxWidth:     '85%',
+                                background:   'rgba(0,255,136,0.07)',
+                                border:       '1px solid rgba(0,255,136,0.18)',
+                                borderRadius: '16px 16px 4px 16px',
+                                padding:      '11px 15px',
+                                fontFamily:   'var(--font-body)',
+                                fontSize:     '13px',
+                                color:        'var(--text-primary)',
+                                lineHeight:   1.55,
+                            }}>
+                                {lastQuery}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Burbuja de IA (izquierda) — skeleton / success / error */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                         <div style={{
-                            padding: '12px 20px',
-                            background: 'var(--bg-elevated)',
+                            width:        '100%',
+                            background:   'var(--bg-elevated)',
+                            border:       '1px solid var(--border-subtle)',
+                            borderRadius: '4px 16px 16px 16px',
+                            padding:      '16px',
+                            boxShadow:    '0 2px 16px rgba(0,0,0,0.35)',
                         }}>
-                            <div style={{
-                                fontFamily: 'var(--font-display)',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                                color: 'var(--text-muted)',
-                                marginBottom: '6px',
-                            }}>
-                                SQL GENERADO
-                            </div>
-                            <code style={{
-                                fontFamily: 'var(--font-mono)',
-                                fontSize: '11px',
-                                color: 'var(--accent-gold)',
-                                display: 'block',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                            }}>
-                                {result.sql}
-                            </code>
-                        </div>
 
-                        {/* Tabla de resultados */}
-                        <div style={{ padding: '0 0 4px' }}>
-                            <div style={{
-                                padding: '10px 20px 6px',
-                                fontFamily: 'var(--font-display)',
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                                color: 'var(--text-muted)',
-                            }}>
-                                {result.resultados.length} RESULTADO{result.resultados.length !== 1 ? 'S' : ''}
-                            </div>
-                            <DynamicTable rows={result.resultados} />
+                            {/* ── Skeleton ── */}
+                            {state === 'loading' && (
+                                <div>
+                                    <div style={{
+                                        fontFamily:    'var(--font-mono)',
+                                        fontSize:      '10px',
+                                        color:         'var(--accent-primary)',
+                                        letterSpacing: '0.08em',
+                                        marginBottom:  '12px',
+                                        display:       'flex',
+                                        alignItems:    'center',
+                                        gap:           '6px',
+                                    }}>
+                                        <span style={{
+                                            display:    'inline-block',
+                                            width:      '6px',
+                                            height:     '6px',
+                                            borderRadius: '50%',
+                                            background: 'var(--accent-primary)',
+                                            animation:  'pulse-green 1s infinite',
+                                        }} />
+                                        GENERANDO CONSULTA
+                                    </div>
+                                    {[1,2,3,4].map(i => <SkeletonRow key={i} />)}
+                                </div>
+                            )}
+
+                            {/* ── Error ── */}
+                            {state === 'error' && (
+                                <div style={{
+                                    fontFamily:    'var(--font-mono)',
+                                    fontSize:      '12px',
+                                    color:         'var(--accent-danger)',
+                                    letterSpacing: '0.02em',
+                                    lineHeight:    1.5,
+                                    display:       'flex',
+                                    gap:           '8px',
+                                }}>
+                                    <span style={{ flexShrink: 0 }}>▲</span>
+                                    <span>{errorMsg}</span>
+                                </div>
+                            )}
+
+                            {/* ── Resultado ── */}
+                            {state === 'success' && result && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                                    {/* SQL generado */}
+                                    <div>
+                                        <div style={{
+                                            fontFamily:    'var(--font-display)',
+                                            fontSize:      '9px',
+                                            fontWeight:    600,
+                                            letterSpacing: '0.16em',
+                                            textTransform: 'uppercase',
+                                            color:         'var(--text-muted)',
+                                            marginBottom:  '6px',
+                                        }}>
+                                            SQL generado
+                                        </div>
+                                        <code style={{
+                                            display:      'block',
+                                            fontFamily:   'var(--font-mono)',
+                                            fontSize:     '11px',
+                                            color:        'var(--accent-gold)',
+                                            background:   'var(--bg-overlay)',
+                                            border:       '1px solid var(--border-subtle)',
+                                            borderRadius: 'var(--radius-base)',
+                                            padding:      '10px 12px',
+                                            whiteSpace:   'pre-wrap',
+                                            wordBreak:    'break-word',
+                                            lineHeight:   1.6,
+                                        }}>
+                                            {result.sql}
+                                        </code>
+                                    </div>
+
+                                    {/* Tabla de resultados */}
+                                    {result.resultados.length > 0 && (
+                                        <div>
+                                            <div style={{
+                                                fontFamily:    'var(--font-display)',
+                                                fontSize:      '9px',
+                                                fontWeight:    600,
+                                                letterSpacing: '0.16em',
+                                                textTransform: 'uppercase',
+                                                color:         'var(--text-muted)',
+                                                marginBottom:  '8px',
+                                            }}>
+                                                {result.resultados.length} resultado{result.resultados.length !== 1 ? 's' : ''}
+                                            </div>
+                                            <DynamicTable rows={result.resultados} />
+                                        </div>
+                                    )}
+
+                                    {result.resultados.length === 0 && (
+                                        <div style={{
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '11px',
+                                            color:         'var(--text-muted)',
+                                            letterSpacing: '0.04em',
+                                        }}>
+                                            La consulta no devolvió resultados.
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </>
     );
 }

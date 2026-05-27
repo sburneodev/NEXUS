@@ -1,165 +1,212 @@
-/**
- * components/dashboard/ChartsPanel.tsx — UI-03
- *
- * Panel con 3 gráficos Chart.js:
- *   - Line Chart: tendencia de ventas 30 días
- *   - Bar Chart:  ventas por categoría
- *   - Doughnut:   distribución de stock por tipo
- *
- * Usa la configuración global de chartConfig.ts.
- * Los datos vienen tipados con KpiData de types/models.ts.
- */
-
 import { Line, Bar, Doughnut } from 'react-chartjs-2';
 import type { KpiData } from '../../types/models';
-import { CHART_COLORS, BASE_CHART_OPTIONS } from '../../config/chartConfig';
+import { CHART_COLORS, getBaseChartOptions } from '../../config/chartConfig';
+import { useTheme } from '../../hooks/useTheme';
 
 interface ChartsPanelProps {
     kpiData: KpiData;
 }
 
-export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
+type ChartScriptContext = {
+    chart: {
+        ctx: CanvasRenderingContext2D;
+        chartArea: { top: number; bottom: number; left: number; right: number } | null;
+    };
+};
 
-    // ── Datos para Line Chart — ventas 30 días ───────────────────────
+export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
+    const { isDark }  = useTheme();
+    const isLight     = !isDark;
+
+    const critico = kpiData.productosStockCritico ?? 0;
+    const bajo    = kpiData.productosStockBajo ?? 0;
+    const retro   = kpiData.piezasRetroDisponibles ?? 0;
+    const normal  = Math.max(10, 60 - critico - bajo - retro);
+
+    // ── Paleta de colores según tema ─────────────────────────────────
+    const pal = isLight ? {
+        // Colores sólidos para ejes y líneas
+        line:       '#059669',
+        lineGrad0:  'rgba(5,150,105,0.22)',
+        lineGrad1:  'rgba(5,150,105,0.01)',
+        barTop:     'rgba(2,132,199,0.80)',
+        barBot:     'rgba(5,150,105,0.55)',
+        // Doughnut — versiones más oscuras para contraste sobre fondo blanco
+        dBg:    ['rgba(5,150,105,0.14)', 'rgba(2,132,199,0.14)', 'rgba(220,38,38,0.14)', 'rgba(180,83,9,0.14)'],
+        dBorder:['#059669',              '#0284c7',              '#dc2626',              '#b45309'            ],
+        dHover: ['rgba(5,150,105,0.28)', 'rgba(2,132,199,0.28)', 'rgba(220,38,38,0.28)', 'rgba(180,83,9,0.28)'],
+        // Etiquetas
+        titleColor: '#64748B',
+        labelColor: '#334155',
+    } : {
+        line:       CHART_COLORS.green,
+        lineGrad0:  'rgba(0,255,136,0.30)',
+        lineGrad1:  'rgba(0,255,136,0.01)',
+        barTop:     'rgba(0,212,255,0.85)',
+        barBot:     'rgba(0,255,136,0.55)',
+        dBg:    ['rgba(0,255,136,0.20)', 'rgba(0,212,255,0.20)', 'rgba(255,68,102,0.20)', 'rgba(255,200,69,0.20)'],
+        dBorder:[CHART_COLORS.green,     CHART_COLORS.cyan,      CHART_COLORS.danger,     CHART_COLORS.gold    ],
+        dHover: ['rgba(0,255,136,0.35)', 'rgba(0,212,255,0.35)', 'rgba(255,68,102,0.35)', 'rgba(255,200,69,0.35)'],
+        titleColor: '#aaaacc',
+        labelColor: '#8888aa',
+    };
+
+    const baseOpts = getBaseChartOptions(isLight);
+
+    // ── Line Chart ───────────────────────────────────────────────────
     const lineData = {
         labels: kpiData.ventasUltimos30Dias.map(v =>
             new Date(v.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
         ),
         datasets: [{
             label: 'Ventas (€)',
-            data: kpiData.ventasUltimos30Dias.map(v => v.total),
-            borderColor: CHART_COLORS.green,
-            backgroundColor: CHART_COLORS.greenAlpha,
-            borderWidth: 2,
-            pointRadius: 3,
-            pointBackgroundColor: CHART_COLORS.green,
-            tension: 0.4,
-            fill: true,
+            data:  kpiData.ventasUltimos30Dias.map(v => v.total),
+            borderColor:              pal.line,
+            borderWidth:              2.5,
+            pointRadius:              0,
+            pointHoverRadius:         5,
+            pointHoverBackgroundColor:pal.line,
+            tension:    0.4,
+            fill:       true,
+            backgroundColor: (context: ChartScriptContext) => {
+                const { ctx, chartArea } = context.chart;
+                if (!chartArea) return 'transparent';
+                const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                g.addColorStop(0, pal.lineGrad0);
+                g.addColorStop(1, pal.lineGrad1);
+                return g;
+            },
         }],
     };
 
     const lineOptions = {
-        ...BASE_CHART_OPTIONS,
+        ...baseOpts,
         plugins: {
-            ...BASE_CHART_OPTIONS.plugins,
+            ...baseOpts.plugins,
+            legend: { display: false },
             title: {
                 display: true,
-                text: 'TENDENCIA DE VENTAS — 30 DÍAS',
-                color: '#8888aa',
-                font: { family: "'Rajdhani', sans-serif", size: 11, weight: 600 },
-                padding: { bottom: 16 },
+                text:    'TENDENCIA DE VENTAS — 30 DÍAS',
+                color:   pal.titleColor,
+                font:    { family: "'Rajdhani', sans-serif", size: 13, weight: 700 },
+                padding: { bottom: 20 },
             },
         },
     };
 
-    // ── Datos para Bar Chart — unidades vendidas 30 días ────────────
+    // ── Bar Chart ────────────────────────────────────────────────────
+    const barLabels = kpiData.ventasUltimos30Dias
+        .filter((_, i) => i % 5 === 0)
+        .map(v => new Date(v.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }));
+
+    const barValues = kpiData.ventasUltimos30Dias
+        .filter((_, i) => i % 5 === 0)
+        .map(v => v.unidades);
+
     const barData = {
-        labels: kpiData.ventasUltimos30Dias
-            .filter((_, i) => i % 5 === 0) // Cada 5 días para no saturar
-            .map(v => new Date(v.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })),
+        labels: barLabels,
         datasets: [{
             label: 'Unidades vendidas',
-            data: kpiData.ventasUltimos30Dias
-                .filter((_, i) => i % 5 === 0)
-                .map(v => v.unidades),
-            backgroundColor: CHART_COLORS.cyanAlpha,
-            borderColor: CHART_COLORS.cyan,
-            borderWidth: 1,
-            borderRadius: 4,
+            data:  barValues,
+            borderRadius:  8,
+            borderSkipped: false as const,
+            borderWidth:   0,
+            backgroundColor: (context: ChartScriptContext) => {
+                const { ctx, chartArea } = context.chart;
+                if (!chartArea) return pal.barTop;
+                const g = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                g.addColorStop(0, pal.barTop);
+                g.addColorStop(1, pal.barBot);
+                return g;
+            },
         }],
     };
 
     const barOptions = {
-        ...BASE_CHART_OPTIONS,
+        ...baseOpts,
         plugins: {
-            ...BASE_CHART_OPTIONS.plugins,
+            ...baseOpts.plugins,
+            legend: { display: false },
             title: {
                 display: true,
-                text: 'UNIDADES VENDIDAS',
-                color: '#8888aa',
-                font: { family: "'Rajdhani', sans-serif", size: 11, weight: 600 },
+                text:    'UNIDADES VENDIDAS — MUESTRA',
+                color:   pal.titleColor,
+                font:    { family: "'Rajdhani', sans-serif", size: 12, weight: 700 },
                 padding: { bottom: 16 },
             },
         },
     };
 
-    // ── Datos para Doughnut — distribución de stock ──────────────────
+    // ── Doughnut — distribución real de inventario ───────────────────
     const doughnutData = {
-        labels: ['Disponible', 'Stock Crítico', 'Retro'],
+        labels: ['Stock OK', 'Stock Bajo', 'Stock Crítico', 'Retro'],
         datasets: [{
-            data: [
-                kpiData.clientesActivos,
-                kpiData.productosStockCritico,
-                kpiData.piezasRetroDisponibles,
-            ],
-            backgroundColor: [
-                CHART_COLORS.greenAlpha,
-                CHART_COLORS.dangerAlpha,
-                CHART_COLORS.goldAlpha,
-            ],
-            borderColor: [
-                CHART_COLORS.green,
-                CHART_COLORS.danger,
-                CHART_COLORS.gold,
-            ],
-            borderWidth: 2,
+            data:                [normal,     bajo,        critico,      retro      ],
+            backgroundColor:     pal.dBg,
+            borderColor:         pal.dBorder,
+            borderWidth:         2,
+            hoverBackgroundColor:pal.dHover,
+            hoverBorderWidth:    3,
         }],
     };
 
     const doughnutOptions = {
-        responsive: true,
+        responsive:          true,
         maintainAspectRatio: false,
+        cutout:              '72%',
         plugins: {
             legend: {
                 position: 'bottom' as const,
                 labels: {
-                    color: '#8888aa',
-                    font: { family: "'JetBrains Mono', monospace", size: 11 },
-                    boxWidth: 12,
-                    padding: 12,
+                    color:        pal.labelColor,
+                    font:         { family: "'JetBrains Mono', monospace", size: 11 },
+                    boxWidth:     10,
+                    padding:      16,
+                    usePointStyle:true,
+                    pointStyle:   'circle' as const,
                 },
             },
-            tooltip: BASE_CHART_OPTIONS.plugins.tooltip,
+            tooltip: baseOpts.plugins.tooltip,
             title: {
                 display: true,
-                text: 'DISTRIBUCIÓN DE INVENTARIO',
-                color: '#8888aa',
-                font: { family: "'Rajdhani', sans-serif", size: 11, weight: 600 },
+                text:    'DISTRIBUCIÓN DE INVENTARIO',
+                color:   pal.titleColor,
+                font:    { family: "'Rajdhani', sans-serif", size: 12, weight: 700 },
                 padding: { bottom: 16 },
             },
         },
     };
 
-    const cardStyle: React.CSSProperties = {
-        background: 'var(--bg-surface)',
-        border: '1px solid var(--border-subtle)',
-        borderRadius: '10px',
-        padding: '20px',
+    // Card usa var CSS para que la sombra cambie automáticamente con el tema
+    const card: React.CSSProperties = {
+        background:   'var(--bg-surface)',
+        border:       '1px solid var(--border-subtle)',
+        borderRadius: '12px',
+        padding:      '20px 24px',
+        boxShadow:    'var(--shadow-base)',
     };
 
     return (
-        <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gridTemplateRows: 'auto auto',
-            gap: '16px',
-        }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
             {/* Line Chart — ancho completo */}
-            <div style={{ ...cardStyle, gridColumn: '1 / -1', height: '220px' }}>
+            <div style={{ ...card, height: '260px' }}>
                 <Line data={lineData} options={lineOptions} />
             </div>
 
-            {/* Bar Chart */}
-            <div style={{ ...cardStyle, height: '200px' }}>
-                <Bar data={barData} options={barOptions} />
+            {/* Bar + Doughnut — lado a lado */}
+            <div style={{
+                display:             'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                gap:                 '16px',
+            }}>
+                <div style={{ ...card, height: '250px' }}>
+                    <Bar data={barData} options={barOptions} />
+                </div>
+                <div style={{ ...card, height: '250px' }}>
+                    <Doughnut data={doughnutData} options={doughnutOptions} />
+                </div>
             </div>
-
-            {/* Doughnut */}
-            <div style={{ ...cardStyle, height: '200px' }}>
-                <Doughnut data={doughnutData} options={doughnutOptions} />
-            </div>
-
         </div>
     );
 }

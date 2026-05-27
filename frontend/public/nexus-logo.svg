@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 64" width="280" height="64" role="img" aria-label="NEXUS ERP">
+  <title>NEXUS ERP — LevelUp Arcade</title>
+  <defs>
+    <linearGradient id="lg-brand" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00ff88"/>
+      <stop offset="1" stop-color="#00d4ff"/>
+    </linearGradient>
+    <linearGradient id="lg-brand-soft" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00ff88" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#00d4ff" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="lg-inner" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10112a"/>
+      <stop offset="1" stop-color="#05050a"/>
+    </linearGradient>
+    <linearGradient id="lg-text" x1="74" y1="20" x2="220" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00ff88"/>
+      <stop offset="1" stop-color="#00d4ff"/>
+    </linearGradient>
+    <filter id="lg-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- ── Isotipo (mismo que nexus-mark.svg) ── -->
+  <g>
+    <path d="M32 3 L58.5 17.5 L58.5 46.5 L32 61 L5.5 46.5 L5.5 17.5 Z"
+          fill="url(#lg-inner)"
+          stroke="url(#lg-brand)"
+          stroke-width="2"
+          stroke-linejoin="round"/>
+    <path d="M32 7 L55 20 L55 44 L32 57 L9 44 L9 20 Z"
+          fill="none"
+          stroke="url(#lg-brand-soft)"
+          stroke-width="0.5"
+          stroke-linejoin="round"
+          opacity="0.6"/>
+    <g stroke="url(#lg-brand)" stroke-width="1.4" stroke-linecap="square" fill="none" opacity="0.85">
+      <path d="M12 22 L12 17 L17 17"/>
+      <path d="M52 17 L57 17 L57 22"/>
+      <path d="M12 42 L12 47 L17 47"/>
+      <path d="M52 47 L57 47 L57 42"/>
+    </g>
+    <path d="M18 46 L18 18 L24 18 L40 40 L40 18 L46 18 L46 46 L40 46 L24 24 L24 46 Z"
+          fill="url(#lg-brand)"
+          filter="url(#lg-glow)"/>
+    <g fill="#00ff88">
+      <rect x="48.5" y="29" width="2" height="2"/>
+      <rect x="48.5" y="25" width="2" height="2" opacity="0.7"/>
+      <rect x="48.5" y="21" width="2" height="2" opacity="0.4"/>
+    </g>
+    <line x1="18" y1="32" x2="46" y2="32" stroke="#00d4ff" stroke-width="0.4" opacity="0.35"/>
+  </g>
+
+  <!-- ── Divisor vertical sutil ── -->
+  <line x1="72" y1="14" x2="72" y2="50" stroke="#00d4ff" stroke-width="0.6" opacity="0.25"/>
+
+  <!-- ── Wordmark "NEXUS" ── -->
+  <text x="82" y="36"
+        font-family="Rajdhani, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="28"
+        font-weight="700"
+        letter-spacing="3"
+        fill="url(#lg-text)">NEXUS</text>
+
+  <!-- ── Tagline mono ── -->
+  <text x="82" y="50"
+        font-family="'JetBrains Mono', 'Consolas', 'Courier New', monospace"
+        font-size="8"
+        font-weight="500"
+        letter-spacing="2.4"
+        fill="#6666aa">ERP SYSTEM · LEVELUP ARCADE</text>
+</svg>

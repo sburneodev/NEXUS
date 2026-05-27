@@ -1,174 +1,212 @@
-/**
- * DashboardPage.tsx — UI-03 + UI-04
- *
- * Página principal del ERP.
- * Obtiene los datos del backend en GET /api/dashboard/analytics
- * y los distribuye a KpiCards, ChartsPanel y Nl2SqlPanel.
- */
+import { useEffect, useState, useMemo } from 'react';
+import { useAuth }          from '../hooks/useAuth';
+import { useTheme }         from '../hooks/useTheme';
+import api                  from '../services/api';
+import type { KpiData }     from '../types/models';
+import { KpiCard }          from '../components/dashboard/KpiCard';
+import { ChartsPanel }      from '../components/dashboard/ChartsPanel';
+import { MOCK_PRODUCTOS }   from '../mocks/mockProductos';
+import { clienteService }   from '../services/entidadService';
 
-import { useEffect, useState } from 'react';
-import { useAuth } from '../hooks/useAuth';
-import api from '../services/api';
-import type { KpiData } from '../types/models';
-import { KpiCard } from '../components/dashboard/KpiCard';
-import { ChartsPanel } from '../components/dashboard/ChartsPanel';
-import { Nl2SqlPanel } from '../components/ai/Nl2SqlPanel';
+// ── KPIs derivados de los datos reales de productos ───────────────────
+// Se calculan una sola vez al cargar el módulo (fuente de verdad: mock compartido)
+const _activos      = MOCK_PRODUCTOS.filter(p => p.activo);
+const _retro        = _activos.filter(p => p.tipoProducto === 'RETRO');
+const _estandar     = _activos.filter(p => p.tipoProducto === 'ESTANDAR');
 
-// Datos de fallback para desarrollo sin backend
-const FALLBACK_KPI: KpiData = {
-    ventasHoy: 4280,
-    ventasAyer: 3820,
-    clientesActivos: 1847,
-    clientesNuevosSemana: 8,
-    piezasRetroDisponibles: 23,
-    productosStockCritico: 7,
-    ventasUltimos30Dias: Array.from({ length: 30 }, (_, i) => ({
-        fecha: new Date(Date.now() - (29 - i) * 86400000).toISOString().split('T')[0],
-        total: Math.floor(2000 + Math.random() * 4000),
-        unidades: Math.floor(10 + Math.random() * 50),
-    })),
+const KPI_PRODUCTOS = {
+    piezasRetroDisponibles: _retro.length,
+    productosStockCritico:  _estandar.filter(p => p.stockActual <= p.stockMinimo).length,
+    productosStockBajo:     _estandar.filter(
+        p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2
+    ).length,
 };
 
-type LoadState = 'loading' | 'ok' | 'error';
+// ── Serie de ventas demo (onda + ruido) ───────────────────────────────
+// Generada una vez, estable durante la sesión
+const VENTAS_DEMO = Array.from({ length: 30 }, (_, i) => ({
+    fecha:    new Date(Date.now() - (29-i)*86400000).toISOString().split('T')[0],
+    total:    Math.floor(380 + Math.sin(i * 0.45) * 160 + Math.random() * 220),
+    unidades: Math.floor(4   + Math.sin(i * 0.45) * 2   + Math.random() * 7),
+}));
+
+// ── Datos base (productos reales + ventas demo + clientes pendientes) ─
+const BASE_KPI: KpiData = {
+    ventasHoy:            0,
+    ventasAyer:           0,
+    clientesActivos:      0,
+    clientesNuevosSemana: 0,
+    ...KPI_PRODUCTOS,
+    ventasUltimos30Dias:  VENTAS_DEMO,
+};
 
 export function DashboardPage(): JSX.Element {
-    const { user } = useAuth();
-    const [kpiData, setKpiData] = useState<KpiData>(FALLBACK_KPI);
-    const [loadState, setLoadState] = useState<LoadState>('loading');
+    const { user }       = useAuth();
+    const { isDark }     = useTheme();
+    const [kpiData,    setKpiData]    = useState<KpiData>(BASE_KPI);
+    const [loadState,  setLoadState]  = useState<'loading'|'ok'|'error'>('loading');
+
+    // Glow values adapt to theme: neon in dark, muted accent in light
+    const glow = isDark
+        ? { green: 'rgba(0,255,136,0.40)', cyan: 'rgba(0,212,255,0.40)', gold: 'rgba(255,200,69,0.40)', danger: 'rgba(255,68,102,0.40)' }
+        : { green: 'rgba(5,150,105,0.25)', cyan: 'rgba(2,132,199,0.25)', gold: 'rgba(180,83,9,0.25)',   danger: 'rgba(220,38,38,0.25)'  };
 
     useEffect(() => {
         let cancelled = false;
 
-        api.get<KpiData>('/dashboard/analytics')
-            .then(({ data }) => {
-                if (!cancelled) { setKpiData(data); setLoadState('ok'); }
-            })
-            .catch(() => {
-                if (!cancelled) {
-                    // En desarrollo usamos los datos de fallback
-                    setLoadState('error');
-                }
-            });
+        // Llamadas en paralelo: analytics + conteo de clientes
+        Promise.allSettled([
+            api.get<KpiData>('/dashboard/analytics'),
+            clienteService.listar('', 0, 1),
+        ]).then(([analyticsRes, clientesRes]) => {
+            if (cancelled) return;
+
+            // Partimos siempre de los KPIs de producto reales
+            let merged: KpiData = { ...BASE_KPI };
+
+            if (analyticsRes.status === 'fulfilled') {
+                // El backend puede sobrescribir cualquier campo, pero nunca borrará los de productos
+                merged = { ...merged, ...analyticsRes.value.data, ...KPI_PRODUCTOS };
+                setLoadState('ok');
+            } else {
+                setLoadState('error');
+            }
+
+            // Conteo real de clientes (endpoint paginado)
+            if (clientesRes.status === 'fulfilled') {
+                merged.clientesActivos = clientesRes.value.totalElements;
+            }
+
+            setKpiData(merged);
+        });
 
         return () => { cancelled = true; };
     }, []);
 
-    const trend = kpiData.ventasHoy >= kpiData.ventasAyer ? 'up' : 'down';
+    const trend = useMemo(
+        () => kpiData.ventasHoy >= kpiData.ventasAyer ? 'up' : 'down',
+        [kpiData.ventasHoy, kpiData.ventasAyer]
+    );
     const pctVentas = kpiData.ventasAyer > 0
         ? Math.round(((kpiData.ventasHoy - kpiData.ventasAyer) / kpiData.ventasAyer) * 100)
         : 0;
 
     return (
-        <div>
+        <div style={{
+            height:        'calc(100dvh - 104px)',
+            display:       'flex',
+            flexDirection: 'column',
+            gap:           '12px',
+            overflow:      'hidden',
+        }}>
 
             {/* Cabecera */}
-            <div style={{ marginBottom: '28px', animation: 'fadeInUp 0.4s ease both' }}>
+            <div style={{ flexShrink: 0 }}>
                 <h1 style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '1.6rem',
-                    fontWeight: 700,
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      'clamp(18px, 2.2vw, 24px)',
+                    fontWeight:    700,
                     letterSpacing: '0.06em',
                     textTransform: 'uppercase',
-                    color: 'var(--text-primary)',
-                    marginBottom: '4px',
+                    color:         'var(--text-primary)',
+                    margin:        0,
                 }}>
                     Bienvenido,{' '}
                     <span style={{
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
+                        background:            'linear-gradient(135deg,var(--accent-primary),var(--accent-cyan))',
+                        WebkitBackgroundClip:  'text',
+                        WebkitTextFillColor:   'transparent',
+                        backgroundClip:        'text',
                     }}>
-                        {user?.email.split('@')[0] ?? 'Administrador'}
+                        {user?.email.split('@')[0] ?? 'Operador'}
                     </span>
                 </h1>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <p style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '12px',
-                        color: 'var(--text-muted)',
-                        letterSpacing: '0.04em',
-                    }}>
-                        {new Date().toLocaleDateString('es-ES', {
-                            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                        })}
-                    </p>
+                <p style={{
+                    fontFamily:    'var(--font-mono)',
+                    fontSize:      'var(--text-xs)',
+                    color:         'var(--text-muted)',
+                    margin:        '4px 0 0',
+                    letterSpacing: '0.04em',
+                }}>
+                    {new Date().toLocaleDateString('es-ES', {
+                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+                    })}
                     {loadState === 'error' && (
                         <span style={{
-                            fontFamily: 'var(--font-mono)',
-                            fontSize: '10px',
-                            color: 'var(--accent-gold)',
-                            letterSpacing: '0.06em',
-                            padding: '2px 8px',
-                            border: '1px solid var(--accent-gold)',
-                            borderRadius: '4px',
-                            opacity: 0.7,
-                        }}>
-                            DATOS DEMO
-                        </span>
+                            marginLeft:   '12px',
+                            color:        'var(--accent-gold)',
+                            border:       '1px solid var(--accent-gold)',
+                            borderRadius: '3px',
+                            padding:      '1px 6px',
+                            fontSize:     '9px',
+                        }}>VENTAS DEMO</span>
                     )}
-                </div>
+                </p>
             </div>
 
-            {/* KPI Grid */}
+            {/* KPIs */}
             <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                gap: '16px',
-                marginBottom: '24px',
+                flexShrink:          0,
+                display:             'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap:                 '12px',
             }}>
                 <KpiCard
                     title="VENTAS HOY"
-                    value={`€${kpiData.ventasHoy.toLocaleString('es-ES')}`}
-                    sub={`${pctVentas >= 0 ? '+' : ''}${pctVentas}% vs ayer`}
+                    value={kpiData.ventasHoy > 0
+                        ? `€${kpiData.ventasHoy.toLocaleString('es-ES')}`
+                        : '—'}
+                    sub={kpiData.ventasAyer > 0
+                        ? `${pctVentas >= 0 ? '+' : ''}${pctVentas}% vs ayer`
+                        : 'Sin datos de ventas'}
                     icon="€"
                     accent="var(--accent-primary)"
-                    glow="rgba(0,255,136,0.4)"
-                    trend={trend}
+                    glow={glow.green}
+                    trend={kpiData.ventasHoy > 0 ? trend : 'neutral'}
                     delay={0}
                 />
                 <KpiCard
                     title="CLIENTES ACTIVOS"
-                    value={kpiData.clientesActivos.toLocaleString('es-ES')}
-                    sub={`+${kpiData.clientesNuevosSemana} nuevos esta semana`}
+                    value={kpiData.clientesActivos > 0
+                        ? kpiData.clientesActivos.toLocaleString('es-ES')
+                        : loadState === 'loading' ? '…' : '—'}
+                    sub={kpiData.clientesNuevosSemana > 0
+                        ? `+${kpiData.clientesNuevosSemana} esta semana`
+                        : 'Conectando con API'}
                     icon="◉"
                     accent="var(--accent-cyan)"
-                    glow="rgba(0,212,255,0.4)"
-                    trend="up"
-                    delay={80}
+                    glow={glow.cyan}
+                    trend={kpiData.clientesActivos > 0 ? 'up' : 'neutral'}
+                    delay={60}
                 />
                 <KpiCard
-                    title="PIEZAS RETRO"
+                    title="BÓVEDA RETRO"
                     value={String(kpiData.piezasRetroDisponibles)}
-                    sub="La Bóveda disponible"
+                    sub={`de ${MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO').length} en catálogo`}
                     icon="◆"
                     accent="var(--accent-gold)"
-                    glow="rgba(255,200,69,0.4)"
+                    glow={glow.gold}
                     trend="neutral"
-                    delay={160}
+                    delay={120}
                 />
                 <KpiCard
                     title="STOCK CRÍTICO"
                     value={String(kpiData.productosStockCritico)}
-                    sub="Productos bajo mínimo"
+                    sub={kpiData.productosStockCritico > 0
+                        ? `${kpiData.productosStockBajo} en zona de alerta`
+                        : 'Todo el stock en orden'}
                     icon="▦"
                     accent="var(--accent-danger)"
-                    glow="rgba(255,68,102,0.4)"
-                    trend={kpiData.productosStockCritico > 5 ? 'down' : 'neutral'}
-                    delay={240}
+                    glow={glow.danger}
+                    trend={kpiData.productosStockCritico > 0 ? 'down' : 'neutral'}
+                    delay={180}
                 />
             </div>
 
-            {/* Charts */}
-            <div style={{ marginBottom: '24px', animation: 'fadeInUp 0.4s 0.2s ease both' }}>
+            {/* Gráficas */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <ChartsPanel kpiData={kpiData} />
             </div>
-
-            {/* NL2SQL Panel */}
-            <div style={{ animation: 'fadeInUp 0.4s 0.3s ease both' }}>
-                <Nl2SqlPanel />
-            </div>
-
         </div>
     );
 }

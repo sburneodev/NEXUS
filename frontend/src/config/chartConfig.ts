@@ -50,7 +50,7 @@ export const CHART_COLORS = {
     purpleAlpha: 'rgba(168, 85, 247, 0.15)',
 } as const;
 
-// ── Opciones base compartidas ───────────────────────────────────────
+// ── Opciones base compartidas (modo oscuro) ─────────────────────────
 export const BASE_CHART_OPTIONS = {
     responsive: true,
     maintainAspectRatio: false,
@@ -78,11 +78,60 @@ export const BASE_CHART_OPTIONS = {
     scales: {
         x: {
             grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-            ticks: { color: '#4a4a6a', font: { family: "'JetBrains Mono', monospace", size: 10 } },
+            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 10 } },
         },
         y: {
             grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-            ticks: { color: '#4a4a6a', font: { family: "'JetBrains Mono', monospace", size: 10 } },
+            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 10 } },
         },
     },
 } as const;
+
+// ── Factory de opciones según tema ──────────────────────────────────
+// Devuelve las opciones base adaptadas al tema activo.
+// isLight = !isDark desde useTheme().
+export function getBaseChartOptions(isLight: boolean) {
+    const tickColor  = isLight ? '#64748B' : '#7777aa';
+    const gridColor  = isLight ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.04)';
+    const labelColor = isLight ? '#64748B' : '#8888aa';
+    const ttBg       = isLight ? '#FFFFFF' : '#0f0f1a';
+    const ttBorder   = isLight ? 'rgba(15,23,42,0.12)' : 'rgba(255,255,255,0.10)';
+    const ttTitle    = isLight ? '#0F172A' : '#e8e8f0';
+    const ttBody     = isLight ? '#64748B' : '#8888aa';
+
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                labels: {
+                    color:    labelColor,
+                    font:     BASE_CHART_OPTIONS.plugins.legend.labels.font,
+                    boxWidth: 12,
+                    padding:  16,
+                },
+            },
+            tooltip: {
+                backgroundColor: ttBg,
+                borderColor:     ttBorder,
+                borderWidth:     1,
+                titleColor:      ttTitle,
+                bodyColor:       ttBody,
+                titleFont: BASE_CHART_OPTIONS.plugins.tooltip.titleFont,
+                bodyFont:  BASE_CHART_OPTIONS.plugins.tooltip.bodyFont,
+                padding:      12,
+                cornerRadius: 6,
+            },
+        },
+        scales: {
+            x: {
+                grid:  { color: gridColor, drawBorder: false },
+                ticks: { color: tickColor, font: BASE_CHART_OPTIONS.scales.x.ticks.font },
+            },
+            y: {
+                grid:  { color: gridColor, drawBorder: false },
+                ticks: { color: tickColor, font: BASE_CHART_OPTIONS.scales.y.ticks.font },
+            },
+        },
+    };
+}

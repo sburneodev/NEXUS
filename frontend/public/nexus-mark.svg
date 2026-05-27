@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="NEXUS">
+  <title>NEXUS</title>
+  <defs>
+    <linearGradient id="nx-brand" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00ff88"/>
+      <stop offset="1" stop-color="#00d4ff"/>
+    </linearGradient>
+    <linearGradient id="nx-brand-soft" x1="6" y1="4" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#00ff88" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#00d4ff" stop-opacity="0.55"/>
+    </linearGradient>
+    <linearGradient id="nx-inner" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10112a"/>
+      <stop offset="1" stop-color="#05050a"/>
+    </linearGradient>
+    <filter id="nx-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="0.9" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Hexagonal vault badge (pointy-top) -->
+  <path d="M32 3 L58.5 17.5 L58.5 46.5 L32 61 L5.5 46.5 L5.5 17.5 Z"
+        fill="url(#nx-inner)"
+        stroke="url(#nx-brand)"
+        stroke-width="2"
+        stroke-linejoin="round"/>
+
+  <!-- Inner concentric ring (depth) -->
+  <path d="M32 7 L55 20 L55 44 L32 57 L9 44 L9 20 Z"
+        fill="none"
+        stroke="url(#nx-brand-soft)"
+        stroke-width="0.5"
+        stroke-linejoin="round"
+        opacity="0.6"/>
+
+  <!-- Arcade marquee corner brackets -->
+  <g stroke="url(#nx-brand)" stroke-width="1.4" stroke-linecap="square" fill="none" opacity="0.85">
+    <path d="M12 22 L12 17 L17 17"/>
+    <path d="M52 17 L57 17 L57 22"/>
+    <path d="M12 42 L12 47 L17 47"/>
+    <path d="M52 47 L57 47 L57 42"/>
+  </g>
+
+  <!-- Geometric N letterform (single continuous path, sharp angles) -->
+  <path d="M18 46 L18 18 L24 18 L40 40 L40 18 L46 18 L46 46 L40 46 L24 24 L24 46 Z"
+        fill="url(#nx-brand)"
+        filter="url(#nx-glow)"/>
+
+  <!-- Pixel "level-up" indicator (3 ascending dots, top-right of N) -->
+  <g fill="#00ff88">
+    <rect x="48.5" y="29" width="2" height="2"/>
+    <rect x="48.5" y="25" width="2" height="2" opacity="0.7"/>
+    <rect x="48.5" y="21" width="2" height="2" opacity="0.4"/>
+  </g>
+
+  <!-- Scan-line accent across N midline -->
+  <line x1="18" y1="32" x2="46" y2="32" stroke="#00d4ff" stroke-width="0.4" opacity="0.35"/>
+</svg>

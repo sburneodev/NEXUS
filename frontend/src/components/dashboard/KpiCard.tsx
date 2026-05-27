@@ -1,28 +1,20 @@
 /**
- * components/dashboard/KpiCard.tsx — UI-03
+ * components/dashboard/KpiCard.tsx v2
  *
- * Tarjeta de KPI reutilizable.
- * Recibe title, value, sub, trend e icon.
- * El trend (positivo/negativo) cambia el color del indicador.
+ * Añade micro-interacción CSS animada al borde (borderPulse).
+ * El CSS variable --kpi-glow se inyecta inline para que cada
+ * tarjeta pulse con su propio color de acento.
  */
 
 interface KpiCardProps {
-    /** Etiqueta superior — ej. "VENTAS HOY" */
-    title: string;
-    /** Valor principal — ej. "€4.280" */
-    value: string;
-    /** Texto secundario — ej. "+12% vs ayer" */
-    sub: string;
-    /** Icono o símbolo — ej. "◈" o "€" */
-    icon: string;
-    /** Color del acento — usa variables CSS del sistema */
-    accent: string;
-    /** Color del glow para el text-shadow */
-    glow: string;
-    /** Tendencia: positiva (verde) | negativa (rojo) | neutral */
-    trend?: 'up' | 'down' | 'neutral';
-    /** Delay de animación en ms */
-    delay?: number;
+    title:   string;
+    value:   string;
+    sub:     string;
+    icon:    string;
+    accent:  string;
+    glow:    string;
+    trend?:  'up' | 'down' | 'neutral';
+    delay?:  number;
 }
 
 export function KpiCard({
@@ -32,96 +24,56 @@ export function KpiCard({
 }: KpiCardProps): JSX.Element {
 
     const trendColor =
-        trend === 'up' ? 'var(--accent-primary)' :
-            trend === 'down' ? 'var(--accent-danger)' :
-                'var(--text-muted)';
+        trend === 'up'   ? 'var(--accent-primary)' :
+        trend === 'down' ? 'var(--accent-danger)'  :
+        'var(--text-muted)';
 
     const trendIcon =
-        trend === 'up' ? '▲' :
-            trend === 'down' ? '▼' :
-                '—';
+        trend === 'up'   ? '▲' :
+        trend === 'down' ? '▼' :
+        '—';
 
     return (
         <div
-            className="card animate-fade-up"
+            className="card no-theme-transition"
             style={{
-                borderTop: `2px solid ${accent}`,
+                borderTop:      `2px solid ${accent}`,
                 animationDelay: `${delay}ms`,
-                position: 'relative',
-                overflow: 'hidden',
+                position:       'relative',
+                overflow:       'hidden',
+                // Inyecta la variable CSS para la animación del borde
+                ['--kpi-glow' as string]: glow,
+                animation:      `fadeInUp 0.4s ${delay}ms ease both, borderPulse 3s ${delay}ms ease infinite`,
             }}
         >
-            {/* Glow de fondo sutil */}
+            {/* Glow line superior */}
             <div style={{
-                position: 'absolute',
-                top: 0, left: 0, right: 0,
-                height: '2px',
+                position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
                 background: `linear-gradient(90deg, ${accent}, transparent)`,
-                opacity: 0.4,
+                opacity: 0.5,
             }} />
 
             {/* Cabecera: icono + label */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '12px',
-            }}>
-                <span style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '10px',
-                    fontWeight: 600,
-                    letterSpacing: '0.12em',
-                    textTransform: 'uppercase',
-                    color: 'var(--text-secondary)',
-                }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
                     {title}
                 </span>
-                <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '18px',
-                    color: accent,
-                    opacity: 0.7,
-                    textShadow: `0 0 10px ${glow}`,
-                }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: accent, opacity: 0.75, textShadow: `0 0 10px ${glow}` }}>
                     {icon}
                 </span>
             </div>
 
             {/* Valor principal */}
-            <div style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '2rem',
-                fontWeight: 700,
-                color: accent,
-                letterSpacing: '-0.02em',
-                lineHeight: 1,
-                marginBottom: '8px',
-                textShadow: `0 0 20px ${glow}`,
-            }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: accent, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 'var(--space-2)', textShadow: `0 0 16px ${glow}` }}>
                 {value}
             </div>
 
             {/* Subtexto con trend */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-            }}>
-                <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '10px',
-                    color: trendColor,
-                    fontWeight: 600,
-                }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: trendColor, fontWeight: 600 }}>
                     {trendIcon}
                 </span>
-                <span style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: '11px',
-                    color: 'var(--text-muted)',
-                    letterSpacing: '0.04em',
-                }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                     {sub}
                 </span>
             </div>

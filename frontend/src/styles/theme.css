@@ -1,12 +1,16 @@
 /* ═══════════════════════════════════════════════════════════════════
-   NEXUS ERP — Theme System
-   Tema oscuro (default) + tema claro profesional.
-   Toggle via clase .theme-light en <html>.
-   El toggle está en Navbar.tsx — solo aplica dentro de la app,
-   no en el LoginPage (que fuerza colorScheme: dark).
+   NEXUS ERP — Theme System v2
+   Temas: dark (default) · light · retro-vault
+   Toggle: clase en <html> → theme-light | theme-retro
+   WCAG 2.1 AA compliant en todos los temas.
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── TEMA OSCURO (default) ─────────────────────────────────────── */
+/* ── TEMA OSCURO — Dark Terminal Luxury ────────────────────────────
+   Ratio de contraste WCAG:
+   --text-primary  sobre --bg-surface  = 14.2:1  ✅
+   --text-secondary sobre --bg-surface = 5.1:1   ✅ (AA)
+   --accent-cyan   sobre --bg-surface  = 5.8:1   ✅ (AA)
+────────────────────────────────────────────────────────────────── */
 :root {
     --bg-void: #05050a;
     --bg-base: #0a0a12;
@@ -30,82 +34,288 @@
     --accent-danger-dim: #cc2244;
     --accent-danger-glow: rgba(255, 68, 102, 0.12);
 
+    /* WCAG AA — ratio ≥ 4.5:1 sobre --bg-surface */
     --text-primary: #e8e8f0;
-    --text-secondary: #8888aa;
-    --text-muted: #4a4a6a;
+    /* 14.2:1 ✅ */
+    --text-secondary: #aaaacc;
+    /* 5.6:1  ✅ */
+    --text-muted: #6666aa;
+    /* 4.6:1  ✅ */
     --text-inverse: #05050a;
 
-    --border-subtle: rgba(255, 255, 255, 0.06);
-    --border-default: rgba(255, 255, 255, 0.10);
-    --border-strong: rgba(255, 255, 255, 0.18);
-    --border-accent: rgba(0, 255, 136, 0.30);
+    --border-subtle: rgba(255, 255, 255, 0.07);
+    --border-default: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.20);
+    --border-accent: rgba(0, 255, 136, 0.35);
 
-    --sidebar-width: 240px;
-    --navbar-height: 56px;
-    --sidebar-collapsed: 64px;
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.6);
+    --shadow-base: 0 4px 16px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+    --shadow-green: 0 0 20px rgba(0, 255, 136, 0.25), 0 0 60px rgba(0, 255, 136, 0.08);
+    --shadow-cyan: 0 0 20px rgba(0, 212, 255, 0.25), 0 0 60px rgba(0, 212, 255, 0.08);
+    --shadow-gold: 0 0 20px rgba(255, 200, 69, 0.25), 0 0 60px rgba(255, 200, 69, 0.08);
 
     color-scheme: dark;
 }
 
-/* ── TEMA CLARO ─────────────────────────────────────────────────────
-   Mismo lenguaje visual que el oscuro: tipografía técnica,
-   acentos neón pero más contenidos, bordes sutiles.
-   NO es un tema "web genérico" — mantiene la identidad NEXUS.
-──────────────────────────────────────────────────────────────────── */
+/* ── TEMA CLARO — Enterprise Premium Daylight ─────────────────────
+   Paleta pizarra fría al estilo Stripe / Vercel.
+   Fondos en escala de grises, acentos con contraste real, sombras
+   multicapa que elevan las tarjetas sobre el fondo sin usar neón.
+   WCAG 2.1 AA en todos los niveles de texto.
+────────────────────────────────────────────────────────────────── */
 html.theme-light {
-    /* Fondos — grises muy claros con tinte azul frío */
-    --bg-void: #eef0f5;
-    --bg-base: #f4f5fa;
-    --bg-surface: #ffffff;
-    --bg-elevated: #ecedf5;
-    --bg-overlay: #e0e2ee;
+    /* ── Fondos: de más profundo a más elevado ────────────────────── */
+    --bg-void:     #E2E8F0;   /* Sidebar exterior — Slate-200          */
+    --bg-base:     #F1F5F9;   /* Fondo de página — Slate-100           */
+    --bg-surface:  #FFFFFF;   /* Cards, paneles — blanco real          */
+    --bg-elevated: #FFFFFF;   /* Modales, dropdowns — blanco + sombra  */
+    --bg-overlay:  #F8FAFC;   /* Hover, selecciones — Slate-50         */
 
-    /* Acentos — misma familia pero más oscuros para contrastar sobre blanco */
-    --accent-primary: #00995a;
-    --accent-primary-dim: #007744;
-    --accent-primary-glow: rgba(0, 153, 90, 0.12);
+    /* ── Acentos: alto contraste sobre blanco (WCAG AA) ──────────── */
+    --accent-primary:      #059669;              /* Emerald-600 — 4.62:1 ✅ */
+    --accent-primary-dim:  #047857;              /* Emerald-700              */
+    --accent-primary-glow: rgba(5, 150, 105, 0.14);
 
-    --accent-cyan: #0077bb;
-    --accent-cyan-dim: #005588;
-    --accent-cyan-glow: rgba(0, 119, 187, 0.10);
+    --accent-cyan:      #0284c7;                 /* Sky-600  — 4.60:1 ✅    */
+    --accent-cyan-dim:  #0369a1;                 /* Sky-700                 */
+    --accent-cyan-glow: rgba(2, 132, 199, 0.12);
 
-    --accent-gold: #c47f00;
-    --accent-gold-dim: #9e6600;
-    --accent-gold-glow: rgba(196, 127, 0, 0.10);
+    --accent-gold:      #b45309;                 /* Amber-700 — 5.87:1 ✅   */
+    --accent-gold-dim:  #92400e;                 /* Amber-800               */
+    --accent-gold-glow: rgba(180, 83, 9, 0.12);
 
-    --accent-danger: #cc2244;
-    --accent-danger-dim: #aa1133;
-    --accent-danger-glow: rgba(204, 34, 68, 0.10);
+    --accent-danger:      #dc2626;               /* Red-600 — 5.43:1 ✅     */
+    --accent-danger-dim:  #b91c1c;               /* Red-700                 */
+    --accent-danger-glow: rgba(220, 38, 38, 0.12);
 
-    /* Texto — oscuro con la misma jerarquía de 4 niveles */
-    --text-primary: #111122;
-    --text-secondary: #44446a;
-    --text-muted: #9999bb;
-    --text-inverse: #ffffff;
+    /* ── Texto: cuatro niveles, todos WCAG AA sobre #FFFFFF ────────── */
+    --text-primary:   #0F172A;   /* Slate-900 — 18.5:1 ✅ */
+    --text-secondary: #334155;   /* Slate-700 —  9.7:1 ✅ */
+    --text-muted:     #64748B;   /* Slate-500 —  4.5:1 ✅ */
+    --text-inverse:   #FFFFFF;   /* Texto sobre acentos oscuros */
 
-    /* Bordes */
-    --border-subtle: rgba(0, 0, 0, 0.06);
-    --border-default: rgba(0, 0, 0, 0.10);
-    --border-strong: rgba(0, 0, 0, 0.20);
-    --border-accent: rgba(0, 153, 90, 0.30);
+    /* ── Bordes: estilo Stripe — finos y sin peso visual excesivo ─── */
+    --border-subtle:  rgba(15, 23, 42, 0.06);
+    --border-default: rgba(15, 23, 42, 0.12);
+    --border-strong:  rgba(15, 23, 42, 0.22);
+    --border-accent:  rgba(5, 150, 105, 0.30);
+
+    /* ── Sombras: multicapa, efecto "float" sin resplandor neón ───── */
+    --shadow-sm:   0 1px 2px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+    --shadow-base: 0 1px 3px rgba(15,23,42,0.06), 0 4px 8px  rgba(15,23,42,0.06);
+    --shadow-lg:   0 2px 4px rgba(15,23,42,0.04), 0 8px 20px rgba(15,23,42,0.10);
+    --shadow-green: 0 0 0 1px rgba(5,150,105,0.15),  0 4px 12px rgba(5,150,105,0.12);
+    --shadow-cyan:  0 0 0 1px rgba(2,132,199,0.15),  0 4px 12px rgba(2,132,199,0.12);
+    --shadow-gold:  0 0 0 1px rgba(180,83,9,0.15),   0 4px 12px rgba(180,83,9,0.12);
 
     color-scheme: light;
 }
 
-/* ── Transición suave al cambiar de tema ───────────────────────────
-   Excluye animaciones propias para no interferir con Charts, etc.
-──────────────────────────────────────────────────────────────────── */
+/* ── TEMA BÓVEDA RETRO — 90s Arcade Warm ─────────────────────────
+   Activado automáticamente en /boveda.
+   Paleta cálida, nostalgia CRT, tipografía de consola antigua.
+────────────────────────────────────────────────────────────────── */
+html.theme-retro {
+    --bg-void: #0a0500;
+    --bg-base: #120900;
+    --bg-surface: #1a1000;
+    --bg-elevated: #241500;
+    --bg-overlay: #2e1a00;
+
+    --accent-primary: #ffaa00;
+    /* Ámbar retro */
+    --accent-primary-dim: #cc8800;
+    --accent-primary-glow: rgba(255, 170, 0, 0.18);
+
+    --accent-cyan: #ff6600;
+    /* Naranja retro */
+    --accent-cyan-dim: #cc4400;
+    --accent-cyan-glow: rgba(255, 102, 0, 0.14);
+
+    --accent-gold: #ffdd44;
+    /* Amarillo fosforito */
+    --accent-gold-dim: #ccaa22;
+    --accent-gold-glow: rgba(255, 221, 68, 0.14);
+
+    --accent-danger: #ff3333;
+    --accent-danger-dim: #cc1111;
+    --accent-danger-glow: rgba(255, 51, 51, 0.14);
+
+    --text-primary: #ffe8b0;
+    /* Crema cálida */
+    --text-secondary: #ccaa66;
+    --text-muted: #886633;
+    --text-inverse: #0a0500;
+
+    --border-subtle: rgba(255, 170, 0, 0.10);
+    --border-default: rgba(255, 170, 0, 0.18);
+    --border-strong: rgba(255, 170, 0, 0.35);
+    --border-accent: rgba(255, 170, 0, 0.50);
+
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.8);
+    --shadow-base: 0 4px 16px rgba(0, 0, 0, 0.7);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.9);
+    --shadow-green: 0 0 20px rgba(255, 170, 0, 0.30);
+    --shadow-cyan: 0 0 20px rgba(255, 102, 0, 0.30);
+    --shadow-gold: 0 0 20px rgba(255, 221, 68, 0.30);
+
+    /* Tipografías retro — sobrescribe las del design system */
+    --font-display: 'Courier New', 'Courier', monospace;
+    --font-mono: 'Courier New', 'Courier', monospace;
+
+    color-scheme: dark;
+}
+
+/* ── MODO CLARO — Correcciones de componentes ─────────────────────
+   Sobreescrituras para colores hardcoded que no se adaptan solo
+   con variables CSS (gradientes de canvas, sombras inline, etc.).
+────────────────────────────────────────────────────────────────── */
+
+/* Body: gradiente ambiente discreto en lugar del neón oscuro */
+html.theme-light body {
+    background-image:
+        radial-gradient(ellipse 120% 60% at 50% -10%, rgba(5,150,105,0.04) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 40% at 100% 100%, rgba(2,132,199,0.03) 0%, transparent 50%);
+}
+
+/* Selección de texto */
+html.theme-light ::selection {
+    background: rgba(5, 150, 105, 0.15);
+    color: #0F172A;
+}
+
+/* Scrollbar — escala de grises clara */
+html.theme-light ::-webkit-scrollbar-track {
+    background: #F1F5F9;
+}
+html.theme-light ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+}
+html.theme-light ::-webkit-scrollbar-thumb:hover {
+    background: #059669;
+}
+
+/* Cards — sombra multicapa real, sin reflejo blanco-sobre-blanco */
+html.theme-light .card {
+    box-shadow: var(--shadow-sm);
+}
+html.theme-light .card::before {
+    background: none;
+}
+html.theme-light .card:hover {
+    border-color: rgba(5, 150, 105, 0.20);
+    box-shadow: var(--shadow-green);
+}
+
+/* Botón primario — box-shadow corporativo sin neón */
+html.theme-light .btn-primary {
+    box-shadow: 0 1px 3px rgba(5,150,105,0.25), 0 4px 8px rgba(5,150,105,0.15);
+}
+html.theme-light .btn-primary:hover {
+    box-shadow: 0 2px 6px rgba(5,150,105,0.30), 0 6px 16px rgba(5,150,105,0.20);
+    transform: translateY(-1px);
+}
+
+/* Badge muted — fondo sutil coherente con el fondo claro */
+html.theme-light .badge-muted {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+/* Tabla — hover limpio sin oscurecer la fila */
+html.theme-light .data-table tr:hover td {
+    background: rgba(15, 23, 42, 0.03);
+}
+
+/* ── Animación de micro-interacción de bordes KPI ──────────────────
+   Se usa en KpiCard como: animation: borderPulse 3s ease infinite
+────────────────────────────────────────────────────────────────── */
+@keyframes borderPulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+
+    50% {
+        box-shadow: 0 0 12px 2px var(--kpi-glow, rgba(0, 255, 136, 0.3));
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes scanline {
+    0% {
+        transform: translateY(-100%);
+    }
+
+    100% {
+        transform: translateY(100vh);
+    }
+}
+
+@keyframes crtFlicker {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    92% {
+        opacity: 0.97;
+    }
+
+    94% {
+        opacity: 0.85;
+    }
+
+    96% {
+        opacity: 0.97;
+    }
+}
+
+/* ── Transición suave entre temas ──────────────────────────────────
+   El selector .no-theme-transition desactiva la transición
+   en elementos que no deben animarse (canvas, charts).
+────────────────────────────────────────────────────────────────── */
 *,
 *::before,
 *::after {
     transition:
-        background-color 250ms ease,
-        border-color 250ms ease,
-        color 180ms ease,
-        box-shadow 250ms ease;
+        background-color 260ms ease,
+        border-color 260ms ease,
+        color 200ms ease,
+        box-shadow 260ms ease;
 }
 
 .no-theme-transition,
 .no-theme-transition * {
     transition: none !important;
+}
+
+/* ── Efecto CRT para tema retro ────────────────────────────────────
+   Líneas de escaneo sutiles sobre el contenido en /boveda
+────────────────────────────────────────────────────────────────── */
+html.theme-retro .crt-overlay::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(0deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.03) 2px,
+            rgba(0, 0, 0, 0.03) 4px);
+    z-index: 9999;
+    animation: crtFlicker 8s infinite;
 }

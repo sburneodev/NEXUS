@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import org.springframework.security.core.context.SecurityContextHolder;
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
@@ -21,6 +22,13 @@ public class UsuarioService {
     public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
+    }
+    
+    private Long getUsuarioActualId() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usuarioRepository.findByEmail(email)
+                .map(Usuario::getId)
+                .orElseThrow(() -> new RuntimeException("Usuario actual no encontrado"));
     }
 
     /** Lista todos sin filtro (legacy — mantenido para compatibilidad interna). */
@@ -49,6 +57,9 @@ public class UsuarioService {
     }
 
     public void desactivar(Long id) {
+        if (id.equals(getUsuarioActualId())) {
+            throw new RuntimeException("No puedes desactivarte a ti mismo");
+        }
         Usuario u = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
         u.setActive(false);
@@ -65,6 +76,9 @@ public class UsuarioService {
     }
 
     public UsuarioDTO quitarRol(Long id, String nombreRol) {
+        if (id.equals(getUsuarioActualId()) && "ADMIN".equals(nombreRol)) {
+            throw new RuntimeException("No puedes quitarte el rol ADMIN a ti mismo");
+        }
         Usuario u = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
         u.getRoles().removeIf(r -> r.getNombre().equals(nombreRol));

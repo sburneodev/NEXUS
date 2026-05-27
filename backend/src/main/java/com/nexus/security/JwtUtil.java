@@ -27,16 +27,24 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
-    // El método que fabrica el billete VIP
-    public String generateToken(Long userId, String username, String role) {
+    /**
+     * Genera un JWT firmado para el usuario autenticado.
+     *
+     * @param userId   ID de la BD del usuario
+     * @param username Email del usuario (subject del JWT)
+     * @param roles    Roles normalizados separados por coma: "ADMIN" o "ADMIN,CAJERO"
+     *                 IMPORTANTE: sin prefijo ROLE_ — la normalización se hace en
+     *                 AuthService.login() antes de llamar aquí.
+     */
+    public String generateToken(Long userId, String username, String roles) {
         return Jwts.builder()
-                .subject(username)                  // A quién pertenece (username)
-                .claim("userId", userId)            // Dato extra: ID del usuario
-                .claim("roles", role)               // Dato extra: El rol (ADMIN, CAJERO...)
-                .issuedAt(new Date())               // Fecha de creación (ahora)
-                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) // Fecha de caducidad
-                .signWith(getSigningKey())          // Lo sellamos con nuestra firma secreta
-                .compact();                         // Lo empaquetamos en un String
+                .subject(username)                  // Subject: email del usuario
+                .claim("userId", userId)            // Claim extra: ID de BD
+                .claim("roles", roles)              // Claim extra: "ADMIN" o "ADMIN,CAJERO" (sin ROLE_)
+                .issuedAt(new Date())               // Emitido ahora
+                .expiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
+                .signWith(getSigningKey())
+                .compact();
     }
 
     //Extraer el email (subject) del token

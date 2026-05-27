@@ -169,8 +169,8 @@ export function AuditoriaPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 10)} cols={6} />}
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && <SkeletonRows rows={Math.min(filters.limit, 10)} cols={6} />}
 
                             {!isLoading && rows.length === 0 && (
                                 <tr>
@@ -182,7 +182,7 @@ export function AuditoriaPage(): JSX.Element {
                                 </tr>
                             )}
 
-                            {!isLoading && rows.map(e => (
+                            {rows.map(e => (
                                 <tr key={e.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
                                     onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--bg-overlay)')}
                                     onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}

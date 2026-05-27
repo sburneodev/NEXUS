@@ -30,8 +30,13 @@ public class ProductoService {
     }
 
     public ProductoDTO editar(Long id, ProductoDTO dto) {
+        System.out.println(">>> EDITAR id=" + id + " DTO recibido: " + dto.getNombre() + " precio=" + dto.getPrecioVenta());
+        
         Producto p = productoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
+        
+        System.out.println(">>> ANTES: nombre=" + p.getNombre() + " precio=" + p.getPrecioVenta());
+        
         p.setNombre(dto.getNombre());
         p.setDescripcion(dto.getDescripcion());
         p.setPrecioCoste(dto.getPrecioCoste());
@@ -40,7 +45,15 @@ public class ProductoService {
         p.setStockMaximo(dto.getStockMaximo());
         p.setEstadoConservacion(dto.getEstadoConservacion());
         p.setAtributosEspecificos(dto.getAtributosEspecificos());
-        return toDTO(productoRepository.save(p));
+        p.setSku(dto.getSku());
+        p.setTipoProducto(dto.getTipoProducto());
+        p.setStockActual(dto.getStockActual());
+        p.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
+        
+        Producto saved = productoRepository.save(p);
+        System.out.println(">>> DESPUÉS: nombre=" + saved.getNombre() + " precio=" + saved.getPrecioVenta());
+        
+        return toDTO(saved);
     }
 
     public Page<ProductoDTO> listar(Pageable pageable) {

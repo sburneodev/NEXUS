@@ -1,5 +1,8 @@
 package com.nexus.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
@@ -28,8 +31,15 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario actual no encontrado"));
     }
 
-    public List<UsuarioDTO> listar() {
-        return usuarioRepository.findAll().stream().map(this::toDTO).toList();
+    public Page<UsuarioDTO> listar(String buscar, Pageable pageable) {
+        Page<Usuario> page;
+        if (buscar != null && !buscar.isBlank()) {
+            page = usuarioRepository.findByEmailContainingIgnoreCaseOrUsernameContainingIgnoreCaseOrNombreCompletoContainingIgnoreCase(
+                    buscar, buscar, buscar, pageable);
+        } else {
+            page = usuarioRepository.findAll(pageable);
+        }
+        return page.map(this::toDTO);
     }
 
     public UsuarioDTO buscarPorId(Long id) {

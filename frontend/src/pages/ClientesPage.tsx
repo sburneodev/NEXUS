@@ -1,96 +1,100 @@
 /**
- * pages/ClientesPage.tsx — UI-09
+ * pages/ClientesPage.tsx — SUFP v2
  *
- * CRUD completo de Clientes.
- * Usa DataTable y FormModal genéricos.
- * Llama a clienteService — GET/POST/PUT/DELETE /api/clientes.
+ * CRUD completo de Clientes con paginación y búsqueda server-side.
+ * · GET   /api/clientes?buscar=&page=&size=  → PaginatedResponse<Cliente>
+ * · POST  /api/clientes                      → crea cliente
+ * · PUT   /api/clientes/{id}                 → edita cliente
+ * · DELETE /api/clientes/{id}                → elimina cliente
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { DataTable, Column } from '../components/common/DataTable';
-import { FormModal, FieldConfig } from '../components/common/FormModal';
+import type { CSSProperties }               from 'react';
+import type { PaginatedResponse }           from '../types/models';
+import { FormModal, FieldConfig }           from '../components/common/FormModal';
 import { clienteService, Cliente, ClienteForm } from '../services/entidadService';
+import { useTableFilters }                  from '../hooks/useTableFilters';
+import { TableControls, SkeletonRows }      from '../components/table/TableControls';
+import api                                  from '../services/api';
 
-// ── Columnas de la tabla ──────────────────────────────────────────────
-
-const COLUMNS: Column<Cliente>[] = [
-    {
-        key: 'nombre', header: 'Nombre', minWidth: 160,
-        render: row => (
-            <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
-                {row.nombre}
-            </span>
-        ),
-    },
-    {
-        key: 'email', header: 'Email',
-        render: row => (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.02em' }}>
-                {row.email ?? '—'}
-            </span>
-        ),
-    },
-    {
-        key: 'telefono', header: 'Teléfono',
-        render: row => (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
-                {row.telefono ?? '—'}
-            </span>
-        ),
-    },
-    {
-        key: 'puntosFidelidad', header: 'Puntos',
-        render: row => (
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--accent-gold)' }}>
-                {row.puntosFidelidad ?? 0}
-            </span>
-        ),
-    },
-    {
-        key: 'activo', header: 'Estado',
-        render: row => (
-            <span className={row.activo ? 'badge badge-green' : 'badge'} style={{ fontSize: '9px' }}>
-                {row.activo ? '● ACTIVO' : '○ INACTIVO'}
-            </span>
-        ),
-    },
-];
-
-// ── Campos del formulario ─────────────────────────────────────────────
+// ── Campos del formulario ─────────────────────────────────────────────────────
 
 const FIELDS: FieldConfig[] = [
-    { key: 'nombre', label: 'Nombre', type: 'text', required: true, placeholder: 'Nombre completo', colSpan: 2 },
-    { key: 'email', label: 'Email', type: 'email', placeholder: 'cliente@email.com' },
-    { key: 'telefono', label: 'Teléfono', type: 'tel', placeholder: '+34 600 000 000' },
-    { key: 'puntosFidelidad', label: 'Puntos Fidelidad', type: 'number', min: 0 },
-    { key: 'activo', label: 'Cliente activo', type: 'checkbox' },
+    { key: 'nombre',          label: 'Nombre',          type: 'text',     required: true, placeholder: 'Nombre completo', colSpan: 2 },
+    { key: 'email',           label: 'Email',           type: 'email',    placeholder: 'cliente@email.com' },
+    { key: 'telefono',        label: 'Teléfono',        type: 'tel',      placeholder: '+34 600 000 000' },
+    { key: 'puntosFidelidad', label: 'Puntos Fidelidad',type: 'number',   min: 0 },
+    { key: 'activo',          label: 'Cliente activo',  type: 'checkbox' },
 ];
 
-// ── Página ────────────────────────────────────────────────────────────
+// ── Página ────────────────────────────────────────────────────────────────────
 
 export function ClientesPage(): JSX.Element {
-    const [clientes, setClientes] = useState<Cliente[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [modalOpen, setModalOpen] = useState(false);
-    const [selected, setSelected] = useState<Cliente | null>(null);
-    const [isSaving, setIsSaving] = useState(false);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [toast, setToast] = useState('');
+
+    // ── SUFP ──────────────────────────────────────────────────────────────────
+    const filters = useTableFilters({ key: 'clientes', initialLimit: 20 });
+    const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
+
+    // ── Estado local ──────────────────────────────────────────────────────────
+    const [rows,       setRows]       = useState<Cliente[]>([]);
+    const [isLoading,  setIsLoading]  = useState(true);
+    const [modalOpen,  setModalOpen]  = useState(false);
+    const [selected,   setSelected]   = useState<Cliente | null>(null);
+    const [isSaving,   setIsSaving]   = useState(false);
+    const [errorMsg,   setErrorMsg]   = useState<string | null>(null);
+    const [toast,      setToast]      = useState('');
+    // Trigger para re-fetch tras operaciones CRUD
+    const [refreshKey, setRefreshKey] = useState(0);
 
     function showToast(msg: string): void {
         setToast(msg);
         setTimeout(() => setToast(''), 3000);
     }
 
-    const cargar = useCallback((): void => {
+    // ── Fetch server-side ─────────────────────────────────────────────────────
+    useEffect(() => {
+        let cancelled = false;
         setIsLoading(true);
-        clienteService.listar('', 0, 200)
-            .then(data => setClientes(data.content))
-            .catch(() => setClientes([]))
-            .finally(() => setIsLoading(false));
-    }, []);
 
-    useEffect(() => { cargar(); }, [cargar]);
+        api.get<PaginatedResponse<Cliente>>(`/clientes?${buildParams().toString()}`)
+            .then(({ data }) => {
+                if (!cancelled) {
+                    setRows(data.content);
+                    setPagination(data.totalElements, data.totalPages);
+                }
+            })
+            .catch(() => {
+                // Fallback: carga todos y filtra localmente
+                if (!cancelled) {
+                    clienteService.listar(activeSearch, activePage, activeLimit)
+                        .then(data => {
+                            if (!cancelled) {
+                                setRows(data.content);
+                                setPagination(data.totalElements, data.totalPages);
+                            }
+                        })
+                        .catch(() => {
+                            if (!cancelled) {
+                                setRows([]);
+                                setPagination(0, 0);
+                            }
+                        });
+                }
+            })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+
+        return (): void => { cancelled = true; };
+    }, [
+        filters.querySignal,
+        refreshKey,
+        buildParams,
+        setPagination,
+        activeSearch,
+        activePage,
+        activeLimit,
+    ]);
+
+    // ── Handlers CRUD ─────────────────────────────────────────────────────────
 
     function handleEdit(cliente: Cliente): void {
         setSelected(cliente); setErrorMsg(null); setModalOpen(true);
@@ -107,7 +111,7 @@ export function ClientesPage(): JSX.Element {
         try {
             await clienteService.eliminar(cliente.id);
             showToast(`${cliente.nombre} eliminado correctamente`);
-            cargar();
+            setRefreshKey(k => k + 1);
         } catch {
             showToast('Error al eliminar el cliente');
         }
@@ -123,13 +127,16 @@ export function ClientesPage(): JSX.Element {
                 await clienteService.crear(data as ClienteForm);
                 showToast('Cliente creado correctamente');
             }
-            handleClose(); cargar();
+            handleClose();
+            setRefreshKey(k => k + 1);
         } catch {
             setErrorMsg('Error al guardar. Comprueba los datos e inténtalo de nuevo.');
         } finally {
             setIsSaving(false);
         }
     }
+
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <div>
@@ -141,26 +148,112 @@ export function ClientesPage(): JSX.Element {
             )}
 
             {/* Cabecera */}
-            <div style={{ marginBottom: '24px' }}>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                    Clientes
-                </h1>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px', letterSpacing: '0.04em' }}>
-                    Gestión de la cartera de clientes · {clientes.filter(c => c.activo).length} activos
-                </p>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                        Clientes
+                    </h1>
+                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px', letterSpacing: '0.04em' }}>
+                        Gestión de la cartera de clientes
+                    </p>
+                </div>
+                <button
+                    onClick={handleAdd}
+                    className="btn btn-primary"
+                    style={{ letterSpacing: '0.12em', fontSize: '12px', flexShrink: 0 }}
+                >
+                    + NUEVO CLIENTE
+                </button>
             </div>
 
-            <DataTable<Cliente>
-                columns={COLUMNS}
-                data={clientes}
-                isLoading={isLoading}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onAdd={handleAdd}
-                addLabel="NUEVO CLIENTE"
-                searchPlaceholder="Buscar por nombre, email o teléfono..."
-            />
+            {/* TableControls: búsqueda · filas · paginación */}
+            <div style={{ marginBottom: '16px' }}>
+                <TableControls
+                    filters={filters}
+                    isLoading={isLoading}
+                    entityLabel="cliente"
+                    searchPlaceholder="Buscar por nombre, email o teléfono..."
+                />
+            </div>
 
+            {/* Tabla */}
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
+                                {['Nombre', 'Email', 'Teléfono', 'Puntos', 'Estado', 'Acciones'].map(h => (
+                                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'var(--bg-elevated)' }}>
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={6} />}
+
+                            {!isLoading && rows.length === 0 && (
+                                <tr>
+                                    <td colSpan={6} style={{ padding: '48px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+                                        {filters.search
+                                            ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
+                                            : 'SIN CLIENTES'}
+                                    </td>
+                                </tr>
+                            )}
+
+                            {!isLoading && rows.map(c => (
+                                <tr
+                                    key={c.id}
+                                    style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                    <td style={tdStyle}>
+                                        <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                                            {c.nombre}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.02em' }}>
+                                            {c.email ?? '—'}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                            {c.telefono ?? '—'}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--accent-gold)' }}>
+                                            {c.puntosFidelidad ?? 0}
+                                        </span>
+                                    </td>
+                                    <td style={tdStyle}>
+                                        <span className={c.activo ? 'badge badge-green' : 'badge'} style={{ fontSize: '9px' }}>
+                                            {c.activo ? '● ACTIVO' : '○ INACTIVO'}
+                                        </span>
+                                    </td>
+                                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
+                                        <button
+                                            onClick={() => handleEdit(c)}
+                                            style={actionBtnStyle('#0088cc')}
+                                            title="Editar cliente"
+                                        >EDITAR</button>
+                                        <button
+                                            onClick={() => handleDelete(c)}
+                                            style={actionBtnStyle('#cc2244')}
+                                            title="Eliminar cliente"
+                                        >ELIMINAR</button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Modal */}
             <FormModal<Cliente>
                 isOpen={modalOpen}
                 title="Cliente"
@@ -173,4 +266,27 @@ export function ClientesPage(): JSX.Element {
             />
         </div>
     );
+}
+
+// ── Estilos ───────────────────────────────────────────────────────────────────
+
+const tdStyle: CSSProperties = { padding: '10px 14px', verticalAlign: 'middle' };
+
+function actionBtnStyle(color: string): CSSProperties {
+    return {
+        fontFamily:    'var(--font-display)',
+        fontSize:      '10px',
+        fontWeight:    700,
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        padding:       '4px 10px',
+        background:    'transparent',
+        color,
+        border:        `1px solid ${color}`,
+        borderRadius:  '4px',
+        cursor:        'pointer',
+        marginRight:   '6px',
+        opacity:       0.75,
+        transition:    'opacity 120ms ease',
+    };
 }

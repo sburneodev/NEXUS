@@ -52,4 +52,9 @@ public class UsuarioController {
                                                  @RequestBody AsignarRolRequest request) {
         return ResponseEntity.ok(usuarioService.quitarRol(id, request.getRol()));
     }
+    @PutMapping("/{id}/rol")
+    public ResponseEntity<UsuarioDTO> cambiarRol(@PathVariable Long id,
+                                                  @RequestBody AsignarRolRequest request) {
+        return ResponseEntity.ok(usuarioService.asignarRol(id, request.getRol()));
+    }
 }

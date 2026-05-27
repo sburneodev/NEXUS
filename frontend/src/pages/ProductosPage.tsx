@@ -8,10 +8,47 @@ import type { Producto, TipoProducto } from '../types/models';
 import { ProductModal } from '../components/productos/ProductModal';
 import { productoService } from '../services/productoService';
 
-const PAGE_SIZE = 8;
+// ── Helper: simulación server-side sobre datos mock ──────────────────────────
+// Se usa como fallback cuando el backend no está disponible.
+// En producción solo se usa el API real; este bloque se puede eliminar.
+function simulateServerFilter(
+    data:   Producto[],
+    search: string,
+    tipo:   TipoProducto | 'TODOS',
+    page:   number,
+    size:   number,
+): { content: Producto[]; totalElements: number; totalPages: number } {
+    const q = search.toLowerCase();
+
+    const filtered = data.filter(p => {
+        const matchSearch = !q
+            || p.nombre.toLowerCase().includes(q)
+            || p.sku.toLowerCase().includes(q);
+        const matchTipo = tipo === 'TODOS' || p.tipoProducto === tipo;
+        return matchSearch && matchTipo;
+    });
+
+    const totalElements = filtered.length;
+    const totalPages    = Math.ceil(totalElements / size) || 1;
+    const content       = filtered.slice(page * size, (page + 1) * size);
+
+    return { content, totalElements, totalPages };
+}
+
+// ── Página ────────────────────────────────────────────────────────────────────
 
 export function ProductosPage(): JSX.Element {
-    const [search, setSearch] = useState('');
+
+    // ── SUFP — estado de filtrado centralizado ────────────────────────────────
+    const filters = useTableFilters({ key: 'productos', initialLimit: 20 });
+
+    // Desestructuramos las funciones estables (useCallback) para declararlas
+    // como dependencias del useEffect sin provocar re-renders innecesarios.
+    const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
+
+    // ── Estado local ──────────────────────────────────────────────────────────
+    const [rows,       setRows]       = useState<Producto[]>([]);
+    const [isLoading,  setIsLoading]  = useState(true);
     const [filterTipo, setFilterTipo] = useState<TipoProducto | 'TODOS'>('TODOS');
     const [page, setPage] = useState(1);
     const [modalOpen, setModalOpen] = useState(false);
@@ -72,23 +109,24 @@ export function ProductosPage(): JSX.Element {
                 console.error('Error eliminando producto:', err);
             }
         }
-    }
+    }, []);
 
-    function openNew(): void { setSelected(null); setModalOpen(true); }
-    function openEdit(p: Producto): void { setSelected(p); setModalOpen(true); }
+    const openNew  = (): void => { setSelected(null);  setModalOpen(true); };
+    const openEdit = (p: Produto): void => { setSelected(p); setModalOpen(true); };
 
-    const stockBadge = (p: Producto): JSX.Element => {
+    // ── Renderer de badge de stock ────────────────────────────────────────────
+    const stockBadge = (p: Produto): JSX.Element => {
         const critico = p.stockActual <= p.stockMinimo;
         return (
             <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                fontWeight: 600,
-                color: critico ? 'var(--accent-danger)' : 'var(--accent-primary)',
-                background: critico ? 'var(--accent-danger-glow)' : 'var(--accent-primary-glow)',
-                border: `1px solid ${critico ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
-                borderRadius: '4px',
-                padding: '1px 6px',
+                fontFamily:    'var(--font-mono)',
+                fontSize:      '11px',
+                fontWeight:    600,
+                color:         critico ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                background:    critico ? 'var(--accent-danger-glow)' : 'var(--accent-primary-glow)',
+                border:        `1px solid ${critico ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
+                borderRadius:  '4px',
+                padding:       '1px 6px',
                 letterSpacing: '0.04em',
             }}>
                 {p.stockActual}
@@ -96,12 +134,29 @@ export function ProductosPage(): JSX.Element {
         );
     };
 
+    // ── Render ────────────────────────────────────────────────────────────────
+
     return (
         <div>
-            {/* Cabecera */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+            {/* ── Cabecera ─────────────────────────────────────────────── */}
+            <div style={{
+                display:        'flex',
+                alignItems:     'flex-start',
+                justifyContent: 'space-between',
+                marginBottom:   '20px',
+                flexWrap:       'wrap',
+                gap:            '12px',
+            }}>
                 <div>
-                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: '4px' }}>
+                    <h1 style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '1.5rem',
+                        fontWeight:    700,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color:         'var(--text-primary)',
+                        marginBottom:  '4px',
+                    }}>
                         Productos
                     </h1>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
@@ -117,73 +172,69 @@ export function ProductosPage(): JSX.Element {
                 </button>
             </div>
 
-            {/* Barra de herramientas */}
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                <input
-                    type="search"
-                    placeholder="Buscar por nombre o SKU..."
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setPage(1); }}
-                    style={{
-                        flex: 1,
-                        minWidth: '220px',
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: '13px',
-                        color: 'var(--text-primary)',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '6px',
-                        padding: '9px 14px',
-                        outline: 'none',
-                        caretColor: 'var(--accent-cyan)',
-                        transition: 'border-color 160ms ease',
-                    }}
-                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
-                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
+            {/* ── TableControls: buscador · tipo · filas · paginación ───── */}
+            <div style={{ marginBottom: '16px' }}>
+                <TableControls
+                    filters={filters}
+                    isLoading={isLoading}
+                    entityLabel="producto"
+                    extraFilters={
+                        <select
+                            value={filterTipo}
+                            onChange={e => {
+                                setFilterTipo(e.target.value as TipoProducto | 'TODOS');
+                                filters.setPage(0); // resetea página al cambiar tipo
+                            }}
+                            style={{
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '12px',
+                                fontWeight:    600,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color:         'var(--text-primary)',
+                                background:    'var(--bg-surface)',
+                                border:        '1px solid var(--border-default)',
+                                borderRadius:  '6px',
+                                padding:       '8px 12px',
+                                outline:       'none',
+                                cursor:        'pointer',
+                                flexShrink:    0,
+                            }}
+                        >
+                            <option value="TODOS">Todos los tipos</option>
+                            <option value="ESTANDAR">ESTÁNDAR</option>
+                            <option value="RETRO">RETRO — La Bóveda</option>
+                        </select>
+                    }
                 />
-                <select
-                    value={filterTipo}
-                    onChange={e => { setFilterTipo(e.target.value as TipoProducto | 'TODOS'); setPage(1); }}
-                    style={{
-                        fontFamily: 'var(--font-display)',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: 'var(--text-primary)',
-                        background: 'var(--bg-surface)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: '6px',
-                        padding: '9px 14px',
-                        outline: 'none',
-                        cursor: 'pointer',
-                    }}
-                >
-                    <option value="TODOS">Todos los tipos</option>
-                    <option value="ESTANDAR">ESTÁNDAR</option>
-                    <option value="RETRO">RETRO — La Bóveda</option>
-                </select>
             </div>
 
-            {/* Tabla */}
-            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: '10px', overflow: 'hidden' }}>
+            {/* ── Tabla ─────────────────────────────────────────────────── */}
+            <div style={{
+                background:   'var(--bg-surface)',
+                border:       '1px solid var(--border-subtle)',
+                borderRadius: '10px',
+                overflow:     'hidden',
+            }}>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
                                 {['SKU', 'Nombre', 'Tipo', 'Precio Venta', 'Stock', 'Estado', 'Acciones'].map(h => (
                                     <th key={h} style={{
-                                        padding: '10px 14px',
-                                        textAlign: 'left',
-                                        fontFamily: 'var(--font-display)',
-                                        fontSize: '10px',
-                                        fontWeight: 700,
+                                        padding:       '10px 14px',
+                                        textAlign:     'left',
+                                        fontFamily:    'var(--font-display)',
+                                        fontSize:      '10px',
+                                        fontWeight:    700,
                                         letterSpacing: '0.12em',
                                         textTransform: 'uppercase',
-                                        color: 'var(--text-muted)',
-                                        whiteSpace: 'nowrap',
-                                        background: 'var(--bg-elevated)',
-                                    }}>{h}</th>
+                                        color:         'var(--text-muted)',
+                                        whiteSpace:    'nowrap',
+                                        background:    'var(--bg-elevated)',
+                                    }}>
+                                        {h}
+                                    </th>
                                 ))}
                             </tr>
                         </thead>
@@ -196,50 +247,97 @@ export function ProductosPage(): JSX.Element {
                                 </tr>
                             ) : products.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.06em' }}>
-                                        SIN RESULTADOS
+                                    <td
+                                        colSpan={7}
+                                        style={{
+                                            padding:       '48px',
+                                            textAlign:     'center',
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '12px',
+                                            color:         'var(--text-muted)',
+                                            letterSpacing: '0.08em',
+                                        }}
+                                    >
+                                        {filters.search
+                                            ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
+                                            : 'SIN PRODUCTOS'}
                                     </td>
                                 </tr>
                             ) : products.map(p => (
                                 <tr
                                     key={p.id}
-                                    style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
+                                    style={{
+                                        borderBottom: '1px solid var(--border-subtle)',
+                                        transition:   'background 120ms ease',
+                                    }}
                                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                                 >
                                     <td style={tdStyle}>
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>
+                                        <span style={{
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '11px',
+                                            color:         'var(--accent-cyan)',
+                                            letterSpacing: '0.04em',
+                                        }}>
                                             {p.sku}
                                         </span>
                                     </td>
                                     <td style={tdStyle}>
-                                        <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 500 }}>{p.nombre}</div>
-                                        {p.descripcion && <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>{p.descripcion.slice(0, 50)}{p.descripcion.length > 50 ? '…' : ''}</div>}
+                                        <div style={{
+                                            fontFamily: 'var(--font-body)',
+                                            fontSize:   '13px',
+                                            color:      'var(--text-primary)',
+                                            fontWeight: 500,
+                                        }}>
+                                            {p.nombre}
+                                        </div>
+                                        {p.descripcion && (
+                                            <div style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                fontSize:   '10px',
+                                                color:      'var(--text-muted)',
+                                                marginTop:  '2px',
+                                            }}>
+                                                {p.descripcion.slice(0, 50)}{p.descripcion.length > 50 ? '…' : ''}
+                                            </div>
+                                        )}
                                     </td>
                                     <td style={tdStyle}>
                                         <span style={{
-                                            fontFamily: 'var(--font-mono)',
-                                            fontSize: '10px',
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '10px',
                                             letterSpacing: '0.06em',
-                                            color: p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-secondary)',
-                                            border: `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`,
-                                            borderRadius: '3px',
-                                            padding: '2px 6px',
+                                            color:         p.tipoProducto === 'RETRO'
+                                                ? 'var(--accent-gold)'
+                                                : 'var(--text-secondary)',
+                                            border:        `1px solid ${p.tipoProducto === 'RETRO'
+                                                ? 'var(--accent-gold)'
+                                                : 'var(--border-default)'}`,
+                                            borderRadius:  '3px',
+                                            padding:       '2px 6px',
                                         }}>
                                             {p.tipoProducto}
                                         </span>
                                     </td>
                                     <td style={tdStyle}>
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                                        <span style={{
+                                            fontFamily: 'var(--font-mono)',
+                                            fontSize:   '13px',
+                                            color:      'var(--text-primary)',
+                                            fontWeight: 600,
+                                        }}>
                                             €{p.precioVenta.toFixed(2)}
                                         </span>
                                     </td>
                                     <td style={tdStyle}>{stockBadge(p)}</td>
                                     <td style={tdStyle}>
                                         <span style={{
-                                            fontFamily: 'var(--font-mono)',
-                                            fontSize: '10px',
-                                            color: p.activo ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '10px',
+                                            color:         p.activo
+                                                ? 'var(--accent-primary)'
+                                                : 'var(--text-muted)',
                                             letterSpacing: '0.06em',
                                         }}>
                                             {p.activo ? '● ACTIVO' : '○ INACTIVO'}
@@ -280,9 +378,9 @@ export function ProductosPage(): JSX.Element {
                 )}
             </div>
 
-            {/* Modal */}
+            {/* ── Modal ────────────────────────────────────────────────── */}
             <ProductModal
-                producto={selected}
+                produto={selected}
                 isOpen={modalOpen}
                 onClose={() => { setModalOpen(false); setSelected(null); }}
                 onSave={handleSave}
@@ -291,45 +389,28 @@ export function ProductosPage(): JSX.Element {
     );
 }
 
-// ── Estilos locales ───────────────────────────────────────────────────
-const tdStyle: React.CSSProperties = {
-    padding: '10px 14px',
+// ── Estilos reutilizables ─────────────────────────────────────────────────────
+
+const tdStyle: CSSProperties = {
+    padding:       '10px 14px',
     verticalAlign: 'middle',
 };
 
-function actionBtnStyle(color: string): React.CSSProperties {
+function actionBtnStyle(color: string): CSSProperties {
     return {
-        fontFamily: 'var(--font-display)',
-        fontSize: '10px',
-        fontWeight: 700,
+        fontFamily:    'var(--font-display)',
+        fontSize:      '10px',
+        fontWeight:    700,
         letterSpacing: '0.08em',
         textTransform: 'uppercase',
-        padding: '4px 10px',
-        background: 'transparent',
+        padding:       '4px 10px',
+        background:    'transparent',
         color,
-        border: `1px solid ${color}`,
-        borderRadius: '4px',
-        cursor: 'pointer',
-        marginRight: '6px',
-        transition: 'all 120ms ease',
-    };
-}
-
-function pageBtnStyle(disabled: boolean, active = false): React.CSSProperties {
-    return {
-        fontFamily: 'var(--font-mono)',
-        fontSize: '11px',
-        width: '28px',
-        height: '28px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: active ? 'var(--accent-primary)' : 'transparent',
-        color: active ? 'var(--text-inverse)' : disabled ? 'var(--text-muted)' : 'var(--text-secondary)',
-        border: '1px solid var(--border-default)',
-        borderRadius: '4px',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
-        transition: 'all 120ms ease',
+        border:        `1px solid ${color}`,
+        borderRadius:  '4px',
+        cursor:        'pointer',
+        marginRight:   '6px',
+        opacity:       0.75,
+        transition:    'opacity 120ms ease',
     };
 }

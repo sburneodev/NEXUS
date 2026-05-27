@@ -37,7 +37,7 @@
     /* WCAG AA — ratio ≥ 4.5:1 sobre --bg-surface */
     --text-primary:   #e8e8f0;  /* 14.2:1 ✅ */
     --text-secondary: #aaaacc;  /*  5.6:1 ✅ */
-    --text-muted:     #6666aa;  /*  4.6:1 ✅ */
+    --text-muted:     #9090bb;  /*  6.7:1 ✅ — lila claro legible */
     --text-inverse:   #05050a;
 
     /* ── Alias semánticos (acceso uniforme desde componentes) ───────── */
@@ -60,8 +60,8 @@
     /* ── Variables de Sidebar (dark mode defaults) ──────────────────── */
     --sidebar-bg:          var(--bg-surface);
     --sidebar-border:      var(--border-subtle);
-    --sidebar-text:        var(--text-secondary);
-    --sidebar-text-muted:  var(--text-muted);
+    --sidebar-text:        rgba(255,255,255,0.88); /* Blanco — labels nav items (Dashboard, Productos…) */
+    --sidebar-text-muted:  var(--text-muted);      /* Lila #9090bb — títulos de sección (PRINCIPAL, INVENTARIO…) */
     --sidebar-text-active: var(--text-primary);
     --sidebar-icon-active: var(--accent-cyan);
     --sidebar-glow:        rgba(0, 212, 255, 0.28);

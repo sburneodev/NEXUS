@@ -5,6 +5,8 @@ import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
 import com.nexus.repository.RolRepository;
 import com.nexus.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
@@ -21,8 +23,17 @@ public class UsuarioService {
         this.rolRepository = rolRepository;
     }
 
+    /** Lista todos sin filtro (legacy — mantenido para compatibilidad interna). */
     public List<UsuarioDTO> listar() {
         return usuarioRepository.findAll().stream().map(this::toDTO).toList();
+    }
+
+    /** Lista paginada con búsqueda opcional por email o username. */
+    public Page<UsuarioDTO> listar(String buscar, Pageable pageable) {
+        if (buscar == null || buscar.isBlank()) {
+            return usuarioRepository.findAll(pageable).map(this::toDTO);
+        }
+        return usuarioRepository.buscar(buscar, pageable).map(this::toDTO);
     }
 
     public UsuarioDTO buscarPorId(Long id) {

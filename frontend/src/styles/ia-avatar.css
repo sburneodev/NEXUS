@@ -1,0 +1,196 @@
+/* ============================================================
+   AVATAR IA — Monitor retro pixelado
+   AVT-01 · AVT-02 · AVT-03 · AVT-04
+   ============================================================ */
+
+.ia-avatar {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 3px solid var(--accent-cyan, #00d4ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 0 20px rgba(0, 212, 255, 0.4),
+    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  transition: border-color 0.4s ease, box-shadow 0.4s ease;
+}
+
+/* Pantalla interior con efecto scanlines */
+.ia-avatar::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border-radius: 6px;
+  background: 
+    repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Ojos del avatar */
+.ia-avatar__eyes {
+  display: flex;
+  gap: 10px;
+  z-index: 1;
+}
+
+.ia-avatar__eye {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-cyan, #00d4ff);
+  box-shadow: 0 0 8px currentColor;
+}
+
+/* ============================================================
+   AVT-01 · ESTADO IDLE — Azul, flotar suave, parpadeo lento
+   ============================================================ */
+
+.ia-avatar--idle {
+  border-color: var(--accent-cyan, #00d4ff);
+  animation: ia-flotar 3s ease-in-out infinite;
+}
+
+.ia-avatar--idle .ia-avatar__eye {
+  background: var(--accent-cyan, #00d4ff);
+  animation: ia-parpadeo 4s ease-in-out infinite;
+}
+
+@keyframes ia-flotar {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-10px); }
+}
+
+@keyframes ia-parpadeo {
+  0%, 92%, 100% { transform: scaleY(1); }
+  94%, 98%      { transform: scaleY(0.1); }
+}
+
+/* ============================================================
+   AVT-02 · ESTADO PROCESSING — Naranja, vibra y rota
+   ============================================================ */
+
+.ia-avatar--processing {
+  border-color: var(--accent-warning, #ff8800);
+  box-shadow: 
+    0 0 25px rgba(255, 136, 0, 0.6),
+    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  animation: ia-procesar 0.5s ease-in-out infinite;
+}
+
+.ia-avatar--processing .ia-avatar__eye {
+  background: var(--accent-warning, #ff8800);
+  animation: ia-ojos-oscilar 0.4s ease-in-out infinite;
+}
+
+@keyframes ia-procesar {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  50%      { transform: rotate(4deg)  scale(1.1); }
+}
+
+@keyframes ia-ojos-oscilar {
+  0%, 100% { transform: translateX(-2px); }
+  50%      { transform: translateX(2px); }
+}
+
+/* ============================================================
+   AVT-03 · ESTADO ALERTA — Rojo pulsante, vibración horizontal
+   ============================================================ */
+
+.ia-avatar--alerta {
+  border-color: var(--accent-danger, #ff3355);
+  animation: 
+    ia-alerta-vibrar 0.3s ease-in-out infinite,
+    ia-alerta-glow 1s ease-in-out infinite;
+}
+
+.ia-avatar--alerta .ia-avatar__eye {
+  background: var(--accent-danger, #ff3355);
+  animation: ia-alerta-eye 0.5s ease-in-out infinite;
+}
+
+@keyframes ia-alerta-vibrar {
+  0%, 100%   { transform: translateX(0); }
+  25%        { transform: translateX(-4px); }
+  75%        { transform: translateX(4px); }
+}
+
+@keyframes ia-alerta-glow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 15px rgba(255, 51, 85, 0.5),
+      inset 0 0 8px rgba(0, 0, 0, 0.6);
+  }
+  50% { 
+    box-shadow: 
+      0 0 35px rgba(255, 51, 85, 1),
+      0 0 50px rgba(255, 51, 85, 0.6),
+      inset 0 0 8px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes ia-alerta-eye {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+/* ============================================================
+   AVT-04 · ESTADO TALKING — Verde, vibración suave, guiños alternos
+   ============================================================ */
+
+.ia-avatar--talking {
+  border-color: var(--accent-success, #00ff88);
+  box-shadow: 
+    0 0 25px rgba(0, 255, 136, 0.5),
+    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  animation: ia-talking-vibrar 0.4s ease-in-out infinite;
+}
+
+.ia-avatar--talking .ia-avatar__eye {
+  background: var(--accent-success, #00ff88);
+}
+
+.ia-avatar--talking .ia-avatar__eye:nth-child(1) {
+  animation: ia-guino-izq 0.8s ease-in-out infinite;
+}
+
+.ia-avatar--talking .ia-avatar__eye:nth-child(2) {
+  animation: ia-guino-der 0.8s ease-in-out infinite;
+}
+
+@keyframes ia-talking-vibrar {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25%      { transform: translateY(-1px) translateX(1px); }
+  75%      { transform: translateY(1px) translateX(-1px); }
+}
+
+@keyframes ia-guino-izq {
+  0%, 40%, 100% { transform: scaleY(1); }
+  20%           { transform: scaleY(0.1); }
+}
+
+@keyframes ia-guino-der {
+  0%, 60%, 100% { transform: scaleY(1); }
+  80%           { transform: scaleY(0.1); }
+}
+
+/* ============================================================
+   ACCESIBILIDAD — Reducir animaciones si el usuario lo prefiere
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .ia-avatar,
+  .ia-avatar__eye {
+    animation: none !important;
+  }
+}

@@ -47,7 +47,9 @@ function getStockColor(p: Producto): string {
 
 function getEstadoBadge(p: Producto): { text: string; color: string } {
     if (p.tipoProducto === 'RETRO') {
-        return { text: '★ RETRO', color: 'var(--accent-gold)' };
+        return p.activo
+            ? { text: '● OK',    color: 'var(--accent-primary)' }
+            : { text: 'VENDIDO', color: 'var(--accent-danger)'  };
     }
     const e = getEstado(p);
     return {

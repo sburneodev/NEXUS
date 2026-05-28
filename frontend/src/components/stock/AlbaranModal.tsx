@@ -99,206 +99,314 @@ const TIPO_COLOR_VAR: Record<TipoMovimiento, string> = {
     AJUSTE:  'var(--accent-gold)',
 };
 
+// ── Paleta corporativa (inline: renderizado fuera del contexto CSS de la app) ──
+
+const C = {
+    navy:    '#1a2b4c',
+    navyMid: '#2c4070',
+    line:    '#c8d0dc',
+    bgBlock: '#f4f6f9',
+    text:    '#1a1d23',
+    muted:   '#5a6270',
+    faint:   '#e8eaee',
+    white:   '#ffffff',
+    font:    "'Inter','Roboto','Helvetica Neue',Helvetica,Arial,sans-serif",
+    mono:    "'Courier New',Courier,monospace",
+} as const;
+
 // ── Documento imprimible ───────────────────────────────────────────────────────
 // Renderizado en <body> via portal. Oculto en pantalla, visible al imprimir.
 
 function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
-    const tipoColor = TIPO_COLOR_HEX[d.tipoMovimiento];
-    const total     = d.precioUnitario != null
+    const tipoColorHex = TIPO_COLOR_HEX[d.tipoMovimiento];
+    const total        = d.precioUnitario != null
         ? fmtEur(d.precioUnitario * d.cantidad)
         : '—';
 
-    const sectionLabel: CSSProperties = {
-        fontSize:      '8px',
+    // Etiqueta de bloque de datos
+    const blockLabel: CSSProperties = {
+        fontFamily:    C.font,
+        fontSize:      '8.5px',
         fontWeight:    700,
-        letterSpacing: '0.12em',
+        letterSpacing: '0.14em',
         textTransform: 'uppercase',
-        color:         '#888888',
-        marginBottom:  '3px',
+        color:         C.navyMid,
+        marginBottom:  '5px',
+        paddingBottom: '4px',
+        borderBottom:  `1px solid ${C.line}`,
         display:       'block',
-        fontFamily:    "'Helvetica Neue', Arial, sans-serif",
     };
 
-    const monoVal: CSSProperties = {
-        fontFamily: "'Courier New', Courier, monospace",
-        fontSize:   '12px',
-        color:      '#111111',
-        fontWeight: 600,
+    // Fila label + valor
+    const rowStyle: CSSProperties = {
+        display:       'flex',
+        gap:           '6px',
+        marginBottom:  '3px',
+        fontSize:      '10.5px',
+        fontFamily:    C.font,
     };
 
     return (
         <div id="albaran-root" style={{
-            background: '#ffffff',
-            color:      '#111111',
-            fontFamily: "'Helvetica Neue', Arial, sans-serif",
-            fontSize:   '12px',
-            lineHeight: 1.5,
+            background: C.white,
+            color:      C.text,
+            fontFamily: C.font,
+            fontSize:   '11px',
+            lineHeight: 1.55,
         }}>
 
-            {/* ── Cabecera ── */}
+            {/* ── CABECERA ─────────────────────────────────────────────── */}
             <div style={{
                 display:        'flex',
                 justifyContent: 'space-between',
                 alignItems:     'flex-start',
-                borderBottom:   '2px solid #111111',
-                paddingBottom:  '14px',
-                marginBottom:   '18px',
+                paddingBottom:  '10px',
+                borderBottom:   `3px solid ${C.navy}`,
+                marginBottom:   '14px',
             }}>
-                {/* Izquierda: marca */}
-                <div>
-                    <div style={{ fontSize: '26px', fontWeight: 900, letterSpacing: '0.14em', color: '#000000' }}>
-                        NEXUS
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#666666', marginTop: '2px', letterSpacing: '0.06em' }}>
-                        Level Up Gaming · La Bóveda Retro
+                {/* Izquierda: isotipo + marca */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <img src="/nexus-mark.svg" alt="" aria-hidden="true"
+                         style={{ height: '44px', width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+                    <div>
+                        <div style={{
+                            fontSize:      '20px',
+                            fontWeight:    800,
+                            letterSpacing: '0.06em',
+                            color:         C.navy,
+                            textTransform: 'uppercase',
+                            lineHeight:    1,
+                            fontFamily:    C.font,
+                        }}>
+                            NEXUS
+                        </div>
+                        <div style={{
+                            fontSize:      '9px',
+                            color:         C.muted,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            fontWeight:    500,
+                            fontFamily:    C.font,
+                            marginTop:     '2px',
+                        }}>
+                            ERP · LEVELUP
+                        </div>
                     </div>
                 </div>
 
                 {/* Derecha: tipo de documento + código */}
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#444444', marginBottom: '5px' }}>
+                <div style={{ textAlign: 'right', fontFamily: C.font }}>
+                    <div style={{
+                        fontSize:      '11px',
+                        fontWeight:    700,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color:         C.muted,
+                        marginBottom:  '4px',
+                    }}>
                         Albarán de Movimiento
                     </div>
-                    <div style={{ ...monoVal, fontSize: '15px', letterSpacing: '0.06em' }}>
+                    <div style={{
+                        fontFamily:    C.mono,
+                        fontSize:      '15px',
+                        fontWeight:    700,
+                        color:         C.navy,
+                        letterSpacing: '0.06em',
+                    }}>
                         {d.codigo}
                     </div>
                 </div>
             </div>
 
-            {/* ── Meta del movimiento ── */}
+            {/* ── TÍTULO DEL DOCUMENTO ─────────────────────────────────── */}
+            <div style={{
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'space-between',
+                marginBottom:   '14px',
+            }}>
+                <span style={{
+                    fontFamily:    C.font,
+                    fontSize:      '18px',
+                    fontWeight:    800,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color:         C.navy,
+                    borderLeft:    `4px solid ${C.navy}`,
+                    paddingLeft:   '10px',
+                    lineHeight:    1,
+                }}>
+                    Albarán de Movimiento
+                </span>
+                <span style={{
+                    fontFamily:    C.font,
+                    fontSize:      '10px',
+                    fontWeight:    700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    padding:       '4px 12px',
+                    borderRadius:  '3px',
+                    border:        `1.5px solid ${tipoColorHex}`,
+                    color:         tipoColorHex,
+                    background:    `${tipoColorHex}18`,
+                    WebkitPrintColorAdjust: 'exact',
+                    printColorAdjust:       'exact',
+                }}>
+                    {d.tipoMovimiento === 'ENTRADA' ? '▲' : d.tipoMovimiento === 'SALIDA' ? '▼' : '◈'} {TIPO_LABEL[d.tipoMovimiento].toUpperCase()}
+                </span>
+            </div>
+
+            {/* ── BLOQUE DE DATOS ──────────────────────────────────────── */}
             <div style={{
                 display:             'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap:                 '10px 24px',
-                marginBottom:        '22px',
-                padding:             '12px 14px',
-                background:          '#f7f7f7',
-                borderRadius:        '5px',
-                border:              '1px solid #e8e8e8',
+                gap:                 '10px',
+                marginBottom:        '18px',
             }}>
-                <div>
-                    <span style={sectionLabel}>Fecha y Hora</span>
-                    <span style={monoVal}>{fmtFecha(d.fecha)}</span>
-                </div>
-                <div>
-                    <span style={sectionLabel}>Tipo de Operación</span>
-                    <span style={{ fontWeight: 700, color: tipoColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: '12px' }}>
-                        {TIPO_LABEL[d.tipoMovimiento]}
-                    </span>
-                </div>
-                {d.referencia && (
-                    <div>
-                        <span style={sectionLabel}>Referencia</span>
-                        <span style={monoVal}>{d.referencia}</span>
+                {/* Datos del movimiento */}
+                <div style={{
+                    background:   C.bgBlock,
+                    border:       `1px solid ${C.line}`,
+                    borderRadius: '4px',
+                    padding:      '10px 12px',
+                }}>
+                    <span style={blockLabel}>Datos del movimiento</span>
+                    <div style={rowStyle}>
+                        <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Fecha</span>
+                        <span style={{ color: C.text, fontFamily: C.mono, fontSize: '10px' }}>{fmtFecha(d.fecha)}</span>
                     </div>
-                )}
-                <div>
-                    <span style={sectionLabel}>Stock Resultante</span>
-                    <span style={{ ...monoVal, fontWeight: 700 }}>{d.stockNuevo} uds.</span>
+                    {d.referencia && (
+                        <div style={rowStyle}>
+                            <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Referencia</span>
+                            <span style={{ color: C.navy, fontWeight: 700 }}>{d.referencia}</span>
+                        </div>
+                    )}
+                    <div style={rowStyle}>
+                        <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Albarán</span>
+                        <span style={{ color: C.navy, fontWeight: 700, fontFamily: C.mono, fontSize: '10px' }}>{d.codigo}</span>
+                    </div>
+                </div>
+
+                {/* Resultado del movimiento */}
+                <div style={{
+                    background:   C.bgBlock,
+                    border:       `1px solid ${C.line}`,
+                    borderRadius: '4px',
+                    padding:      '10px 12px',
+                }}>
+                    <span style={blockLabel}>Resultado</span>
+                    <div style={rowStyle}>
+                        <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Operación</span>
+                        <span style={{ fontWeight: 700, color: tipoColorHex, letterSpacing: '0.04em',
+                                       WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' } as CSSProperties}>
+                            {TIPO_LABEL[d.tipoMovimiento].toUpperCase()}
+                        </span>
+                    </div>
+                    <div style={rowStyle}>
+                        <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Stock final</span>
+                        <span style={{ color: C.navy, fontWeight: 700, fontSize: '11.5px' }}>{d.stockNuevo} uds.</span>
+                    </div>
+                    {d.notas && (
+                        <div style={{ ...rowStyle, alignItems: 'flex-start' }}>
+                            <span style={{ minWidth: '80px', fontWeight: 600, color: C.muted, flexShrink: 0 }}>Notas</span>
+                            <span style={{ color: C.text, fontSize: '10px', fontStyle: 'italic' }}>
+                                {d.notas.length > 80 ? `${d.notas.slice(0, 80)}…` : d.notas}
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            {/* ── Línea de producto ── */}
-            <table style={{
-                width:           '100%',
-                borderCollapse:  'collapse',
-                marginBottom:    '18px',
-                fontSize:        '11px',
-            }}>
-                <thead>
-                    <tr style={{ background: '#f0f0f0', borderBottom: '2px solid #cccccc' }}>
-                        {['SKU', 'Descripción del Producto', 'Tipo', 'Uds.', 'P. Unit.', 'Total'].map(h => (
-                            <th key={h} style={{
-                                padding:       '7px 10px',
-                                textAlign:     'left',
-                                fontSize:      '9px',
-                                fontWeight:    700,
-                                letterSpacing: '0.12em',
-                                textTransform: 'uppercase',
-                                color:         '#555555',
-                            }}>
-                                {h}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style={{ borderBottom: '1px solid #eeeeee' }}>
-                        <td style={{ padding: '9px 10px', fontFamily: "'Courier New', monospace", fontWeight: 600 }}>
-                            {d.producto.sku}
-                        </td>
-                        <td style={{ padding: '9px 10px' }}>
-                            <div style={{ fontWeight: 600, color: '#000000' }}>{d.producto.nombre}</div>
-                            {d.producto.descripcion && (
-                                <div style={{ fontSize: '10px', color: '#777777', marginTop: '2px' }}>
-                                    {d.producto.descripcion.length > 90
-                                        ? `${d.producto.descripcion.slice(0, 90)}…`
-                                        : d.producto.descripcion}
-                                </div>
-                            )}
-                        </td>
-                        <td style={{ padding: '9px 10px', color: '#555555' }}>
-                            {d.producto.tipoProducto}
-                        </td>
-                        <td style={{ padding: '9px 10px', fontFamily: "'Courier New', monospace", fontWeight: 700, textAlign: 'center' }}>
-                            {d.cantidad}
-                        </td>
-                        <td style={{ padding: '9px 10px', fontFamily: "'Courier New', monospace" }}>
-                            {d.precioUnitario != null ? fmtEur(d.precioUnitario) : '—'}
-                        </td>
-                        <td style={{ padding: '9px 10px', fontFamily: "'Courier New', monospace", fontWeight: 700 }}>
-                            {total}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            {/* ── Notas (condicional) ── */}
-            {d.notas && (
-                <div style={{
-                    background:   '#f9f9f9',
-                    border:       '1px solid #dddddd',
-                    borderRadius: '4px',
-                    padding:      '10px 14px',
-                    marginBottom: '20px',
-                }}>
-                    <span style={sectionLabel}>Notas del Movimiento</span>
-                    <p style={{ margin: 0, fontSize: '11px', color: '#333333', lineHeight: 1.6 }}>{d.notas}</p>
-                </div>
-            )}
-
-            {/* ── Código de barras ── */}
+            {/* ── TABLA DE PRODUCTO ────────────────────────────────────── */}
             <div style={{
-                borderTop:      '1px solid #dddddd',
-                paddingTop:     '18px',
-                display:        'flex',
-                flexDirection:  'column',
-                alignItems:     'center',
-                gap:            '8px',
-                marginBottom:   '18px',
+                marginBottom: '18px',
+                border:       `1px solid ${C.line}`,
+                borderRadius: '4px',
+                overflow:     'hidden',
             }}>
-                <Code39Barcode value={d.codigo} height={56} narrowWidth={2} showText={false} />
-                <div style={{
-                    fontFamily:    "'Courier New', Courier, monospace",
-                    fontSize:      '11px',
-                    letterSpacing: '0.14em',
-                    color:         '#222222',
-                }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
+                    <thead>
+                        <tr style={{
+                            background: C.navy,
+                            WebkitPrintColorAdjust: 'exact',
+                            printColorAdjust:       'exact',
+                        } as CSSProperties}>
+                            {['SKU', 'Descripción del Producto', 'Tipo', 'Uds.', 'P. Unit.', 'Total'].map(h => (
+                                <th key={h} style={{
+                                    padding:       '7px 10px',
+                                    textAlign:     'left',
+                                    fontSize:      '9px',
+                                    fontWeight:    700,
+                                    letterSpacing: '0.12em',
+                                    textTransform: 'uppercase',
+                                    color:         C.white,
+                                    fontFamily:    C.font,
+                                }}>
+                                    {h}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style={{ padding: '9px 10px', fontFamily: C.mono, fontWeight: 600, color: C.navyMid, fontSize: '10px', letterSpacing: '0.04em' }}>
+                                {d.producto.sku}
+                            </td>
+                            <td style={{ padding: '9px 10px', verticalAlign: 'top' }}>
+                                <div style={{ fontWeight: 600, color: C.text, fontFamily: C.font }}>{d.producto.nombre}</div>
+                                {d.producto.descripcion && (
+                                    <div style={{ fontSize: '10px', color: C.muted, marginTop: '2px', fontFamily: C.font, fontStyle: 'italic' }}>
+                                        {d.producto.descripcion.length > 90
+                                            ? `${d.producto.descripcion.slice(0, 90)}…`
+                                            : d.producto.descripcion}
+                                    </div>
+                                )}
+                            </td>
+                            <td style={{ padding: '9px 10px', color: C.muted, fontFamily: C.font, fontSize: '10px' }}>
+                                {d.producto.tipoProducto}
+                            </td>
+                            <td style={{ padding: '9px 10px', fontFamily: C.mono, fontWeight: 700, textAlign: 'center', color: C.navy, fontSize: '12px' }}>
+                                {d.cantidad}
+                            </td>
+                            <td style={{ padding: '9px 10px', fontFamily: C.mono, color: C.text }}>
+                                {d.precioUnitario != null ? fmtEur(d.precioUnitario) : '—'}
+                            </td>
+                            <td style={{ padding: '9px 10px', fontFamily: C.mono, fontWeight: 700, color: C.navy }}>
+                                {total}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            {/* ── CÓDIGO DE BARRAS ─────────────────────────────────────── */}
+            <div style={{
+                borderTop:     `1.5px solid ${C.line}`,
+                paddingTop:    '16px',
+                display:       'flex',
+                flexDirection: 'column',
+                alignItems:    'center',
+                gap:           '6px',
+                marginBottom:  '16px',
+            }}>
+                <Code39Barcode value={d.codigo} height={52} narrowWidth={1.8} showText={false} />
+                <div style={{ fontFamily: C.mono, fontSize: '11px', letterSpacing: '0.14em', color: C.navy }}>
                     {d.codigo}
                 </div>
-                <div style={{ fontSize: '8px', color: '#aaaaaa', letterSpacing: '0.06em' }}>
-                    Código Code 39 · Generado automáticamente por NEXUS ERP
+                <div style={{ fontFamily: C.font, fontSize: '8px', color: C.muted, letterSpacing: '0.06em' }}>
+                    Código Code 39 — Generado automáticamente por NEXUS ERP
                 </div>
             </div>
 
-            {/* ── Pie de página ── */}
+            {/* ── PIE DE PÁGINA ────────────────────────────────────────── */}
             <div style={{
-                borderTop:      '1px solid #eeeeee',
-                paddingTop:     '10px',
+                borderTop:      `1px dashed ${C.line}`,
+                paddingTop:     '8px',
                 display:        'flex',
                 justifyContent: 'space-between',
-                fontSize:       '8px',
-                color:          '#aaaaaa',
+                fontFamily:     C.font,
+                fontSize:       '8.5px',
+                color:          C.muted,
                 letterSpacing:  '0.04em',
             }}>
                 <span>NEXUS ERP · Documento generado automáticamente</span>

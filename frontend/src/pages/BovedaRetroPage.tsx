@@ -6,7 +6,7 @@
  * la saturación naranja. El ámbar aparece solo como acento/glow, no como fondo.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Producto, EstadoConservacion, PaginatedResponse } from '../types/models';
 import { MOCK_PRODUCTOS }      from '../mocks/mockProductos';
 import { TasadorIA }           from '../components/boveda/TasadorIA';
@@ -19,16 +19,16 @@ import api                     from '../services/api';
 // ── Paleta interna — fondos casi negros, texto blanco y naranja claro ────────
 const R = {
     bg:        '#080808',   // negro neutro puro
-    surface:   '#0e0e0d',   // tarjetas: casi neutro
-    elevated:  '#141413',   // cabeceras HUD: mínima calidez
+    surface:   '#0d0d0d',   // tarjetas: neutral puro sin calidez
+    elevated:  '#131313',   // cabeceras HUD: neutral oscuro
     amber:     '#ffb830',   // naranja claro para acentos secundarios
     amberHi:   '#ffe080',   // naranja muy claro / casi amarillo para highlights
     cream:     '#f5ead8',   // texto primario: blanco cálido muy legible
-    sand:      '#d4a860',   // texto secundario: naranja claro
-    dust:      '#8a6a38',   // texto terciario: muted, pero legible
+    sand:      '#e0c070',   // texto secundario: ámbar claro — más legible
+    dust:      '#b08a40',   // texto terciario: ámbar medio — legible en negro
     red:       '#ff4444',   // peligro/vendido
-    border:    'rgba(255,180,40,0.14)',   // borde sutil
-    borderHi:  'rgba(255,200,80,0.32)',   // borde activo
+    border:    'rgba(255,180,40,0.09)',   // borde sutil — más discreto
+    borderHi:  'rgba(255,200,80,0.24)',   // borde activo
 } as const;
 
 // ── Colores únicos por estado — se usan en chips, badges y tarjetas ──────────
@@ -241,6 +241,7 @@ function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
             style={{
                 display:       'flex',
                 flexDirection: 'column',
+                height:        '100%',
                 background:    R.surface,
                 border:        `2px solid ${estadoColor}30`,
                 borderRadius:  '0px',
@@ -314,12 +315,12 @@ function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
                 gap:            '8px',
             }}>
                 <span style={{
-                    fontFamily: 'Courier New, monospace', fontSize: '11px', fontWeight: 700,
+                    fontFamily: 'Courier New, monospace', fontSize: '12px', fontWeight: 700,
                     color: R.sand, letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                 }}>{p.sku}</span>
                 {badge && (
                     <span style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '11px', fontWeight: 700,
+                        fontFamily: 'Courier New, monospace', fontSize: '12px', fontWeight: 700,
                         color: badge.color, letterSpacing: '0.08em', flexShrink: 0,
                         textShadow: `0 0 6px ${badge.color}50`,
                     }}>{badge.label}</span>
@@ -327,16 +328,18 @@ function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
             </div>
 
             {/* Cuerpo */}
-            <div style={{ padding: '13px 14px 12px', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
+            <div style={{ padding: '12px 14px 0', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
                 <h3 style={{
-                    fontFamily: 'Courier New, monospace', fontSize: '15px', fontWeight: 700,
+                    fontFamily: 'Courier New, monospace', fontSize: '16px', fontWeight: 700,
                     letterSpacing: '0.03em', textTransform: 'uppercase',
                     color: R.cream, margin: 0, lineHeight: 1.3,
+                    display: '-webkit-box', WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
                 }}>{p.nombre}</h3>
 
                 {plataforma && (
                     <div style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '12px',
+                        fontFamily: 'Courier New, monospace', fontSize: '13px',
                         color: R.sand, letterSpacing: '0.05em',
                         display: 'flex', alignItems: 'center', gap: '5px',
                     }}>
@@ -347,28 +350,35 @@ function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
 
                 {p.descripcion && (
                     <p style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '12px',
+                        fontFamily: 'Courier New, monospace', fontSize: '13px',
                         color: R.dust, lineHeight: 1.6, margin: 0, flex: 1,
-                        display: '-webkit-box', WebkitLineClamp: 3,
+                        display: '-webkit-box', WebkitLineClamp: 2,
                         WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
                     }}>{p.descripcion}</p>
                 )}
 
                 {/* Precio estilo HIGH SCORE */}
-                <div style={{ borderTop: `1px dashed ${R.border}`, paddingTop: '9px', marginTop: 'auto' }}>
+                <div style={{
+                    borderTop:     `1px dashed ${R.border}`,
+                    marginTop:     'auto',
+                    paddingTop:    '11px',
+                    paddingBottom: '14px',
+                    background:    'rgba(0,0,0,0.18)',
+                    borderRadius:  '0 0 0 0',
+                }}>
                     <div style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '9px', fontWeight: 700,
-                        letterSpacing: '0.22em', color: R.dust, textTransform: 'uppercase', marginBottom: '4px',
+                        fontFamily: 'Courier New, monospace', fontSize: '10px', fontWeight: 700,
+                        letterSpacing: '0.20em', color: R.dust, textTransform: 'uppercase', marginBottom: '5px',
                     }}>HIGH SCORE</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
                         <span style={{
-                            fontFamily: 'Courier New, monospace', fontSize: '24px', fontWeight: 700,
+                            fontFamily: 'Courier New, monospace', fontSize: '30px', fontWeight: 700,
                             color: R.amberHi, lineHeight: 1,
-                            textShadow: `0 0 10px rgba(255,224,128,0.22)`,
+                            textShadow: `0 0 12px rgba(255,224,128,0.26)`,
                         }}>€{p.precioVenta.toFixed(2)}</span>
                         {tasacion && (
                             <span style={{
-                                fontFamily: 'Courier New, monospace', fontSize: '11px', color: R.dust,
+                                fontFamily: 'Courier New, monospace', fontSize: '12px', color: R.dust,
                             }}>IA €{tasacion.toFixed(2)}</span>
                         )}
                     </div>
@@ -389,11 +399,20 @@ export function BovedaRetroPage(): JSX.Element {
         html.classList.add('theme-retro');
 
         // Inline style en <html> tiene mayor especificidad que html.theme-retro { }
+        // Fondos: casi negros neutros.
         html.style.setProperty('--bg-void',    '#030303');
         html.style.setProperty('--bg-base',    '#080808');
-        html.style.setProperty('--bg-surface', '#0e0e0d');
-        html.style.setProperty('--bg-elevated','#141413');
-        html.style.setProperty('--bg-overlay', '#1a1a19');
+        html.style.setProperty('--bg-surface', '#0d0d0d');
+        html.style.setProperty('--bg-elevated','#131313');
+        html.style.setProperty('--bg-overlay', '#1a1a1a');
+        // Acentos: reducidos a ámbar muy oscuro para que TableControls,
+        // paginación y focus rings no sean naranja brillante en toda la página.
+        html.style.setProperty('--accent-primary',      '#7a5c1a');
+        html.style.setProperty('--accent-primary-glow', 'rgba(120,90,25,0.05)');
+        html.style.setProperty('--accent-cyan',         '#5c3e10');
+        html.style.setProperty('--accent-cyan-glow',    'rgba(90,60,16,0.04)');
+        html.style.setProperty('--border-subtle',       'rgba(120,88,28,0.10)');
+        html.style.setProperty('--border-default',      'rgba(120,88,28,0.14)');
 
         return (): void => {
             html.classList.remove('theme-retro');
@@ -402,6 +421,12 @@ export function BovedaRetroPage(): JSX.Element {
             html.style.removeProperty('--bg-surface');
             html.style.removeProperty('--bg-elevated');
             html.style.removeProperty('--bg-overlay');
+            html.style.removeProperty('--accent-primary');
+            html.style.removeProperty('--accent-primary-glow');
+            html.style.removeProperty('--accent-cyan');
+            html.style.removeProperty('--accent-cyan-glow');
+            html.style.removeProperty('--border-subtle');
+            html.style.removeProperty('--border-default');
         };
     }, []);
 
@@ -417,17 +442,12 @@ export function BovedaRetroPage(): JSX.Element {
 
     const [localData] = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
-    // Ref que marca si la primera carga ya completó.
-    // Solo mostramos el skeleton en esa primera carga; los cambios de filtro
-    // actualizan los datos silenciosamente (sin tocar isLoading) para evitar
-    // el parpadeo/oscilación de opacidad que el usuario percibe como "loco".
-    const firstLoadDone = useRef(false);
-
     useEffect(() => {
         let cancelled = false;
 
-        // Solo activar el estado de carga en la primera vez (no hay datos aún)
-        if (!firstLoadDone.current) setIsLoading(true);
+        // Siempre activar loading — el skeleton solo se muestra si rows.length === 0,
+        // así no hay parpadeo cuando ya hay datos cargados.
+        setIsLoading(true);
 
         const params = buildParams();
         params.set('tipo', 'RETRO');
@@ -438,7 +458,6 @@ export function BovedaRetroPage(): JSX.Element {
         api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
             .then(({ data }) => {
                 if (!cancelled) {
-                    firstLoadDone.current = true;
                     // El backend puede ignorar los params estado/activo.
                     // Aplicamos filtro cliente sobre la respuesta como garantía.
                     const filteredContent = data.content.filter(p => {
@@ -450,15 +469,14 @@ export function BovedaRetroPage(): JSX.Element {
                     const hasFilter = filterEstado !== 'TODOS' || filterActivo !== 'TODOS';
                     setRows(filteredContent);
                     setPagination(
-                        hasFilter ? filteredContent.length                            : data.totalElements,
-                        hasFilter ? (Math.ceil(filteredContent.length / activeLimit) || 1) : data.totalPages,
+                        hasFilter ? filteredContent.length                                   : data.totalElements,
+                        hasFilter ? (Math.ceil(filteredContent.length / activeLimit) || 1)  : data.totalPages,
                     );
                     setIsLoading(false);
                 }
             })
             .catch(() => {
                 if (!cancelled) {
-                    firstLoadDone.current = true;
                     const r = simulateFilter(localData, activeSearch, filterEstado, filterActivo, activePage, activeLimit);
                     setRows(r.content);
                     setPagination(r.totalElements, r.totalPages);
@@ -507,19 +525,20 @@ export function BovedaRetroPage(): JSX.Element {
                 style={{
                     minHeight:        '100%',
                     // Fondos casi negros — el naranja no existe en el fondo
-                    '--bg-void':      '#040403',
+                    '--bg-void':      '#040404',
                     '--bg-base':      R.bg,
                     '--bg-surface':   R.surface,
                     '--bg-elevated':  R.elevated,
-                    '--bg-overlay':   '#161410',
-                    // Acentos cálidos luminosos
-                    '--accent-primary':      R.amberHi,
-                    '--accent-primary-glow': 'rgba(255,224,128,0.14)',
-                    '--accent-cyan':         R.amber,
-                    '--accent-cyan-glow':    'rgba(255,184,48,0.12)',
-                    '--border-subtle':       'rgba(255,180,40,0.08)',
-                    '--border-default':      R.border,
-                    '--border-strong':       R.borderHi,
+                    '--bg-overlay':   '#141414',
+                    // Acentos muy apagados — el ámbar aparece solo en elementos
+                    // retro concretos (precio, badges), NO en toda la UI de controles.
+                    '--accent-primary':      '#7a5c1a',
+                    '--accent-primary-glow': 'rgba(120,90,25,0.05)',
+                    '--accent-cyan':         '#5c3e10',
+                    '--accent-cyan-glow':    'rgba(90,60,16,0.04)',
+                    '--border-subtle':       'rgba(120,88,28,0.10)',
+                    '--border-default':      'rgba(120,88,28,0.14)',
+                    '--border-strong':       'rgba(155,115,40,0.26)',
                     // Texto claro sobre fondo oscuro
                     '--text-primary':        R.cream,
                     '--text-secondary':      R.sand,
@@ -537,7 +556,7 @@ export function BovedaRetroPage(): JSX.Element {
                     padding:      '18px 20px',
                     border:       `1px solid ${R.border}`,
                     // Fondo muy sutil, casi transparente
-                    background:   `linear-gradient(180deg, rgba(168,114,6,0.02) 0%, transparent 100%)`,
+                    background:   'transparent',
                     minHeight:    '56px',
                 }}>
                     {/* ── Esquinas pixel art ── */}
@@ -615,7 +634,9 @@ export function BovedaRetroPage(): JSX.Element {
                                     value={filterEstado}
                                     onChange={v => {
                                         setFilterEstado(v);
-                                        if (v !== 'TODOS') setFilterActivo('TODOS');
+                                        // Siempre resetea filterActivo — así aunque filterEstado
+                                        // ya fuera 'TODOS', filterActivo cambia y el effect se dispara.
+                                        setFilterActivo('TODOS');
                                         filters.setPage(0);
                                     }}
                                 />
@@ -624,7 +645,8 @@ export function BovedaRetroPage(): JSX.Element {
                                     value={filterActivo}
                                     onChange={v => {
                                         setFilterActivo(v);
-                                        if (v !== 'TODOS') setFilterEstado('TODOS');
+                                        // Siempre resetea filterEstado — misma razón.
+                                        setFilterEstado('TODOS');
                                         filters.setPage(0);
                                     }}
                                 />
@@ -678,6 +700,7 @@ export function BovedaRetroPage(): JSX.Element {
                     <div style={{
                         display:             'grid',
                         gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                        gridAutoRows:        '252px',
                         gap:                 '18px',
                     }}>
                         {rows.map(p => <RetroCard key={p.id} producto={p} />)}

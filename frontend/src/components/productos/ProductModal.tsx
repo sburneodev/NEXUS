@@ -41,6 +41,13 @@ export interface ProductModalProps {
     onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>) => void;
     /** Valores precargados por IA (solo en modo alta) */
     initialValues?: Partial<ProductForm>;
+    /**
+     * Contexto de creación — fija el tipo automáticamente y adapta el UI.
+     * · 'ESTANDAR' → desde Productos (tipo fijo ESTANDAR, sin estadoConservacion)
+     * · 'RETRO'    → desde Bóveda/Tasador (tipo fijo RETRO, con estadoConservacion)
+     * · undefined  → modo edición (tipo read-only, estadoConservacion si es RETRO)
+     */
+    modoCreacion?:  'ESTANDAR' | 'RETRO';
 }
 
 const EMPTY_FORM: ProductForm = {
@@ -62,7 +69,7 @@ const EMPTY_FORM: ProductForm = {
 
 // ── Componente ────────────────────────────────────────────────────────
 
-export function ProductModal({ producto, isOpen, onClose, onSave, initialValues }: ProductModalProps): JSX.Element | null {
+export function ProductModal({ producto, isOpen, onClose, onSave, initialValues, modoCreacion }: ProductModalProps): JSX.Element | null {
 
     const [form, setForm]     = useState<ProductForm>(EMPTY_FORM);
     const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
@@ -124,7 +131,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
             stockActual:          Number(form.stockActual),
             stockMinimo:          Number(form.stockMinimo) || 0,
             stockMaximo:          Number(form.stockMaximo) || 999,
-            tipoProducto:         form.tipoProducto,
+            tipoProducto:         modoCreacion ?? form.tipoProducto,
             estadoConservacion:   form.estadoConservacion || null,
             activo:               form.activo,
             atributosEspecificos: null,
@@ -205,7 +212,11 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                 }}>
                     <div>
                         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                            {producto ? '✎ EDITAR PRODUCTO' : '+ NUEVO PRODUCTO'}
+                            {producto
+                                ? '✎ EDITAR PRODUCTO'
+                                : modoCreacion === 'RETRO'
+                                    ? '◆ NUEVA PIEZA RETRO'
+                                    : '+ NUEVO PRODUCTO ESTÁNDAR'}
                         </h2>
                         {producto && (
                             <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', margin: '2px 0 0', letterSpacing: '0.06em' }}>
@@ -235,35 +246,68 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                         {field('Stock Actual *', 'stockActual', 'number', '0')}
                         {field('Stock Mínimo', 'stockMinimo', 'number', '5')}
 
-                        {/* Tipo producto */}
-                        <div>
-                            <label style={labelStyle}>Tipo Producto</label>
-                            <select
-                                value={form.tipoProducto}
-                                onChange={e => setForm(prev => ({ ...prev, tipoProducto: e.target.value as TipoProducto }))}
-                                style={inputStyle}
-                            >
-                                <option value="ESTANDAR">ESTÁNDAR</option>
-                                <option value="RETRO">RETRO — La Bóveda</option>
-                            </select>
-                        </div>
+                        {/* ── Banner informativo en modo creación ────────────── */}
+                        {!producto && modoCreacion === 'ESTANDAR' && (
+                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.20)', borderRadius: '7px', padding: '10px 14px' }}>
+                                <span style={{ color: 'var(--accent-cyan)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>ℹ</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
+                                    Solo se pueden crear <strong style={{ color: 'var(--text-primary)' }}>productos estándar</strong> desde este módulo.
+                                    Los productos retro se registran a través del módulo{' '}
+                                    <strong style={{ color: 'var(--accent-primary)' }}>Bóveda</strong>.
+                                </span>
+                            </div>
+                        )}
+                        {!producto && modoCreacion === 'RETRO' && (
+                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.22)', borderRadius: '7px', padding: '10px 14px' }}>
+                                <span style={{ color: 'var(--accent-primary)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>◆</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
+                                    Este producto se registrará como <strong style={{ color: 'var(--accent-primary)' }}>pieza retro</strong> en{' '}
+                                    <strong style={{ color: 'var(--text-primary)' }}>La Bóveda</strong>.
+                                    El tipo se asigna automáticamente.
+                                </span>
+                            </div>
+                        )}
 
-                        {/* Estado conservación (solo RETRO) */}
-                        <div>
-                            <label style={labelStyle}>Estado Conservación</label>
-                            <select
-                                value={form.estadoConservacion}
-                                onChange={e => setForm(prev => ({ ...prev, estadoConservacion: e.target.value as EstadoConservacion | '' }))}
-                                disabled={form.tipoProducto !== 'RETRO'}
-                                style={{ ...inputStyle, opacity: form.tipoProducto !== 'RETRO' ? 0.4 : 1 }}
-                            >
-                                <option value="">— No aplica —</option>
-                                <option value="MINT">MINT</option>
-                                <option value="CIB">CIB</option>
-                                <option value="LOOSE">LOOSE</option>
-                                <option value="LOOSE_D">LOOSE_D</option>
-                            </select>
-                        </div>
+                        {/* ── Tipo: badge read-only en edición ────────────────── */}
+                        {producto && (
+                            <div>
+                                <label style={labelStyle}>Tipo Producto</label>
+                                <div style={{
+                                    fontFamily:    'var(--font-mono)',
+                                    fontSize:      '12px',
+                                    fontWeight:    700,
+                                    letterSpacing: '0.08em',
+                                    color:         form.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-cyan)',
+                                    border:        `1px solid ${form.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-cyan)'}`,
+                                    borderRadius:  '6px',
+                                    padding:       '9px 12px',
+                                    background:    form.tipoProducto === 'RETRO' ? 'rgba(255,200,60,0.05)' : 'rgba(0,212,255,0.05)',
+                                    userSelect:    'none',
+                                }}>
+                                    {form.tipoProducto === 'RETRO' ? '◆ RETRO — La Bóveda' : '● ESTÁNDAR'}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Estado conservación: solo para RETRO ─────────────── */}
+                        {(modoCreacion === 'RETRO' || (producto && form.tipoProducto === 'RETRO')) && (
+                            <div>
+                                <label style={labelStyle}>Estado Conservación</label>
+                                <select
+                                    value={form.estadoConservacion}
+                                    onChange={e => setForm(prev => ({ ...prev, estadoConservacion: e.target.value as EstadoConservacion | '' }))}
+                                    style={inputStyle}
+                                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
+                                    onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                >
+                                    <option value="">— Sin especificar —</option>
+                                    <option value="MINT">MINT — Precintado</option>
+                                    <option value="CIB">CIB — Caja + Manual</option>
+                                    <option value="LOOSE">LOOSE — Solo cartucho</option>
+                                    <option value="LOOSE_D">LOOSE-D — Con daños</option>
+                                </select>
+                            </div>
+                        )}
 
                         {/* IDs de relaciones FK */}
                         {field('ID Proveedor', 'idProveedor', 'number', '1')}

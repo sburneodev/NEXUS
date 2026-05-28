@@ -185,12 +185,34 @@
 }
 
 /* ============================================================
+   AVT-06 · CURSOR MÁQUINA DE ESCRIBIR — parpadeo sincronizado
+   con el estado TALKING del avatar
+   ============================================================ */
+
+.ia-typewriter-cursor {
+  display:        inline-block;
+  width:          2px;
+  height:         1em;
+  background:     var(--accent-success, #00ff88);
+  margin-left:    1px;
+  vertical-align: text-bottom;
+  border-radius:  1px;
+  animation:      ia-cursor-blink 0.7s step-end infinite;
+}
+
+@keyframes ia-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ============================================================
    ACCESIBILIDAD — Reducir animaciones si el usuario lo prefiere
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   .ia-avatar,
-  .ia-avatar__eye {
+  .ia-avatar__eye,
+  .ia-typewriter-cursor {
     animation: none !important;
   }
 }

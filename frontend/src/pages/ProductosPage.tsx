@@ -105,7 +105,7 @@ export function ProductosPage(): JSX.Element {
 
     // ── Badge de stock ────────────────────────────────────────────────────────
     const stockBadge = (p: Producto): JSX.Element => {
-        const critico = p.stockActual <= p.stockMinimo;
+        const critico = p.tipoProducto !== 'RETRO' && p.stockActual <= p.stockMinimo;
         return (
             <span style={{
                 fontFamily:    'var(--font-mono)',
@@ -307,8 +307,11 @@ export function ProductosPage(): JSX.Element {
                                             border:        `1px solid ${p.tipoProducto === 'RETRO'
                                                 ? 'var(--accent-gold)'
                                                 : 'var(--border-default)'}`,
+                                            background:    p.tipoProducto === 'RETRO'
+                                                ? 'rgba(255,200,60,0.08)'
+                                                : 'transparent',
                                             borderRadius:  '3px',
-                                            padding:       '2px 6px',
+                                            padding:       '2px 7px',
                                         }}>
                                             {p.tipoProducto}
                                         </span>
@@ -325,16 +328,30 @@ export function ProductosPage(): JSX.Element {
                                     </td>
                                     <td style={tdStyle}>{stockBadge(p)}</td>
                                     <td style={tdStyle}>
-                                        <span style={{
-                                            fontFamily:    'var(--font-mono)',
-                                            fontSize:      '10px',
-                                            color:         p.activo
-                                                ? 'var(--accent-primary)'
-                                                : 'var(--text-muted)',
-                                            letterSpacing: '0.06em',
-                                        }}>
-                                            {p.activo ? '● ACTIVO' : '○ INACTIVO'}
-                                        </span>
+                                        {p.tipoProducto === 'RETRO' && !p.activo ? (
+                                            <span style={{
+                                                fontFamily:    'var(--font-mono)',
+                                                fontSize:      '10px',
+                                                fontWeight:    700,
+                                                letterSpacing: '0.16em',
+                                                color:         'var(--accent-danger)',
+                                                border:        '1px solid var(--accent-danger)',
+                                                outline:       '1px solid rgba(255,68,85,0.25)',
+                                                outlineOffset: '2px',
+                                                borderRadius:  '2px',
+                                                padding:       '2px 7px',
+                                                display:       'inline-block',
+                                            }}>VENDIDO</span>
+                                        ) : (
+                                            <span style={{
+                                                fontFamily:    'var(--font-mono)',
+                                                fontSize:      '10px',
+                                                color:         p.activo ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                                letterSpacing: '0.06em',
+                                            }}>
+                                                {p.activo ? '● ACTIVO' : '○ INACTIVO'}
+                                            </span>
+                                        )}
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                                         <button
@@ -365,6 +382,7 @@ export function ProductosPage(): JSX.Element {
                 isOpen={modalOpen}
                 onClose={() => { setModalOpen(false); setSelected(null); }}
                 onSave={handleSave}
+                modoCreacion={selected ? undefined : 'ESTANDAR'}
             />
         </div>
     );

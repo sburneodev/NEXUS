@@ -1,7 +1,9 @@
 package com.nexus.service;
 
 import com.nexus.dto.StockMovimientoRequest;
+import com.nexus.model.Cliente;
 import com.nexus.model.Usuario;
+import com.nexus.repository.ClienteRepository;
 import com.nexus.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,7 +35,8 @@ import static org.mockito.Mockito.*;
  * Cubre:
  *   1. Venta exitosa: SALIDA, ENTRADA, AJUSTE
  *   2. Stock insuficiente: agotado, RETRO, producto no encontrado, sin auth
- *   3. Concurrencia: el SP garantiza ACID — simulamos que solo una
+ *   3. Validación de cliente inválido (nuevo — lanza 422)
+ *   4. Concurrencia: el SP garantiza ACID — simulamos que solo una
  *      de dos peticiones simultáneas tiene éxito
  */
 @ExtendWith(MockitoExtension.class)
@@ -44,6 +47,9 @@ class StockServiceTest {
 
     @Mock
     private UsuarioRepository usuarioRepository;
+
+    @Mock
+    private ClienteRepository clienteRepository;
 
     @InjectMocks
     private StockService stockService;
@@ -59,7 +65,6 @@ class StockServiceTest {
 
     /**
      * Simula usuario autenticado en SecurityContext.
-     * Usuario no tiene setId() → reflexión para asignar el id.
      */
     private void mockUsuarioAutenticado(String email, Long idUsuario) {
         Authentication auth = mock(Authentication.class);
@@ -83,8 +88,16 @@ class StockServiceTest {
     }
 
     /**
+     * Simula un cliente activo con el id dado en el clienteRepository.
+     */
+    private void mockClienteActivo(Long idCliente) {
+        Cliente cliente = new Cliente();
+        cliente.setActivo(true);
+        when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(cliente));
+    }
+
+    /**
      * Configura JdbcTemplate para simular la respuesta del SP.
-     * Usa reflexión para invocar el callback sin cast genérico problemático.
      */
     private void mockJdbcSp(String oResultado, int oStockNuevo) throws Exception {
         CallableStatement cs = mock(CallableStatement.class);
@@ -108,7 +121,7 @@ class StockServiceTest {
                 any(org.springframework.jdbc.core.CallableStatementCallback.class));
     }
 
-    /** Request de SALIDA reutilizable. */
+    /** Request de SALIDA reutilizable con idCliente=1L. */
     private StockMovimientoRequest requestSalida(Long idProducto, int cantidad) {
         StockMovimientoRequest req = new StockMovimientoRequest();
         req.setIdProducto(idProducto);
@@ -126,6 +139,7 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_ventaExitosa_devuelveOkYStockNuevo() throws Exception {
+        mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 5 → 4", 4);
 
@@ -139,6 +153,7 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_entradaProveedor_devuelveOk() throws Exception {
+        // ENTRADA no tiene idCliente — no se consulta clienteRepository
         mockUsuarioAutenticado("gestor@levelupnexus.es", 2L);
         mockJdbcSp("OK: 10 → 20", 20);
 
@@ -154,10 +169,13 @@ class StockServiceTest {
 
         assertTrue(resultado.getResultado().startsWith("OK"));
         assertEquals(20, resultado.getStockNuevo());
+        // Verificar que no se consultó clienteRepository (ENTRADA no tiene cliente)
+        verifyNoInteractions(clienteRepository);
     }
 
     @Test
     void registrarMovimiento_ajusteManual_devuelveOk() throws Exception {
+        // AJUSTE tampoco tiene idCliente
         mockUsuarioAutenticado("gestor@levelupnexus.es", 2L);
         mockJdbcSp("OK: 8 → 10", 10);
 
@@ -170,14 +188,16 @@ class StockServiceTest {
         StockMovimientoResponse resultado = stockService.registrarMovimiento(req);
 
         assertTrue(resultado.getResultado().startsWith("OK"));
+        verifyNoInteractions(clienteRepository);
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // TEST 2 — Stock insuficiente
+    // TEST 2 — Stock insuficiente / errores del SP
     // ─────────────────────────────────────────────────────────────────
 
     @Test
     void registrarMovimiento_stockInsuficiente_lanza409() throws Exception {
+        mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0", 0);
 
@@ -191,6 +211,7 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_articuloRetroAgotado_lanza409ConMensajeRetro() throws Exception {
+        mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 
@@ -204,6 +225,7 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_productoNoEncontrado_lanza409() throws Exception {
+        mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Producto no encontrado id=999", -1);
 
@@ -216,6 +238,11 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_sinAutenticacion_lanza401() {
+        // idCliente=1L está en requestSalida, pero la validación de cliente
+        // ocurre ANTES de getUsuarioAutenticadoId, así que necesitamos
+        // mockear el cliente para que no falle ahí y llegue al check de auth.
+        mockClienteActivo(1L);
+
         SecurityContext ctx = mock(SecurityContext.class);
         when(ctx.getAuthentication()).thenReturn(null);
         SecurityContextHolder.setContext(ctx);
@@ -229,18 +256,42 @@ class StockServiceTest {
     }
 
     // ─────────────────────────────────────────────────────────────────
-    // TEST 3 — Concurrencia
-    //
-    // El SP PostgreSQL usa SELECT FOR UPDATE: garantiza que solo una
-    // transacción simultánea tiene éxito sobre el mismo artículo RETRO.
-    //
-    // En el test simulamos ese comportamiento sin hilos reales:
-    //   - Primera petición  → el SP responde OK   (primera transacción gana)
-    //   - Segunda petición  → el SP responde ERROR (segunda transacción pierde)
-    //
-    // Verificamos que el servicio maneja correctamente ambas respuestas:
-    //   - OK    → devuelve el mapa con stockNuevo
-    //   - ERROR → lanza ResponseStatusException 409
+    // TEST 3 — Validación de cliente inválido (nuevo)
+    // ─────────────────────────────────────────────────────────────────
+
+    @Test
+    void registrarMovimiento_clienteNoExistente_lanza422() {
+        // clienteRepository devuelve vacío → 422 antes de llegar al SP
+        when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
+
+        assertEquals(422, ex.getStatusCode().value());
+        assertTrue(ex.getReason().contains("ID no existente o inactivo"));
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    @Test
+    void registrarMovimiento_clienteInactivo_lanza422() {
+        Cliente clienteInactivo = new Cliente();
+        clienteInactivo.setActivo(false);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteInactivo));
+
+        ResponseStatusException ex = assertThrows(
+                ResponseStatusException.class,
+                () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
+
+        assertEquals(422, ex.getStatusCode().value());
+        assertTrue(ex.getReason().contains("ID no existente o inactivo"));
+        verifyNoInteractions(jdbcTemplate);
+        verifyNoInteractions(usuarioRepository);
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // TEST 4 — Concurrencia
     // ─────────────────────────────────────────────────────────────────
 
     @Test
@@ -248,6 +299,7 @@ class StockServiceTest {
             throws Exception {
 
         // ── Primera petición: el SP dice OK (gana la carrera) ─────────
+        mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 1 → 0", 0);
 
@@ -260,7 +312,6 @@ class StockServiceTest {
                 "Tras la venta el stock del RETRO debe ser 0");
 
         // ── Segunda petición: el SP dice ERROR (pierde la carrera) ────
-        // Necesitamos resetear el mock para configurar una nueva respuesta
         reset(jdbcTemplate);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 

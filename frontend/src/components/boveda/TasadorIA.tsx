@@ -125,8 +125,8 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
             background:   'var(--bg-surface)',
             border:       '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-lg)',
-            padding:      'var(--space-6)',
-            marginBottom: 'var(--space-6)',
+            padding:      'var(--space-4) var(--space-6)',
+            marginBottom: 'var(--space-4)',
             position:     'relative',
             overflow:     'hidden',
         }}>
@@ -139,36 +139,41 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
                 height:     '2px',
                 background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))',
             }} />
-            {/* Cabecera */}
-            <div style={{ marginBottom: 'var(--space-4)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-1)' }}>
-                    <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize:   '13px',
-                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text',
-                    }}>◇</span>
-                    <h2 style={{
-                        fontFamily:    'var(--font-display)',
-                        fontSize:      '15px',
-                        fontWeight:    700,
-                        letterSpacing: '0.12em',
-                        textTransform: 'uppercase',
-                        color:         'var(--text-primary)',
-                        margin:        0,
-                    }}>Tasador Inteligente</h2>
-                </div>
-                <p style={{
+            {/* Cabecera — título y subtítulo en la misma fila */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: 'var(--space-3)', flexWrap: 'wrap' }}>
+                <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize:   '13px',
+                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    flexShrink: 0,
+                }}>◇</span>
+                <h2 style={{
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      '15px',
+                    fontWeight:    700,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color:         'var(--text-primary)',
+                    margin:        0,
+                    flexShrink:    0,
+                }}>Tasador Inteligente</h2>
+                <span style={{
+                    width:      '1px',
+                    height:     '14px',
+                    background: 'var(--border-default)',
+                    flexShrink: 0,
+                }} />
+                <span style={{
                     fontFamily:    'var(--font-mono)',
                     fontSize:      '11px',
                     color:         'var(--text-muted)',
                     letterSpacing: '0.04em',
-                    margin:        0,
                 }}>
                     Consulta el precio de mercado antes de registrar una nueva adquisición retro.
-                </p>
+                </span>
             </div>
 
             {/* Formulario */}

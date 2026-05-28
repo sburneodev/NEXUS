@@ -1,10 +1,10 @@
 /**
- * components/table/TableControls.tsx — SUFP v1
+ * components/table/TableControls.tsx — SUFP v2
  *
  * Barra de controles universal para todas las tablas del sistema NEXUS.
  * Se conecta directamente con useTableFilters y gestiona:
- *   · Buscador con debounce + indicador de umbral + spinner de espera
- *   · Selector de filas por página (10 · 20 · 50 · 100)
+ *   · Buscador con debounce + spinner de espera
+ *   · Desplegable de filas por página (10 · 20 · 50 · 100)
  *   · Contador de resultados con rango y término de búsqueda activo
  *   · Paginación con ventana dinámica (ellipsis automáticos)
  *   · Estado de carga: skeleton en el contador + paginación desactivada
@@ -105,19 +105,22 @@ function SkeletonBar({ width = '100%', height = 12 }: { width?: string | number;
 // ── Botón de página ───────────────────────────────────────────────────────────
 
 interface PageBtnProps {
-    label:     string;
-    onClick:   () => void;
-    active?:   boolean;
-    disabled?: boolean;
-    title?:    string;
+    label:      string;
+    onClick:    () => void;
+    active?:    boolean;
+    disabled?:  boolean;
+    title?:     string;
+    ariaLabel?: string;
 }
 
-function PageBtn({ label, onClick, active = false, disabled = false, title }: PageBtnProps): JSX.Element {
+function PageBtn({ label, onClick, active = false, disabled = false, title, ariaLabel }: PageBtnProps): JSX.Element {
     return (
         <button
             onClick={onClick}
             disabled={disabled}
             title={title}
+            aria-label={ariaLabel ?? title}
+            aria-current={active ? 'page' : undefined}
             className={`tc-page-btn${active ? ' tc-page-active' : ''}`}
             style={{
                 fontFamily:  'var(--font-mono)',
@@ -196,14 +199,15 @@ export function TableControls({
                     to   { transform: rotate(360deg); }
                 }
                 .tc-search:focus { outline: none; border-color: var(--accent-cyan) !important; box-shadow: 0 0 0 3px rgba(0,212,255,0.10); }
+                .tc-search:focus-visible { outline: 2px solid var(--accent-cyan) !important; outline-offset: 2px; }
+                .tc-page-btn:focus-visible { outline: 2px solid var(--accent-primary) !important; outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-primary-glow) !important; }
+                .tc-clear-btn:focus-visible { outline: 2px solid var(--accent-danger) !important; outline-offset: 2px; }
+                .tc-limit-select:focus-visible { outline: 2px solid var(--accent-primary) !important; outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-primary-glow) !important; }
                 .tc-page-btn:hover:not(:disabled):not(.tc-page-active) {
                     border-color: var(--accent-cyan) !important;
                     color:        var(--accent-cyan) !important;
                 }
-                .tc-limit-btn:hover:not(.tc-limit-active) {
-                    border-color: var(--accent-cyan) !important;
-                    color:        var(--text-primary) !important;
-                }
+                .tc-limit-select:hover { border-color: var(--accent-cyan) !important; }
                 .tc-clear-btn:hover { color: var(--accent-danger) !important; }
             `}</style>
 
@@ -243,7 +247,9 @@ export function TableControls({
 
                     <input
                         ref={searchRef}
-                        type="text"
+                        type="search"
+                        role="searchbox"
+                        aria-label={placeholder}
                         className="tc-search"
                         placeholder={placeholder}
                         value={searchInput}
@@ -270,6 +276,7 @@ export function TableControls({
                             className="tc-clear-btn"
                             onClick={() => { filters.setSearchInput(''); searchRef.current?.focus(); }}
                             title="Limpiar búsqueda"
+                            aria-label="Limpiar búsqueda"
                             style={{
                                 position:   'absolute',
                                 right:      '9px',
@@ -292,42 +299,33 @@ export function TableControls({
                 {/* ── Filtros adicionales (ej. selector de tipo) ────────── */}
                 {extraFilters}
 
-                {/* ── Selector de filas ─────────────────────────────────── */}
+                {/* ── Selector de filas (desplegable compacto) ─────────── */}
                 {!hideLimitSelector && (
-                    <div style={{ display: 'flex', gap: '3px', alignItems: 'center', flexShrink: 0 }}>
-                        {LIMIT_OPTIONS.map(opt => (
-                            <button
-                                key={opt}
-                                className={`tc-limit-btn${limit === opt ? ' tc-limit-active' : ''}`}
-                                onClick={() => filters.setLimit(opt)}
-                                style={{
-                                    fontFamily:    'var(--font-mono)',
-                                    fontSize:      '11px',
-                                    padding:       '6px 9px',
-                                    background:    limit === opt ? 'var(--accent-primary-glow)' : 'transparent',
-                                    color:         limit === opt ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                    border:        `1px solid ${limit === opt ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                                    borderRadius:  '4px',
-                                    cursor:        'pointer',
-                                    transition:    'all 120ms ease',
-                                    letterSpacing: '0.02em',
-                                    fontWeight:    limit === opt ? 600 : 400,
-                                }}
-                            >
-                                {opt}
-                            </button>
-                        ))}
-                        <span style={{
+                    <select
+                        value={limit}
+                        onChange={e => filters.setLimit(Number(e.target.value))}
+                        aria-label="Registros por página"
+                        className="tc-limit-select"
+                        style={{
                             fontFamily:    'var(--font-mono)',
-                            fontSize:      '10px',
-                            color:         'var(--text-muted)',
+                            fontSize:      '12px',
+                            color:         'var(--text-primary)',
+                            background:    'var(--bg-surface)',
+                            border:        '1px solid var(--border-default)',
+                            borderRadius:  '6px',
+                            padding:       '0 10px',
+                            height:        '38px',
+                            cursor:        'pointer',
+                            flexShrink:    0,
                             letterSpacing: '0.04em',
-                            paddingLeft:   '3px',
-                            userSelect:    'none',
-                        }}>
-                            filas
-                        </span>
-                    </div>
+                            transition:    'border-color 160ms ease',
+                            outline:       'none',
+                        }}
+                    >
+                        {LIMIT_OPTIONS.map(opt => (
+                            <option key={opt} value={opt}>{opt} / pág.</option>
+                        ))}
+                    </select>
                 )}
             </div>
 
@@ -397,6 +395,7 @@ export function TableControls({
                             disabled={page === 0}
                             onClick={() => filters.setPage(page - 1)}
                             title="Página anterior"
+                            ariaLabel="Ir a la página anterior"
                         />
 
                         {/* Ventana de páginas con ellipsis */}
@@ -422,6 +421,7 @@ export function TableControls({
                                         active={p === page}
                                         onClick={() => filters.setPage(p)}
                                         title={`Página ${p + 1}`}
+                                        ariaLabel={`Ir a la página ${p + 1}`}
                                     />
                                 )
                         )}
@@ -432,6 +432,7 @@ export function TableControls({
                             disabled={page >= totalPages - 1}
                             onClick={() => filters.setPage(page + 1)}
                             title="Página siguiente"
+                            ariaLabel="Ir a la página siguiente"
                         />
                     </div>
                 )}

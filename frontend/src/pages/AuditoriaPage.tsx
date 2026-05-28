@@ -7,7 +7,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PaginatedResponse }      from '../types/models';
-import { useTableFilters }             from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
 import api from '../services/api';
 
@@ -49,7 +49,7 @@ const ACCIONES = ['', 'LOGIN', 'LOGOUT', 'CREATE', 'UPDATE', 'DELETE'] as const;
 export function AuditoriaPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'auditoria', initialLimit: 50 });
+    const filters = useTableFilters({ key: 'auditoria', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────
@@ -169,8 +169,8 @@ export function AuditoriaPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 10)} cols={6} />}
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && <SkeletonRows rows={Math.min(filters.limit, 10)} cols={6} />}
 
                             {!isLoading && rows.length === 0 && (
                                 <tr>
@@ -182,7 +182,7 @@ export function AuditoriaPage(): JSX.Element {
                                 </tr>
                             )}
 
-                            {!isLoading && rows.map(e => (
+                            {rows.map(e => (
                                 <tr key={e.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
                                     onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--bg-overlay)')}
                                     onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}

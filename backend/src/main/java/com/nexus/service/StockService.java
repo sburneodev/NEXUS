@@ -1,6 +1,7 @@
 package com.nexus.service;
 
 import com.nexus.dto.StockMovimientoRequest;
+import com.nexus.dto.StockMovimientoResponse;
 import com.nexus.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,8 +15,11 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.sql.CallableStatement;
 import java.sql.Types;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.time.LocalDate;
+import java.time.ZonedDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.UUID;
 
 /**
  * StockService — CRUD-06
@@ -51,18 +55,22 @@ public class StockService {
 
     /**
      * Registra un movimiento de stock llamando al SP via JDBC.
+     * Tras el éxito del SP genera un albarán único para el frontend.
      *
      * @param request  DTO con los datos del movimiento
-     * @return Map con "resultado" (texto del SP) y "stockNuevo" (int)
+     * @return StockMovimientoResponse con resultado + stockNuevo + datos del albarán
      */
-    public Map<String, Object> registrarMovimiento(StockMovimientoRequest request) {
+    public StockMovimientoResponse registrarMovimiento(StockMovimientoRequest request) {
 
         // Obtener el ID del usuario autenticado desde el JWT
         Long idUsuario = getUsuarioAutenticadoId();
 
         // Llamada al SP con JDBC usando execute() y un PreparedStatementCallback
-        // Se usa {call ...} que es la sintaxis estándar JDBC para procedimientos almacenados
-        String sql = "{call sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)}";
+        // IMPORTANTE: PostgreSQL distingue entre PROCEDURE y FUNCTION.
+        // La sintaxis JDBC {call ...} intenta invocar como función (SELECT).
+        // Para un CREATE PROCEDURE se debe usar CALL directamente,
+        // o el driver JDBC lanza "is a procedure" BadSqlGrammarException.
+        String sql = "CALL sp_registrar_transaccion_stock(?,?,?,?,?,?,?,?,?,?,?)";
 
         final String[] oResultado  = new String[1];
         final int[]    oStockNuevo = new int[1];
@@ -127,10 +135,23 @@ public class StockService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, resultado);
         }
 
-        Map<String, Object> respuesta = new LinkedHashMap<>();
-        respuesta.put("resultado",  resultado);
-        respuesta.put("stockNuevo", stockNuevo);
-        return respuesta;
+        // ── Generar albarán ──────────────────────────────────────────────
+        // Formato: ALB-YYYYMMDD-XXXXXX  (6 hex chars en mayúsculas)
+        // No persiste en BD — el frontend lo almacena para impresión.
+        String fechaStr    = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String uid         = UUID.randomUUID().toString()
+                                 .replace("-", "")
+                                 .substring(0, 6)
+                                 .toUpperCase();
+        String albaranCodigo = "ALB-" + fechaStr + "-" + uid;
+
+        String albaranFecha = ZonedDateTime.now(ZoneId.of("Europe/Madrid"))
+                                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+
+        log.info("[STOCK] Albarán generado: {} para producto={} tipo={}",
+                albaranCodigo, request.getIdProducto(), request.getTipoMovimiento());
+
+        return new StockMovimientoResponse(resultado, stockNuevo, albaranCodigo, albaranFecha);
     }
 
     /**

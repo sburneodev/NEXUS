@@ -1,91 +1,109 @@
 /**
- * pages/ProductosPage.tsx — UI-05
- * Conectado al backend real via productoService
+ * pages/ProductosPage.tsx — SUFP v3
+ *
+ * Gestión de productos con filtrado y paginación server-side.
+ * · GET /api/productos?buscar=&tipo=&page=&size=
+ * · useTableFilters v3 + TableControls (sistema universal NEXUS)
+ * · Debounce sin bucles: el useEffect depende de filters.querySignal
+ *   (= debouncedSearch · page · limit · sort), NUNCA del raw input.
+ * · sessionStorage persiste page, limit y search al navegar
  */
 
-import { useState, useEffect, CSSProperties } from 'react';
-import type { Producto, TipoProducto } from '../types/models';
-import { ProductModal } from '../components/productos/ProductModal';
-import { productoService } from '../services/productoService';
-
-// ── Constante de paginación ───────────────────────────────────────────────────
-const PAGE_SIZE = 20;
+import { useState, useEffect, useCallback, CSSProperties } from 'react';
+import type { Producto, TipoProducto, PaginatedResponse } from '../types/models';
+import { ProductModal }                from '../components/productos/ProductModal';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
+import { TableControls, SkeletonRows } from '../components/table/TableControls';
+import { productoService }             from '../services/productoService';
+import api                             from '../services/api';
 
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export function ProductosPage(): JSX.Element {
 
-    // ── Estado local ──────────────────────────────────────────────────────────
-    const [search,        setSearch]        = useState('');
-    const [filterTipo,    setFilterTipo]    = useState<TipoProducto | 'TODOS'>('TODOS');
-    const [page,          setPage]          = useState(1);
-    const [modalOpen,     setModalOpen]     = useState(false);
-    const [selected,      setSelected]      = useState<Producto | null>(null);
-    const [products,      setProducts]      = useState<Producto[]>([]);
-    const [totalElements, setTotalElements] = useState(0);
-    const [loading,       setLoading]       = useState(true);
+    // ── SUFP ──────────────────────────────────────────────────────────────────
+    const filters = useTableFilters({ key: 'productos', initialLimit: calculateAutoLimit() });
+    const { buildParams, setPagination } = filters;
 
-    const totalPages = Math.max(1, Math.ceil(totalElements / PAGE_SIZE));
+    // ── Estado local ─────────────────────────────────────────────────────────
+    const [rows,        setRows]        = useState<Producto[]>([]);
+    const [isLoading,   setIsLoading]   = useState(true);
+    const [filterTipo,  setFilterTipo]  = useState<TipoProducto | 'TODOS'>('TODOS');
+    const [modalOpen,   setModalOpen]   = useState(false);
+    const [selected,    setSelected]    = useState<Producto | null>(null);
+    const [refreshTick, setRefreshTick] = useState(0);
 
-    // ── Cargar datos del backend ──────────────────────────────────────────────
+    const refresh = useCallback(() => setRefreshTick(t => t + 1), []);
+
+    // ── Fetch server-side ─────────────────────────────────────────────────────
+    // Dependencias explícitas del flujo debounce:
+    //   · filters.querySignal  = debouncedSearch § page § limit § sort
+    //     (NUNCA el searchInput crudo → cero peticiones intermedias por tecla)
+    //   · filterTipo           = filtro local de tipo de producto
+    //   · refreshTick          = invalidación manual tras crear/editar/eliminar
+    // buildParams y setPagination son useCallback estables sincronizados con
+    // querySignal; se excluyen de deps deliberadamente para evitar doble ejecución.
     useEffect(() => {
-        setLoading(true);
-        productoService.listar(
-            page - 1,
-            PAGE_SIZE,
-            filterTipo !== 'TODOS' ? filterTipo : undefined,
-            search || undefined,
-        )
-            .then(data => {
-                setProducts(data.content);
-                setTotalElements(data.totalElements);
+        let cancelled = false;
+        setIsLoading(true);
+
+        const params = buildParams();
+        if (filterTipo !== 'TODOS') params.set('tipo', filterTipo);
+
+        api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
+            .then(({ data }) => {
+                if (!cancelled) {
+                    setRows(data.content);
+                    setPagination(data.totalElements, data.totalPages);
+                }
             })
-            .catch(err => console.error('Error cargando productos:', err))
-            .finally(() => setLoading(false));
-    }, [page, filterTipo, search]);
+            .catch(() => {
+                if (!cancelled) {
+                    setRows([]);
+                    setPagination(0, 0);
+                }
+            })
+            .finally(() => { if (!cancelled) setIsLoading(false); });
+
+        return (): void => { cancelled = true; };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.querySignal, filterTipo, refreshTick]);
 
     // ── Guardar (crear o editar) ──────────────────────────────────────────────
-    async function handleSave(
-        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>,
-    ): Promise<void> {
+    const handleSave = useCallback(async (
+        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
+    ): Promise<void> => {
         try {
             if (selected) {
                 await productoService.editar(selected.id, data as any);
             } else {
                 await productoService.crear(data as any);
+                filters.setPage(0); // tras crear, volvemos a página 1
             }
-            const result = await productoService.listar(
-                page - 1,
-                PAGE_SIZE,
-                filterTipo !== 'TODOS' ? filterTipo : undefined,
-                search || undefined,
-            );
-            setProducts(result.content);
-            setTotalElements(result.totalElements);
             setModalOpen(false);
             setSelected(null);
+            refresh();
         } catch (err) {
             console.error('Error guardando producto:', err);
         }
-    }
+    }, [selected, filters, refresh]);
 
-    // ── Eliminar ──────────────────────────────────────────────────────────────
-    async function handleDelete(id: number): Promise<void> {
+    // ── Eliminar ─────────────────────────────────────────────────────────────
+    const handleDelete = useCallback(async (id: number): Promise<void> => {
         if (window.confirm('¿Eliminar este producto?')) {
             try {
                 await productoService.eliminar(id);
-                setProducts(prev => prev.filter(p => p.id !== id));
-                setTotalElements(prev => prev - 1);
+                refresh();
             } catch (err) {
                 console.error('Error eliminando producto:', err);
             }
         }
-    }
+    }, [refresh]);
 
-    const openNew  = (): void => { setSelected(null);  setModalOpen(true); };
+    const openNew  = (): void => { setSelected(null); setModalOpen(true); };
     const openEdit = (p: Producto): void => { setSelected(p); setModalOpen(true); };
 
-    // ── Renderer de badge de stock ────────────────────────────────────────────
+    // ── Badge de stock ────────────────────────────────────────────────────────
     const stockBadge = (p: Producto): JSX.Element => {
         const critico = p.stockActual <= p.stockMinimo;
         return (
@@ -108,103 +126,85 @@ export function ProductosPage(): JSX.Element {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div>
-            {/* ── Cabecera ─────────────────────────────────────────────── */}
+
+            {/* ── Cabecera ──────────────────────────────────────────────── */}
             <div style={{
                 display:        'flex',
-                alignItems:     'flex-start',
+                alignItems:     'center',
                 justifyContent: 'space-between',
-                marginBottom:   '20px',
+                marginBottom:   '14px',
                 flexWrap:       'wrap',
-                gap:            '12px',
+                gap:            '8px',
             }}>
                 <div>
                     <h1 style={{
                         fontFamily:    'var(--font-display)',
-                        fontSize:      '1.5rem',
+                        fontSize:      '1rem',
                         fontWeight:    700,
                         letterSpacing: '0.06em',
                         textTransform: 'uppercase',
                         color:         'var(--text-primary)',
-                        marginBottom:  '4px',
+                        marginBottom:  '2px',
                     }}>
                         Productos
                     </h1>
                     <p style={{
                         fontFamily:    'var(--font-mono)',
-                        fontSize:      '12px',
+                        fontSize:      '11px',
                         color:         'var(--text-muted)',
                         letterSpacing: '0.04em',
                     }}>
-                        {loading
+                        {isLoading
                             ? 'Cargando...'
-                            : `${totalElements} producto${totalElements !== 1 ? 's' : ''} encontrado${totalElements !== 1 ? 's' : ''}`}
+                            : `${filters.totalItems.toLocaleString('es-ES')} producto${filters.totalItems !== 1 ? 's' : ''} encontrado${filters.totalItems !== 1 ? 's' : ''}`}
                     </p>
                 </div>
                 <button
                     onClick={openNew}
                     className="btn btn-primary"
-                    style={{ letterSpacing: '0.12em', fontSize: '12px', flexShrink: 0 }}
+                    style={{ letterSpacing: '0.10em', fontSize: '11px', padding: '6px 14px', flexShrink: 0 }}
                 >
                     + AÑADIR PRODUCTO
                 </button>
             </div>
 
-            {/* ── Barra de filtros ──────────────────────────────────────── */}
-            <div style={{
-                display:      'flex',
-                gap:          '10px',
-                marginBottom: '16px',
-                flexWrap:     'wrap',
-                alignItems:   'center',
-            }}>
-                {/* Buscador */}
-                <input
-                    type="text"
-                    placeholder="Buscar por nombre o SKU..."
-                    value={search}
-                    onChange={e => { setSearch(e.target.value); setPage(1); }}
-                    style={{
-                        fontFamily:    'var(--font-mono)',
-                        fontSize:      '12px',
-                        letterSpacing: '0.04em',
-                        color:         'var(--text-primary)',
-                        background:    'var(--bg-surface)',
-                        border:        '1px solid var(--border-default)',
-                        borderRadius:  '6px',
-                        padding:       '8px 12px',
-                        outline:       'none',
-                        flex:          '1 1 220px',
-                        minWidth:      '180px',
-                    }}
+            {/* ── TableControls: búsqueda · tipo · filas · paginación ──── */}
+            <div style={{ marginBottom: '16px' }}>
+                <TableControls
+                    filters={filters}
+                    isLoading={isLoading}
+                    entityLabel="producto"
+                    entityLabelPlural="productos"
+                    searchPlaceholder="Buscar por nombre, SKU o descripción..."
+                    extraFilters={
+                        <select
+                            value={filterTipo}
+                            aria-label="Filtrar por tipo de producto"
+                            onChange={e => {
+                                setFilterTipo(e.target.value as TipoProducto | 'TODOS');
+                                filters.setPage(0);
+                            }}
+                            style={{
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '12px',
+                                fontWeight:    600,
+                                letterSpacing: '0.08em',
+                                textTransform: 'uppercase',
+                                color:         'var(--text-primary)',
+                                background:    'var(--bg-surface)',
+                                border:        '1px solid var(--border-default)',
+                                borderRadius:  '6px',
+                                padding:       '9px 12px',
+                                cursor:        'pointer',
+                                flexShrink:    0,
+                            }}
+                        >
+                            <option value="TODOS">Todos los tipos</option>
+                            <option value="ESTANDAR">ESTÁNDAR</option>
+                            <option value="RETRO">RETRO — La Bóveda</option>
+                        </select>
+                    }
                 />
-
-                {/* Filtro por tipo */}
-                <select
-                    value={filterTipo}
-                    onChange={e => {
-                        setFilterTipo(e.target.value as TipoProducto | 'TODOS');
-                        setPage(1);
-                    }}
-                    style={{
-                        fontFamily:    'var(--font-display)',
-                        fontSize:      '12px',
-                        fontWeight:    600,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color:         'var(--text-primary)',
-                        background:    'var(--bg-surface)',
-                        border:        '1px solid var(--border-default)',
-                        borderRadius:  '6px',
-                        padding:       '8px 12px',
-                        outline:       'none',
-                        cursor:        'pointer',
-                        flexShrink:    0,
-                    }}
-                >
-                    <option value="TODOS">Todos los tipos</option>
-                    <option value="ESTANDAR">ESTÁNDAR</option>
-                    <option value="RETRO">RETRO — La Bóveda</option>
-                </select>
             </div>
 
             {/* ── Tabla ─────────────────────────────────────────────────── */}
@@ -236,21 +236,11 @@ export function ProductosPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {loading ? (
-                                <tr>
-                                    <td colSpan={7} style={{
-                                        padding:    '32px',
-                                        textAlign:  'center',
-                                        fontFamily: 'var(--font-mono)',
-                                        fontSize:   '12px',
-                                        color:      'var(--text-muted)',
-                                        letterSpacing: '0.06em',
-                                    }}>
-                                        CARGANDO...
-                                    </td>
-                                </tr>
-                            ) : products.length === 0 ? (
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && (
+                                <SkeletonRows rows={Math.min(filters.limit, 10)} cols={7} />
+                            )}
+                            {!isLoading && rows.length === 0 && (
                                 <tr>
                                     <td colSpan={7} style={{
                                         padding:       '48px',
@@ -260,12 +250,13 @@ export function ProductosPage(): JSX.Element {
                                         color:         'var(--text-muted)',
                                         letterSpacing: '0.08em',
                                     }}>
-                                        {search
-                                            ? `SIN RESULTADOS PARA "${search.toUpperCase()}"`
+                                        {filters.search
+                                            ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
                                             : 'SIN PRODUCTOS'}
                                     </td>
                                 </tr>
-                            ) : products.map(p => (
+                            )}
+                            {rows.map(p => (
                                 <tr
                                     key={p.id}
                                     style={{
@@ -349,14 +340,14 @@ export function ProductosPage(): JSX.Element {
                                         <button
                                             onClick={() => openEdit(p)}
                                             style={actionBtnStyle('#0088cc')}
-                                            title="Editar"
+                                            aria-label={`Editar ${p.nombre}`}
                                         >
                                             EDITAR
                                         </button>
                                         <button
                                             onClick={() => handleDelete(p.id)}
                                             style={actionBtnStyle('#cc2244')}
-                                            title="Eliminar"
+                                            aria-label={`Eliminar ${p.nombre}`}
                                         >
                                             ELIMINAR
                                         </button>
@@ -366,56 +357,9 @@ export function ProductosPage(): JSX.Element {
                         </tbody>
                     </table>
                 </div>
-
-                {/* ── Paginación ────────────────────────────────────────── */}
-                {totalPages > 1 && (
-                    <div style={{
-                        display:        'flex',
-                        alignItems:     'center',
-                        justifyContent: 'space-between',
-                        padding:        '12px 16px',
-                        borderTop:      '1px solid var(--border-subtle)',
-                        flexWrap:       'wrap',
-                        gap:            '8px',
-                    }}>
-                        <span style={{
-                            fontFamily:    'var(--font-mono)',
-                            fontSize:      '11px',
-                            color:         'var(--text-muted)',
-                            letterSpacing: '0.04em',
-                        }}>
-                            Página {page} de {totalPages} · {totalElements} resultados
-                        </span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                disabled={page === 1}
-                                style={pageBtnStyle(page === 1)}
-                            >
-                                ◀
-                            </button>
-                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
-                                <button
-                                    key={n}
-                                    onClick={() => setPage(n)}
-                                    style={pageBtnStyle(false, n === page)}
-                                >
-                                    {n}
-                                </button>
-                            ))}
-                            <button
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                disabled={page === totalPages}
-                                style={pageBtnStyle(page === totalPages)}
-                            >
-                                ▶
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* ── Modal ────────────────────────────────────────────────── */}
+            {/* ── Modal ─────────────────────────────────────────────────── */}
             <ProductModal
                 producto={selected}
                 isOpen={modalOpen}
@@ -449,25 +393,5 @@ function actionBtnStyle(color: string): CSSProperties {
         marginRight:   '6px',
         opacity:       0.75,
         transition:    'opacity 120ms ease',
-    };
-}
-
-function pageBtnStyle(disabled: boolean, active = false): CSSProperties {
-    return {
-        fontFamily:    'var(--font-mono)',
-        fontSize:      '11px',
-        fontWeight:    active ? 700 : 400,
-        padding:       '4px 9px',
-        background:    active ? 'var(--accent-primary)' : 'transparent',
-        color:         disabled
-            ? 'var(--text-muted)'
-            : active
-                ? 'var(--bg-base)'
-                : 'var(--text-secondary)',
-        border:        `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-        borderRadius:  '4px',
-        cursor:        disabled ? 'not-allowed' : 'pointer',
-        opacity:       disabled ? 0.4 : 1,
-        transition:    'all 120ms ease',
     };
 }

@@ -31,9 +31,11 @@ export interface Producto extends Auditable {
     sku: string;
     nombre: string;
     descripcion: string | null;
-    idCategoria: number | null;
-    idProveedor: number | null;
-    idUbicacion: number | null;
+    idProveedor: number | null;          // FK para escritura (POST/PUT)
+    proveedorNombre: string | null;      // Solo lectura — join del backend (GET)
+    idCategoria: number | null;          // FK para escritura (POST/PUT)
+    categoriaNombre: string | null;      // Solo lectura — join del backend (GET)
+    idUbicacion: number | null;          // FK para escritura (POST/PUT)
     precioCoste: number;
     precioVenta: number;
     stockActual: number;
@@ -60,7 +62,7 @@ export interface Proveedor extends Auditable {
     cif: string | null;
     email: string | null;
     telefono: string | null;
-    tiempoEntregaDias: number | null;
+    tiempoEntregaD: number | null;   // columna DB: tiempo_entrega_d (campo real del backend)
     activo: boolean;
 }
 

@@ -2,6 +2,13 @@ import api from './api';
 import type { PageResponse } from './entidadService';
 import type { Producto } from '../types/models';
 
+/**
+ * Formulario de producto enviado al backend en POST/PUT.
+ * Excluye campos de solo lectura:
+ *   - id, creadoEn, actualizadoEn → gestionados por el backend
+ *   - proveedorNombre             → campo de join (solo lectura en GET)
+ * Incluye idProveedor             → FK para vincular proveedor en escritura
+ */
 export type ProductoForm = Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>;
 
 export const productoService = {

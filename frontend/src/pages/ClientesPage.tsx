@@ -13,7 +13,7 @@ import type { CSSProperties }               from 'react';
 import type { PaginatedResponse }           from '../types/models';
 import { FormModal, FieldConfig }           from '../components/common/FormModal';
 import { clienteService, Cliente, ClienteForm } from '../services/entidadService';
-import { useTableFilters }                  from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit }  from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }      from '../components/table/TableControls';
 import api                                  from '../services/api';
 
@@ -32,7 +32,7 @@ const FIELDS: FieldConfig[] = [
 export function ClientesPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'clientes', initialLimit: 20 });
+    const filters = useTableFilters({ key: 'clientes', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────
@@ -189,8 +189,8 @@ export function ClientesPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={6} />}
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={6} />}
 
                             {!isLoading && rows.length === 0 && (
                                 <tr>
@@ -202,7 +202,7 @@ export function ClientesPage(): JSX.Element {
                                 </tr>
                             )}
 
-                            {!isLoading && rows.map(c => (
+                            {rows.map(c => (
                                 <tr
                                     key={c.id}
                                     style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}

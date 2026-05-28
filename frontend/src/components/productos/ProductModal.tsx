@@ -24,6 +24,9 @@ export interface ProductForm {
     tipoProducto:       TipoProducto;
     estadoConservacion: EstadoConservacion | '';
     activo:             boolean;
+    idProveedor:        string;   // string para el input, convertido a number|null al guardar
+    idCategoria:        string;
+    idUbicacion:        string;
 }
 
 export interface ProductModalProps {
@@ -31,7 +34,11 @@ export interface ProductModalProps {
     producto:       Producto | null;
     isOpen:         boolean;
     onClose:        () => void;
-    onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn'>) => void;
+    /**
+     * Datos del formulario listos para enviar al backend.
+     * Excluye campos de solo lectura: id, creadoEn, actualizadoEn, proveedorNombre.
+     */
+    onSave:         (data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>) => void;
     /** Valores precargados por IA (solo en modo alta) */
     initialValues?: Partial<ProductForm>;
 }
@@ -48,6 +55,9 @@ const EMPTY_FORM: ProductForm = {
     tipoProducto:       'ESTANDAR',
     estadoConservacion: '',
     activo:             true,
+    idProveedor:        '',
+    idCategoria:        '',
+    idUbicacion:        '',
 };
 
 // ── Componente ────────────────────────────────────────────────────────
@@ -71,6 +81,9 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                 tipoProducto:       producto.tipoProducto,
                 estadoConservacion: producto.estadoConservacion ?? '',
                 activo:             producto.activo,
+                idProveedor:        producto.idProveedor != null ? String(producto.idProveedor) : '',
+                idCategoria:        producto.idCategoria != null ? String(producto.idCategoria) : '',
+                idUbicacion:        producto.idUbicacion != null ? String(producto.idUbicacion) : '',
             });
         } else if (initialValues) {
             setForm({ ...EMPTY_FORM, ...initialValues });
@@ -100,20 +113,20 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
         e.preventDefault();
         if (!validate()) return;
         onSave({
-            sku:                form.sku.trim().toUpperCase(),
-            nombre:             form.nombre.trim(),
-            descripcion:        form.descripcion.trim() || null,
-            idCategoria:        null,
-            idProveedor:        null,
-            idUbicacion:        null,
-            precioCoste:        Number(form.precioCoste),
-            precioVenta:        Number(form.precioVenta),
-            stockActual:        Number(form.stockActual),
-            stockMinimo:        Number(form.stockMinimo) || 0,
-            stockMaximo:        Number(form.stockMaximo) || 999,
-            tipoProducto:       form.tipoProducto,
-            estadoConservacion: form.estadoConservacion || null,
-            activo:             form.activo,
+            sku:                  form.sku.trim().toUpperCase(),
+            nombre:               form.nombre.trim(),
+            descripcion:          form.descripcion.trim() || null,
+            idProveedor:          form.idProveedor ? Number(form.idProveedor) : null,
+            idCategoria:          form.idCategoria ? Number(form.idCategoria) : null,
+            idUbicacion:          form.idUbicacion ? Number(form.idUbicacion) : null,
+            precioCoste:          Number(form.precioCoste),
+            precioVenta:          Number(form.precioVenta),
+            stockActual:          Number(form.stockActual),
+            stockMinimo:          Number(form.stockMinimo) || 0,
+            stockMaximo:          Number(form.stockMaximo) || 999,
+            tipoProducto:         form.tipoProducto,
+            estadoConservacion:   form.estadoConservacion || null,
+            activo:               form.activo,
             atributosEspecificos: null,
         });
     }
@@ -200,7 +213,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                             </p>
                         )}
                     </div>
-                    <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
+                    <button onClick={onClose} aria-label="Cerrar modal" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '20px', lineHeight: 1, padding: '4px' }}>✕</button>
                 </div>
 
                 {/* Formulario */}
@@ -250,6 +263,13 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues 
                                 <option value="LOOSE">LOOSE</option>
                                 <option value="LOOSE_D">LOOSE_D</option>
                             </select>
+                        </div>
+
+                        {/* IDs de relaciones FK */}
+                        {field('ID Proveedor', 'idProveedor', 'number', '1')}
+                        {field('ID Categoría', 'idCategoria', 'number', '1')}
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            {field('ID Ubicación en Almacén', 'idUbicacion', 'number', '1')}
                         </div>
 
                         {/* Descripción — ancho completo */}

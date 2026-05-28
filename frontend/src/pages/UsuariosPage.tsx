@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from 'react';
 import type { PaginatedResponse } from '../types/models';
-import { useTableFilters }        from '../hooks/useTableFilters';
+import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
 import api from '../services/api';
 
@@ -31,7 +31,7 @@ const ROLES_DISPONIBLES = ['ADMIN','GESTOR_INVENTARIO','CAJERO','MARKETING_ANALY
 export function UsuariosPage(): JSX.Element {
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
-    const filters = useTableFilters({ key: 'usuarios', initialLimit: 20 });
+    const filters = useTableFilters({ key: 'usuarios', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination } = filters;
 
     // ── Estado local ──────────────────────────────────────────────────────────
@@ -123,8 +123,8 @@ export function UsuariosPage(): JSX.Element {
                                 ))}
                             </tr>
                         </thead>
-                        <tbody>
-                            {isLoading && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={5} />}
+                        <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
+                            {isLoading && rows.length === 0 && <SkeletonRows rows={Math.min(filters.limit, 8)} cols={5} />}
 
                             {!isLoading && rows.length === 0 && (
                                 <tr>
@@ -136,7 +136,7 @@ export function UsuariosPage(): JSX.Element {
                                 </tr>
                             )}
 
-                            {!isLoading && rows.map(u => (
+                            {rows.map(u => (
                                 <tr key={u.id} style={{ borderBottom: '1px solid var(--border-subtle)', transition: 'background 120ms ease' }}
                                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

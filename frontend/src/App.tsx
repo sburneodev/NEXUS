@@ -1,20 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LoginPage }         from './pages/LoginPage';
-import { DashboardPage }     from './pages/DashboardPage';
-import { ProductosPage }     from './pages/ProductosPage';
-import { StockPage }         from './pages/StockPage';
-import { BovedaRetroPage }   from './pages/BovedaRetroPage';
-import { AlmacenPage }       from './pages/AlmacenPage';
-import { ClientesPage }      from './pages/ClientesPage';
-import { ProveedoresPage }   from './pages/ProveedoresPage';
-import { UsuariosPage }      from './pages/UsuariosPage';
-import { AuditoriaPage }         from './pages/AuditoriaPage';
-import { AlbaranPreviewPage }    from './pages/AlbaranPreviewPage';
-import { Layout }            from './components/layout/Layout';
-import { ProtectedRoute }    from './components/auth/ProtectedRoute';
-import { AiPanelProvider }   from './context/AiPanelContext';
+import { LoginPage }              from './pages/LoginPage';
+import { DashboardPage }          from './pages/DashboardPage';
+import { ProductosPage }          from './pages/ProductosPage';
+import { StockPage }              from './pages/StockPage';
+import { BovedaRetroPage }        from './pages/BovedaRetroPage';
+import { AlmacenPage }            from './pages/AlmacenPage';
+import { ClientesPage }           from './pages/ClientesPage';
+import { ProveedoresPage }        from './pages/ProveedoresPage';
+import { UsuariosPage }           from './pages/UsuariosPage';
+import { AuditoriaPage }          from './pages/AuditoriaPage';
+import { AlbaranPreviewPage }     from './pages/AlbaranPreviewPage';
+import { AlbaranesRangoPage }     from './pages/AlbaranesRangoPage';
+import { Layout }                 from './components/layout/Layout';
+import { ProtectedRoute }         from './components/auth/ProtectedRoute';
+import { AiPanelProvider }        from './context/AiPanelContext';
 import './styles/ia-avatar.css';
-import { AuthProvider }      from './context/AuthContext';
+import { AuthProvider }           from './context/AuthContext';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
@@ -32,21 +33,12 @@ function App(): JSX.Element {
     return (
         <AiPanelProvider>
         <BrowserRouter>
-            {/*
-              AuthProvider debe vivir DENTRO de BrowserRouter porque
-              internamente usa useNavigate() para las redirecciones de
-              logout y token expirado.
-
-              Al estar aquí, un único estado de autenticación es
-              compartido por TODOS los componentes del árbol:
-              ProtectedRoute, Navbar, páginas — sin estados residuales
-              de sesiones anteriores.
-            */}
             <AuthProvider>
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<LoginPage />} />
 
+                {/* Rutas para todos los usuarios autenticados */}
                 <Route element={<ProtectedRoute />}>
                     <Route element={<Layout />}>
                         <Route path="/dashboard"   element={<DashboardPage />} />
@@ -60,10 +52,18 @@ function App(): JSX.Element {
                     </Route>
                 </Route>
 
+                {/* Rutas para ADMIN únicamente */}
                 <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
                     <Route element={<Layout />}>
                         <Route path="/usuarios"  element={<UsuariosPage />} />
                         <Route path="/auditoria" element={<AuditoriaPage />} />
+                    </Route>
+                </Route>
+
+                {/* Albaranes por rango — ADMIN, GESTOR_INVENTARIO, CONTABLE */}
+                <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'GESTOR_INVENTARIO', 'CONTABLE']} />}>
+                    <Route element={<Layout />}>
+                        <Route path="/albaranes-rango" element={<AlbaranesRangoPage />} />
                     </Route>
                 </Route>
 

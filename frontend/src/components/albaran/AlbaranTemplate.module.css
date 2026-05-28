@@ -24,7 +24,7 @@
     color:            var(--corp-text);
     background:       var(--corp-white);
     width:            210mm;
-    min-height:       297mm;
+    min-height:       auto;
     margin:           0 auto;
     padding:          16mm 16mm 14mm;
     box-sizing:       border-box;

@@ -275,7 +275,7 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                 <div style={{ minWidth: 0 }}>
                     <div style={{
                         fontFamily:    'var(--font-display)',
-                        fontSize:      '9px',
+                        fontSize:      '12px',
                         fontWeight:    700,
                         letterSpacing: '0.12em',
                         textTransform: 'uppercase',
@@ -328,10 +328,10 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                         padding:        '16px 8px',
                         textAlign:      'center',
                     }}>
-                        <div style={{ fontSize:'22px', opacity:0.18 }}>▦</div>
+                        <div style={{ fontSize:'30px', opacity:0.18 }}>▦</div>
                         <div style={{
                             fontFamily:    'var(--font-display)',
-                            fontSize:      '9px',
+                            fontSize:      '12px',
                             fontWeight:    700,
                             letterSpacing: '0.10em',
                             textTransform: 'uppercase',
@@ -342,7 +342,7 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
                         </div>
                         <div style={{
                             fontFamily:    'var(--font-mono)',
-                            fontSize:      '9px',
+                            fontSize:      '11px',
                             color:         'var(--border-default)',
                             letterSpacing: '0.04em',
                         }}>

@@ -15,9 +15,9 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.nexus.dto.StockMovimientoResponse;
 import java.math.BigDecimal;
 import java.sql.CallableStatement;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -129,12 +129,12 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 5 → 4", 4);
 
-        Map<String, Object> resultado =
+        StockMovimientoResponse resultado =
                 stockService.registrarMovimiento(requestSalida(1L, 1));
 
         assertNotNull(resultado);
-        assertTrue(resultado.get("resultado").toString().startsWith("OK"));
-        assertEquals(4, resultado.get("stockNuevo"));
+        assertTrue(resultado.getResultado().startsWith("OK"));
+        assertEquals(4, resultado.getStockNuevo());
     }
 
     @Test
@@ -150,10 +150,10 @@ class StockServiceTest {
         req.setPrecioUnitario(new BigDecimal("29.99"));
         req.setReferencia("ALB-TEST-001");
 
-        Map<String, Object> resultado = stockService.registrarMovimiento(req);
+        StockMovimientoResponse resultado = stockService.registrarMovimiento(req);
 
-        assertTrue(resultado.get("resultado").toString().startsWith("OK"));
-        assertEquals(20, resultado.get("stockNuevo"));
+        assertTrue(resultado.getResultado().startsWith("OK"));
+        assertEquals(20, resultado.getStockNuevo());
     }
 
     @Test
@@ -167,9 +167,9 @@ class StockServiceTest {
         req.setCantidad(2);
         req.setNotas("Corrección tras recuento de inventario");
 
-        Map<String, Object> resultado = stockService.registrarMovimiento(req);
+        StockMovimientoResponse resultado = stockService.registrarMovimiento(req);
 
-        assertTrue(resultado.get("resultado").toString().startsWith("OK"));
+        assertTrue(resultado.getResultado().startsWith("OK"));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -251,12 +251,12 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 1 → 0", 0);
 
-        Map<String, Object> primeraRespuesta =
+        StockMovimientoResponse primeraRespuesta =
                 stockService.registrarMovimiento(requestSalida(99L, 1));
 
-        assertTrue(primeraRespuesta.get("resultado").toString().startsWith("OK"),
+        assertTrue(primeraRespuesta.getResultado().startsWith("OK"),
                 "La primera petición debe tener éxito");
-        assertEquals(0, primeraRespuesta.get("stockNuevo"),
+        assertEquals(0, primeraRespuesta.getStockNuevo(),
                 "Tras la venta el stock del RETRO debe ser 0");
 
         // ── Segunda petición: el SP dice ERROR (pierde la carrera) ────

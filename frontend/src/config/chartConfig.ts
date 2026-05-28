@@ -58,7 +58,7 @@ export const BASE_CHART_OPTIONS = {
         legend: {
             labels: {
                 color: '#8888aa',
-                font: { family: "'JetBrains Mono', monospace", size: 11 },
+                font: { family: "'JetBrains Mono', monospace", size: 13 },
                 boxWidth: 12,
                 padding: 16,
             },
@@ -69,8 +69,8 @@ export const BASE_CHART_OPTIONS = {
             borderWidth: 1,
             titleColor: '#e8e8f0',
             bodyColor: '#8888aa',
-            titleFont: { family: "'Rajdhani', sans-serif", size: 13, weight: 700 },
-            bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+            titleFont: { family: "'Rajdhani', sans-serif", size: 14, weight: 700 },
+            bodyFont: { family: "'JetBrains Mono', monospace", size: 13 },
             padding: 12,
             cornerRadius: 6,
         },
@@ -78,11 +78,11 @@ export const BASE_CHART_OPTIONS = {
     scales: {
         x: {
             grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 10 } },
+            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 12 } },
         },
         y: {
             grid: { color: 'rgba(255,255,255,0.04)', drawBorder: false },
-            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 10 } },
+            ticks: { color: '#7777aa', font: { family: "'JetBrains Mono', monospace", size: 12 } },
         },
     },
 } as const;

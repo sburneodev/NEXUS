@@ -1,6 +1,7 @@
 package com.nexus.model;
 
 import jakarta.persistence.*;
+import java.time.OffsetDateTime;
 import java.util.Set;
 
 @Entity
@@ -22,6 +23,9 @@ public class Usuario {
 
     @Column(name = "verify_token")
     private String verifyToken;
+
+    @Column(name = "verify_expires")
+    private OffsetDateTime verifyExpires;
     
     @Column(name = "username", nullable = false, unique = true)
     private String username;
@@ -49,6 +53,8 @@ public class Usuario {
     public void setVerified(boolean verified) { isVerified = verified; }
     public String getVerifyToken() { return verifyToken; }
     public void setVerifyToken(String verifyToken) { this.verifyToken = verifyToken; }
+    public OffsetDateTime getVerifyExpires() { return verifyExpires; }
+    public void setVerifyExpires(OffsetDateTime verifyExpires) { this.verifyExpires = verifyExpires; }
     public Set<Rol> getRoles() { return roles; }
     public void setRoles(Set<Rol> roles) { this.roles = roles; }
     public String getUsername() { return username; }

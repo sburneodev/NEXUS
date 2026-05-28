@@ -54,6 +54,14 @@ public class Producto {
     @JoinColumn(name = "id_proveedor")
     private Proveedor proveedor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_categoria")
+    private Categoria categoria;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ubicacion")
+    private UbicacionAlmacen ubicacion;
+
     // Getters y Setters
     public Long getId() { return id; }
     public String getSku() { return sku; }
@@ -82,4 +90,8 @@ public class Producto {
     public void setActivo(Boolean activo) { this.activo = activo; }
     public Proveedor getProveedor() { return proveedor; }
     public void setProveedor(Proveedor proveedor) { this.proveedor = proveedor; }
+    public Categoria getCategoria() { return categoria; }
+    public void setCategoria(Categoria categoria) { this.categoria = categoria; }
+    public UbicacionAlmacen getUbicacion() { return ubicacion; }
+    public void setUbicacion(UbicacionAlmacen ubicacion) { this.ubicacion = ubicacion; }
 }

@@ -27,12 +27,20 @@ import { useState, useMemo, useCallback } from 'react';
 import api from '../services/api';
 import type { Producto, TipoMovimiento, TipoProducto } from '../types/models';
 import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
+import { AlbaranModal } from '../components/stock/AlbaranModal';
+import type { AlbaranInfo } from '../components/stock/AlbaranModal';
 
 // ── Helpers de estado de stock ─────────────────────────────────────────
 
 type StockEstado = 'OK' | 'BAJO' | 'CRITICO';
 
+/**
+ * Los productos RETRO siempre tienen stock = 1 por diseño (son piezas únicas).
+ * No se consideran críticos aunque stock === stockMinimo — se tratan como OK.
+ * Esto alinea con la lógica de AlmacenPage (criticos excluye RETRO).
+ */
 function getEstado(p: Producto): StockEstado {
+    if (p.tipoProducto === 'RETRO')              return 'OK';
     if (p.stockActual <= p.stockMinimo)          return 'CRITICO';
     if (p.stockActual <= p.stockMinimo * 2)      return 'BAJO';
     return 'OK';
@@ -43,6 +51,32 @@ const ESTADO_COLOR: Record<StockEstado, string> = {
     BAJO:    'var(--accent-gold)',
     CRITICO: 'var(--accent-danger)',
 };
+
+/**
+ * Color del número de stock en la tabla:
+ * · RETRO   → siempre dorado (stock=1 es normal, no es alerta)
+ * · ESTÁNDAR → rojo/amarillo/verde según nivel
+ */
+function getStockColor(p: Producto): string {
+    if (p.tipoProducto === 'RETRO') return 'var(--accent-gold)';
+    return ESTADO_COLOR[getEstado(p)];
+}
+
+/**
+ * Badge del estado:
+ * · RETRO   → "★ RETRO" en dorado (pieza única, sin semáforo de stock)
+ * · ESTÁNDAR → ● OK / ⚠ BAJO / ⛔ CRÍTICO con su color habitual
+ */
+function getEstadoBadge(p: Producto): { text: string; color: string } {
+    if (p.tipoProducto === 'RETRO') {
+        return { text: '★ RETRO', color: 'var(--accent-gold)' };
+    }
+    const e = getEstado(p);
+    return {
+        text:  e === 'OK' ? '● OK' : e === 'BAJO' ? '⚠ BAJO' : '⛔ CRÍTICO',
+        color: ESTADO_COLOR[e],
+    };
+}
 
 const TIPO_COLOR: Record<TipoMovimiento, string> = {
     ENTRADA: 'var(--accent-primary)',
@@ -82,7 +116,7 @@ interface OpResult {
 
 const labelStyle: React.CSSProperties = {
     fontFamily:    'var(--font-display)',
-    fontSize:      '10px',
+    fontSize:      '12px',
     fontWeight:    700,
     letterSpacing: '0.10em',
     textTransform: 'uppercase',
@@ -127,15 +161,18 @@ export function StockPage(): JSX.Element {
     const [form,      setForm]            = useState<MovimientoForm>(EMPTY_FORM);
     const [isSaving,  setIsSaving]        = useState(false);
     const [result,    setResult]          = useState<OpResult | null>(null);
-    const [filterTipo,    setFilterTipo]    = useState<TipoProducto | 'TODOS'>('TODOS');
-    const [filterEstado,  setFilterEstado]  = useState<StockEstado | 'TODOS'>('TODOS');
+    // Filtro único — un solo botón activo a la vez, sin solapamiento de estados
+    const [activeFilter, setActiveFilter] = useState<'TODOS' | 'ESTANDAR' | 'RETRO' | 'OK' | 'BAJO' | 'CRITICO'>('TODOS');
+    const [albaranOpen,   setAlbaranOpen]   = useState(false);
+    const [albaranInfo,   setAlbaranInfo]   = useState<AlbaranInfo | null>(null);
 
     // ── Filtrado de la tabla ───────────────────────────────────────────
     const filtered = useMemo(() => productos.filter(p => {
-        const okTipo   = filterTipo   === 'TODOS' || p.tipoProducto === filterTipo;
-        const okEstado = filterEstado === 'TODOS' || getEstado(p)   === filterEstado;
-        return okTipo && okEstado;
-    }), [productos, filterTipo, filterEstado]);
+        if (activeFilter === 'TODOS')    return true;
+        if (activeFilter === 'ESTANDAR') return p.tipoProducto === 'ESTANDAR';
+        if (activeFilter === 'RETRO')    return p.tipoProducto === 'RETRO';
+        return getEstado(p) === activeFilter; // OK | BAJO | CRITICO
+    }), [productos, activeFilter]);
 
     // ── Selección de producto ──────────────────────────────────────────
     const handleSelect = useCallback((p: Producto) => {
@@ -180,13 +217,19 @@ export function StockPage(): JSX.Element {
             body.idProveedor = parseInt(form.idProveedor, 10);
 
         try {
-            const { data } = await api.post<{ resultado: string; stockNuevo: number }>(
-                '/stock/movimiento',
-                body
-            );
+            interface MovResponse {
+                resultado:      string;
+                stockNuevo:     number;
+                albaranCodigo?: string;
+                albaranFecha?:  string;
+            }
+
+            const { data } = await api.post<MovResponse>('/stock/movimiento', body);
 
             // El SP devuelve "OK: 42 → 41" o similar
-            console.log('[NEXUS:Stock] SP resultado:', data.resultado, '| stockNuevo:', data.stockNuevo);
+            console.log('[NEXUS:Stock] SP resultado:', data.resultado,
+                        '| stockNuevo:', data.stockNuevo,
+                        '| albarán:', data.albaranCodigo);
 
             // Actualizar el stockActual en la lista local con el valor ACID del SP
             setProductos(prev =>
@@ -196,6 +239,22 @@ export function StockPage(): JSX.Element {
             setSelected(prev =>
                 prev?.id === selected.id ? { ...prev, stockActual: data.stockNuevo } : prev
             );
+
+            // Mostrar modal de albarán para ENTRADA y SALIDA (AJUSTE no genera albarán)
+            if (form.tipoMovimiento !== 'AJUSTE' && data.albaranCodigo) {
+                setAlbaranInfo({
+                    codigo:         data.albaranCodigo,
+                    fecha:          data.albaranFecha ?? new Date().toISOString(),
+                    tipoMovimiento: form.tipoMovimiento,
+                    producto:       selected,
+                    cantidad:       cantidadNum,
+                    precioUnitario: !isNaN(precio) && precio > 0 ? precio : null,
+                    referencia:     form.referencia.trim(),
+                    notas:          form.notas.trim(),
+                    stockNuevo:     data.stockNuevo,
+                });
+                setAlbaranOpen(true);
+            }
 
             setResult({ ok: true, mensaje: data.resultado, stockNuevo: data.stockNuevo });
             setForm(EMPTY_FORM);
@@ -235,6 +294,7 @@ export function StockPage(): JSX.Element {
 
     // ── Render ─────────────────────────────────────────────────────────
     return (
+        <>
         <div style={{
             display:             'grid',
             gridTemplateColumns: '62% 38%',
@@ -265,29 +325,35 @@ export function StockPage(): JSX.Element {
 
                 {/* Filtros */}
                 <div style={{ flexShrink: 0, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => (
-                        <button key={t} onClick={() => setFilterTipo(t)} style={{
-                            fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
-                            letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
-                            background:  filterTipo === t ? 'var(--accent-primary)' : 'transparent',
-                            color:       filterTipo === t ? 'var(--text-inverse)'   : 'var(--text-muted)',
-                            border:      `1px solid ${filterTipo === t ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                            borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
-                        }}>{t}</button>
-                    ))}
+                    {/* Grupo tipo: TODOS · ESTANDAR · RETRO */}
+                    {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => {
+                        const isActive = activeFilter === t;
+                        const color    = t === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-primary)';
+                        return (
+                            <button key={t} onClick={() => setActiveFilter(t)} style={{
+                                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                                letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
+                                background:   isActive ? color : 'transparent',
+                                color:        isActive ? 'var(--text-inverse)' : 'var(--text-muted)',
+                                border:       `1px solid ${isActive ? color : 'var(--border-default)'}`,
+                                borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
+                            }}>{t}</button>
+                        );
+                    })}
 
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)' }} />
 
-                    {(['TODOS', 'CRITICO', 'BAJO', 'OK'] as const).map(e => {
-                        const color = e !== 'TODOS' ? ESTADO_COLOR[e] : 'var(--accent-cyan)';
-                        const active = filterEstado === e;
+                    {/* Grupo estado: OK · BAJO · CRÍTICO — click activo → vuelve a TODOS */}
+                    {(['OK', 'BAJO', 'CRITICO'] as const).map(e => {
+                        const isActive = activeFilter === e;
+                        const color    = ESTADO_COLOR[e];
                         return (
-                            <button key={e} onClick={() => setFilterEstado(e)} style={{
+                            <button key={e} onClick={() => setActiveFilter(isActive ? 'TODOS' : e)} style={{
                                 fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
-                                background:   active ? color : 'transparent',
-                                color:        active ? 'var(--text-inverse)' : color,
-                                border:       `1px solid ${active ? color : 'var(--border-default)'}`,
+                                background:   isActive ? color : 'transparent',
+                                color:        isActive ? 'var(--text-inverse)' : color,
+                                border:       `1px solid ${isActive ? color : 'var(--border-default)'}`,
                                 borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease',
                             }}>{e}</button>
                         );
@@ -371,28 +437,43 @@ export function StockPage(): JSX.Element {
                                         </td>
                                         {/* Stock actual */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '15px', fontWeight: 700, color: ESTADO_COLOR[estado] }}>
+                                            <span style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                fontSize:   '13px',
+                                                fontWeight: 700,
+                                                color:      getStockColor(p),
+                                                letterSpacing: '-0.01em',
+                                            }}>
                                                 {p.stockActual}
                                             </span>
                                         </td>
                                         {/* Stock mínimo */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
                                                 {p.stockMinimo}
                                             </span>
                                         </td>
                                         {/* Estado badge */}
                                         <td style={{ padding: '10px 12px' }}>
-                                            <span style={{
-                                                fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.06em',
-                                                color:      ESTADO_COLOR[estado],
-                                                background: `${ESTADO_COLOR[estado]}18`,
-                                                border:     `1px solid ${ESTADO_COLOR[estado]}`,
-                                                borderRadius: '3px', padding: '2px 8px',
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                                {estado === 'OK' ? '● OK' : estado === 'BAJO' ? '⚠ BAJO' : '⛔ CRÍTICO'}
-                                            </span>
+                                            {(() => {
+                                                const badge = getEstadoBadge(p);
+                                                return (
+                                                    <span style={{
+                                                        fontFamily:    'var(--font-mono)',
+                                                        fontSize:      '10px',
+                                                        fontWeight:    700,
+                                                        letterSpacing: '0.06em',
+                                                        color:         badge.color,
+                                                        background:    `${badge.color}18`,
+                                                        border:        `1px solid ${badge.color}`,
+                                                        borderRadius:  '3px',
+                                                        padding:       '2px 8px',
+                                                        whiteSpace:    'nowrap',
+                                                    }}>
+                                                        {badge.text}
+                                                    </span>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 );
@@ -418,14 +499,14 @@ export function StockPage(): JSX.Element {
                     borderBottom: '1px solid var(--border-subtle)',
                     flexShrink: 0,
                 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
                         ◈ REGISTRAR MOVIMIENTO
                     </div>
-                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: 700, color: selected ? 'var(--text-primary)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: selected ? 'var(--text-primary)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
                         {selected ? selected.sku : '— Selecciona un producto —'}
                     </div>
                     {selected && (
-                        <div style={{ fontFamily: 'var(--font-body)', fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {selected.nombre}
                         </div>
                     )}
@@ -463,15 +544,15 @@ export function StockPage(): JSX.Element {
                                 borderRadius: '8px',
                             }}>
                                 {[
-                                    { label: 'STOCK ACTUAL', value: String(selected.stockActual), color: ESTADO_COLOR[getEstado(selected)] },
-                                    { label: 'MÍNIMO',       value: String(selected.stockMinimo), color: 'var(--text-secondary)' },
-                                    { label: 'ESTADO',       value: getEstado(selected),          color: ESTADO_COLOR[getEstado(selected)] },
+                                    { label: 'STOCK ACTUAL', value: String(selected.stockActual),         color: getStockColor(selected) },
+                                    { label: 'MÍNIMO',       value: String(selected.stockMinimo),         color: 'var(--text-secondary)' },
+                                    { label: 'ESTADO',       value: getEstadoBadge(selected).text.replace(/^[^\s]+\s/, ''), color: getEstadoBadge(selected).color },
                                 ].map((item, i) => (
                                     <div key={i} style={{
                                         flex: 1, padding: '10px 12px', textAlign: 'center',
                                         borderRight: i < 2 ? '1px solid var(--border-subtle)' : 'none',
                                     }}>
-                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '8px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>
+                                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '3px' }}>
                                             {item.label}
                                         </div>
                                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: i === 2 ? '13px' : '22px', fontWeight: 700, color: item.color, lineHeight: 1 }}>
@@ -489,7 +570,7 @@ export function StockPage(): JSX.Element {
                                         const active = form.tipoMovimiento === t;
                                         return (
                                             <button key={t} onClick={() => setField('tipoMovimiento', t)} style={{
-                                                flex: 1, fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                                                flex: 1, fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700,
                                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '8px 4px',
                                                 background:   active ? TIPO_COLOR[t] : 'transparent',
                                                 color:        active ? 'var(--text-inverse)' : TIPO_COLOR[t],
@@ -621,5 +702,13 @@ export function StockPage(): JSX.Element {
                 </div>
             </div>
         </div>
+
+        {/* ══ Modal de albarán (ENTRADA / SALIDA) ══ */}
+        <AlbaranModal
+            isOpen={albaranOpen}
+            onClose={() => setAlbaranOpen(false)}
+            data={albaranInfo}
+        />
+        </>
     );
 }

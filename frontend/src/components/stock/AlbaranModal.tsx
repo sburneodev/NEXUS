@@ -322,11 +322,10 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
 
             {/* ── TABLA DE PRODUCTO ────────────────────────────────────── */}
             <div style={{
-                marginBottom: '18px',
+                marginBottom: '22px',
                 border:       `1px solid ${C.line}`,
                 borderRadius: '4px',
                 overflow:     'hidden',
-                marginBottom: '22px',
             }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                     <thead>

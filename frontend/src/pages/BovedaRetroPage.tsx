@@ -18,14 +18,14 @@ import api                     from '../services/api';
 
 // ── Paleta interna — fondos casi negros, texto blanco y naranja claro ────────
 const R = {
-    bg:        '#080808',   // negro neutro puro
+    bg:        '#060606',   // negro neutro puro — fondo de página
     surface:   '#0d0d0d',   // tarjetas: neutral puro sin calidez
     elevated:  '#131313',   // cabeceras HUD: neutral oscuro
-    amber:     '#ffb830',   // naranja claro para acentos secundarios
-    amberHi:   '#ffe080',   // naranja muy claro / casi amarillo para highlights
+    amber:     '#ffb830',   // naranja para acentos de acción
+    amberHi:   '#ffe080',   // ámbar muy claro / casi amarillo para precio/highlight
     cream:     '#f5ead8',   // texto primario: blanco cálido muy legible
-    sand:      '#e0c070',   // texto secundario: ámbar claro — más legible
-    dust:      '#b08a40',   // texto terciario: ámbar medio — legible en negro
+    sand:      '#e8e2d8',   // texto secundario: blanco cálido tenue — naranja muy claro
+    dust:      '#c8c2b8',   // texto terciario: blanco cálido apagado — tirando a blanco
     red:       '#ff4444',   // peligro/vendido
     border:    'rgba(255,180,40,0.09)',   // borde sutil — más discreto
     borderHi:  'rgba(255,200,80,0.24)',   // borde activo
@@ -396,26 +396,37 @@ export function BovedaRetroPage(): JSX.Element {
     // de la app reciban también los valores casi negros (el body usa var(--bg-base)).
     useEffect(() => {
         const html = document.documentElement;
+        const body = document.body;
         html.classList.add('theme-retro');
 
+        // Fondos: inline backgroundColor directo en html y body garantiza que
+        // ninguna regla CSS (incluida html.theme-retro) pueda reintroducir
+        // el tono cálido, independientemente de los custom properties.
+        html.style.backgroundColor = '#060606';
+        body.style.backgroundColor = '#060606';
+
         // Inline style en <html> tiene mayor especificidad que html.theme-retro { }
-        // Fondos: casi negros neutros.
-        html.style.setProperty('--bg-void',    '#030303');
-        html.style.setProperty('--bg-base',    '#080808');
+        html.style.setProperty('--bg-void',    '#040404');
+        html.style.setProperty('--bg-base',    '#060606');
         html.style.setProperty('--bg-surface', '#0d0d0d');
         html.style.setProperty('--bg-elevated','#131313');
         html.style.setProperty('--bg-overlay', '#1a1a1a');
-        // Acentos: reducidos a ámbar muy oscuro para que TableControls,
-        // paginación y focus rings no sean naranja brillante en toda la página.
-        html.style.setProperty('--accent-primary',      '#7a5c1a');
-        html.style.setProperty('--accent-primary-glow', 'rgba(120,90,25,0.05)');
-        html.style.setProperty('--accent-cyan',         '#5c3e10');
-        html.style.setProperty('--accent-cyan-glow',    'rgba(90,60,16,0.04)');
-        html.style.setProperty('--border-subtle',       'rgba(120,88,28,0.10)');
-        html.style.setProperty('--border-default',      'rgba(120,88,28,0.14)');
+        // Acentos: totalmente neutros en los controles de UI (búsqueda,
+        // paginación, focus rings) — el ámbar solo aparece en las RetroCards.
+        html.style.setProperty('--accent-primary',      '#3e3e3e');
+        html.style.setProperty('--accent-primary-glow', 'rgba(60,60,60,0.04)');
+        html.style.setProperty('--accent-cyan',         '#363636');
+        html.style.setProperty('--accent-cyan-glow',    'rgba(54,54,54,0.03)');
+        html.style.setProperty('--border-subtle',       'rgba(200,194,184,0.08)');
+        html.style.setProperty('--border-default',      'rgba(200,194,184,0.13)');
+        html.style.setProperty('--text-primary',        '#f5ead8');
+        html.style.setProperty('--text-secondary',      '#e8e2d8');
+        html.style.setProperty('--text-muted',          '#c8c2b8');
 
         return (): void => {
             html.classList.remove('theme-retro');
+            html.style.backgroundColor = '';
+            body.style.backgroundColor = '';
             html.style.removeProperty('--bg-void');
             html.style.removeProperty('--bg-base');
             html.style.removeProperty('--bg-surface');
@@ -427,6 +438,9 @@ export function BovedaRetroPage(): JSX.Element {
             html.style.removeProperty('--accent-cyan-glow');
             html.style.removeProperty('--border-subtle');
             html.style.removeProperty('--border-default');
+            html.style.removeProperty('--text-primary');
+            html.style.removeProperty('--text-secondary');
+            html.style.removeProperty('--text-muted');
         };
     }, []);
 
@@ -523,26 +537,27 @@ export function BovedaRetroPage(): JSX.Element {
             <div
                 className="crt-overlay"
                 style={{
-                    minHeight:        '100%',
-                    // Fondos casi negros — el naranja no existe en el fondo
-                    '--bg-void':      '#040404',
-                    '--bg-base':      R.bg,
-                    '--bg-surface':   R.surface,
-                    '--bg-elevated':  R.elevated,
-                    '--bg-overlay':   '#141414',
-                    // Acentos muy apagados — el ámbar aparece solo en elementos
-                    // retro concretos (precio, badges), NO en toda la UI de controles.
-                    '--accent-primary':      '#7a5c1a',
-                    '--accent-primary-glow': 'rgba(120,90,25,0.05)',
-                    '--accent-cyan':         '#5c3e10',
-                    '--accent-cyan-glow':    'rgba(90,60,16,0.04)',
-                    '--border-subtle':       'rgba(120,88,28,0.10)',
-                    '--border-default':      'rgba(120,88,28,0.14)',
-                    '--border-strong':       'rgba(155,115,40,0.26)',
-                    // Texto claro sobre fondo oscuro
-                    '--text-primary':        R.cream,
-                    '--text-secondary':      R.sand,
-                    '--text-muted':          R.dust,
+                    minHeight:   '100%',
+                    background:  R.bg,
+                    // Fondos casi negros — ningún tono cálido en el fondo
+                    '--bg-void':     '#040404',
+                    '--bg-base':     R.bg,
+                    '--bg-surface':  R.surface,
+                    '--bg-elevated': R.elevated,
+                    '--bg-overlay':  '#141414',
+                    // Acentos neutros en controles de UI — el ámbar solo aparece
+                    // en las RetroCards (precio, badges, SKU) mediante R.amber / R.amberHi.
+                    '--accent-primary':      '#3e3e3e',
+                    '--accent-primary-glow': 'rgba(60,60,60,0.04)',
+                    '--accent-cyan':         '#363636',
+                    '--accent-cyan-glow':    'rgba(54,54,54,0.03)',
+                    '--border-subtle':       'rgba(200,194,184,0.08)',
+                    '--border-default':      'rgba(200,194,184,0.13)',
+                    '--border-strong':       'rgba(200,194,184,0.22)',
+                    // Texto: blanco cálido muy claro — "naranja muy claro, tirando a blanco"
+                    '--text-primary':   R.cream,
+                    '--text-secondary': R.sand,
+                    '--text-muted':     R.dust,
                 } as React.CSSProperties}
             >
 

@@ -1,0 +1,377 @@
+/* ============================================================
+   AlbaranTemplate.module.css
+   Diseño corporativo A4 — imprimible
+   ============================================================ */
+
+/* ── Variables corporativas ────────────────────────────────── */
+.root {
+    --corp-navy:     #1a2b4c;
+    --corp-navy-mid: #2c4070;
+    --corp-line:     #c8d0dc;
+    --corp-bg-block: #f4f6f9;
+    --corp-text:     #1a1d23;
+    --corp-muted:    #5a6270;
+    --corp-faint:    #e8eaee;
+    --corp-white:    #ffffff;
+    --font-sans:     'Inter', 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+/* ── Contenedor A4 ─────────────────────────────────────────── */
+.root {
+    font-family:      var(--font-sans);
+    font-size:        11px;
+    line-height:      1.55;
+    color:            var(--corp-text);
+    background:       var(--corp-white);
+    width:            210mm;
+    min-height:       297mm;
+    margin:           0 auto;
+    padding:          16mm 16mm 14mm;
+    box-sizing:       border-box;
+    display:          flex;
+    flex-direction:   column;
+    box-shadow:       0 2px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Cabecera ──────────────────────────────────────────────── */
+.header {
+    display:         flex;
+    justify-content: space-between;
+    align-items:     flex-start;
+    padding-bottom:  10px;
+    border-bottom:   3px solid var(--corp-navy);
+    margin-bottom:   14px;
+}
+
+.logoBlock {
+    display:        flex;
+    flex-direction: column;
+    gap:            6px;
+}
+
+.logoImg {
+    height:           44px;
+    width:            auto;
+    object-fit:       contain;
+    object-position:  left center;
+    /* Adapta el logo (diseñado para fondo oscuro) al blanco del albarán */
+    filter: brightness(0) saturate(100%) invert(16%) sepia(40%) saturate(600%) hue-rotate(192deg) brightness(85%);
+}
+
+/* Isotipo / marca: se muestra SIN filtro, en sus colores originales */
+.markImg {
+    height:     44px;
+    width:      auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+.logoFallback {
+    font-size:     20px;
+    font-weight:   800;
+    letter-spacing: 0.06em;
+    color:         var(--corp-navy);
+    text-transform: uppercase;
+    line-height:   1;
+}
+
+.logoTagline {
+    font-size:     9px;
+    color:         var(--corp-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight:   500;
+}
+
+.companyInfo {
+    text-align: right;
+    font-size:  10px;
+    color:      var(--corp-muted);
+    line-height: 1.7;
+}
+
+.companyName {
+    font-size:   13px;
+    font-weight: 700;
+    color:       var(--corp-navy);
+    letter-spacing: 0.03em;
+    margin-bottom: 2px;
+}
+
+/* ── Título del documento ──────────────────────────────────── */
+.docTitle {
+    display:         flex;
+    align-items:     center;
+    justify-content: space-between;
+    margin-bottom:   14px;
+}
+
+.docTitleText {
+    font-size:      18px;
+    font-weight:    800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color:          var(--corp-navy);
+    border-left:    4px solid var(--corp-navy);
+    padding-left:   10px;
+    line-height:    1;
+}
+
+/* Bloque central del código de barras en la fila del título */
+.docBarcodeBlock {
+    display:         flex;
+    flex-direction:  column;
+    align-items:     center;
+    justify-content: center;
+}
+
+.docBadge {
+    font-size:      10px;
+    font-weight:    700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding:        4px 12px;
+    border-radius:  3px;
+    border:         1.5px solid;
+}
+
+.docBadgeEntrada {
+    color:            #1a6632;
+    border-color:     #1a6632;
+    background-color: #eaf5ee;
+}
+
+.docBadgeSalida {
+    color:            #7a2020;
+    border-color:     #7a2020;
+    background-color: #faeaea;
+}
+
+/* ── Bloque de datos (albarán + entidad) ───────────────────── */
+.dataGrid {
+    display:               grid;
+    grid-template-columns: 1fr 1fr;
+    gap:                   10px;
+    margin-bottom:         18px;
+}
+
+.dataBlock {
+    background:    var(--corp-bg-block);
+    border:        1px solid var(--corp-line);
+    border-radius: 4px;
+    padding:       10px 12px;
+}
+
+.dataBlockTitle {
+    font-size:     8.5px;
+    font-weight:   700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color:         var(--corp-navy-mid);
+    margin-bottom: 7px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid var(--corp-line);
+}
+
+.dataRow {
+    display:       flex;
+    gap:           6px;
+    margin-bottom: 3px;
+    font-size:     10.5px;
+}
+
+.dataLabel {
+    min-width:   80px;
+    font-weight: 600;
+    color:       var(--corp-muted);
+    flex-shrink: 0;
+}
+
+.dataValue {
+    color:       var(--corp-text);
+    font-weight: 400;
+}
+
+.dataValueStrong {
+    color:       var(--corp-navy);
+    font-weight: 700;
+    font-size:   11.5px;
+}
+
+/* ── Tabla de líneas ───────────────────────────────────────── */
+.tableWrapper {
+    flex:          1;
+    margin-bottom: 18px;
+    border:        1px solid var(--corp-line);
+    border-radius: 4px;
+    overflow:      hidden;
+}
+
+.table {
+    width:           100%;
+    border-collapse: collapse;
+    font-size:       10.5px;
+}
+
+.thead {
+    background: var(--corp-navy);
+}
+
+.thead th {
+    padding:        7px 10px;
+    text-align:     left;
+    font-size:      9px;
+    font-weight:    700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color:          var(--corp-white);
+    white-space:    nowrap;
+}
+
+.thead th.colCenter {
+    text-align: center;
+}
+
+.tbody tr {
+    border-bottom: 1px solid var(--corp-faint);
+    transition:    background 80ms;
+}
+
+.tbody tr:last-child {
+    border-bottom: none;
+}
+
+.tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+.tbody td {
+    padding:        6px 10px;
+    vertical-align: top;
+    color:          var(--corp-text);
+}
+
+.cellCodigo {
+    font-weight:    600;
+    color:          var(--corp-navy-mid);
+    font-size:      10px;
+    letter-spacing: 0.04em;
+    white-space:    nowrap;
+}
+
+.cellCantidad {
+    text-align:  center;
+    font-weight: 700;
+    font-size:   12px;
+    color:       var(--corp-navy);
+}
+
+.cellObs {
+    font-size: 10px;
+    color:     var(--corp-muted);
+    font-style: italic;
+}
+
+.tableEmpty {
+    padding:    24px;
+    text-align: center;
+    color:      var(--corp-muted);
+    font-size:  11px;
+}
+
+.tableFooter {
+    background:  var(--corp-bg-block);
+    border-top:  1.5px solid var(--corp-line);
+    padding:     6px 10px;
+    text-align:  right;
+    font-size:   10px;
+    font-weight: 600;
+    color:       var(--corp-navy);
+    letter-spacing: 0.04em;
+}
+
+/* ── Pie de página ─────────────────────────────────────────── */
+.footer {
+    margin-top:   auto;
+    padding-top:  14px;
+    border-top:   1.5px solid var(--corp-line);
+}
+
+.signatureRow {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:     16px;
+    margin-bottom: 16px;
+}
+
+.signatureBox {
+    border:        1px solid var(--corp-line);
+    border-radius: 3px;
+    padding:       10px 12px;
+    min-height:    64px;
+    display:       flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.signatureLabel {
+    font-size:     8.5px;
+    font-weight:   700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color:         var(--corp-muted);
+    border-top:    1px solid var(--corp-line);
+    padding-top:   5px;
+    margin-top:    auto;
+    text-align:    center;
+}
+
+.legalNote {
+    font-size:   8.5px;
+    color:       var(--corp-muted);
+    line-height: 1.6;
+    text-align:  center;
+    border-top:  1px dashed var(--corp-line);
+    padding-top: 8px;
+}
+
+/* ── Utilidades ─────────────────────────────────────────────── */
+.separator {
+    height:        1px;
+    background:    var(--corp-line);
+    margin:        12px 0;
+    border:        none;
+}
+
+/* ============================================================
+   @media print — eliminar sombras, márgenes de navegador
+   ============================================================ */
+@media print {
+    .root {
+        box-shadow: none;
+        margin:     0;
+        padding:    12mm 14mm 10mm;
+        width:      100%;
+        min-height: 100%;
+    }
+
+    .docBadgeEntrada,
+    .docBadgeSalida {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust:         exact;
+    }
+
+    .thead {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust:         exact;
+    }
+
+    .tbody tr:nth-child(even) {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust:         exact;
+    }
+
+    .footer {
+        page-break-inside: avoid;
+    }
+}

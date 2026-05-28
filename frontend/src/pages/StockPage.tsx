@@ -16,6 +16,7 @@ import { clienteService }  from '../services/entidadService';
 import type { Producto, TipoMovimiento } from '../types/models';
 import { AlbaranModal } from '../components/stock/AlbaranModal';
 import type { AlbaranInfo } from '../components/stock/AlbaranModal';
+import { calculateAutoLimit } from '../hooks/useTableFilters';
 
 // ── Tipo mínimo de cliente para el selector ───────────────────────────
 interface ClienteOpcion {
@@ -302,6 +303,9 @@ export function StockPage(): JSX.Element {
     const [isSaving,         setIsSaving]          = useState(false);
     const [result,           setResult]            = useState<OpResult | null>(null);
     const [activeFilter,     setActiveFilter]      = useState<'TODOS'|'ESTANDAR'|'RETRO'|'OK'|'BAJO'|'CRITICO'>('TODOS');
+    const [searchTerm,       setSearchTerm]        = useState('');
+    const [currentPage,      setCurrentPage]       = useState(0);
+    const [rowsPerPage,      setRowsPerPage]       = useState<number>(() => calculateAutoLimit());
     const [albaranOpen,      setAlbaranOpen]       = useState(false);
     const [albaranInfo,      setAlbaranInfo]       = useState<AlbaranInfo | null>(null);
 
@@ -358,13 +362,29 @@ export function StockPage(): JSX.Element {
         return () => { cancelled = true; };
     }, []);
 
-    // ── Filtrado de la tabla ───────────────────────────────────────────
-    const filtered = useMemo(() => productos.filter(p => {
-        if (activeFilter === 'TODOS')    return true;
-        if (activeFilter === 'ESTANDAR') return p.tipoProducto === 'ESTANDAR';
-        if (activeFilter === 'RETRO')    return p.tipoProducto === 'RETRO';
-        return getEstado(p) === activeFilter;
-    }), [productos, activeFilter]);
+    // ── Filtrado de la tabla (tipo + búsqueda) ────────────────────────
+    const filtered = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        return productos.filter(p => {
+            const matchType =
+                activeFilter === 'TODOS'    ? true :
+                activeFilter === 'ESTANDAR' ? p.tipoProducto === 'ESTANDAR' :
+                activeFilter === 'RETRO'    ? p.tipoProducto === 'RETRO' :
+                getEstado(p) === activeFilter;
+            const matchSearch = !q
+                || p.nombre.toLowerCase().includes(q)
+                || p.sku.toLowerCase().includes(q);
+            return matchType && matchSearch;
+        });
+    }, [productos, activeFilter, searchTerm]);
+
+    // ── Paginación client-side ────────────────────────────────────────
+    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+    const safePage   = Math.min(currentPage, totalPages - 1);
+    const paginated  = useMemo(
+        () => filtered.slice(safePage * rowsPerPage, (safePage + 1) * rowsPerPage),
+        [filtered, safePage, rowsPerPage],
+    );
 
     // ── Selección de producto ──────────────────────────────────────────
     const handleSelect = useCallback((p: Producto) => {
@@ -534,13 +554,35 @@ export function StockPage(): JSX.Element {
                     </p>
                 </div>
 
+                {/* Búsqueda */}
+                <div style={{ flexShrink: 0, position: 'relative' }}>
+                    <span style={{
+                        position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
+                        fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)',
+                        pointerEvents: 'none',
+                    }}>⌕</span>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o SKU…"
+                        value={searchTerm}
+                        onChange={e => { setSearchTerm(e.target.value); setCurrentPage(0); }}
+                        style={{
+                            ...inputStyle,
+                            paddingLeft: '30px',
+                            fontSize:    '12px',
+                        }}
+                        onFocus={onFocusInput}
+                        onBlur={onBlurInput}
+                    />
+                </div>
+
                 {/* Filtros */}
                 <div style={{ flexShrink: 0, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => {
                         const isActive = activeFilter === t;
                         const color    = t === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-primary)';
                         return (
-                            <button key={t} onClick={() => setActiveFilter(t)} style={{
+                            <button key={t} onClick={() => { setActiveFilter(t); setCurrentPage(0); }} style={{
                                 fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
                                 background:   isActive ? color : 'transparent',
@@ -555,7 +597,7 @@ export function StockPage(): JSX.Element {
                         const isActive = activeFilter === e;
                         const color    = ESTADO_COLOR[e];
                         return (
-                            <button key={e} onClick={() => setActiveFilter(isActive ? 'TODOS' : e)} style={{
+                            <button key={e} onClick={() => { setActiveFilter(isActive ? 'TODOS' : e); setCurrentPage(0); }} style={{
                                 fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
                                 letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px',
                                 background:   isActive ? color : 'transparent',
@@ -601,7 +643,7 @@ export function StockPage(): JSX.Element {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(p => {
+                                {paginated.map(p => {
                                     const isSelected = selected?.id === p.id;
                                     return (
                                         <tr key={p.id} onClick={() => handleSelect(p)} style={{
@@ -655,6 +697,96 @@ export function StockPage(): JSX.Element {
                         </table>
                     )}
                 </div>
+
+                {/* Paginación */}
+                {loadState === 'ok' && (
+                    <div style={{
+                        flexShrink: 0,
+                        display:    'flex',
+                        alignItems: 'center',
+                        gap:        '8px',
+                        flexWrap:   'wrap',
+                    }}>
+                        {/* Prev */}
+                        <button
+                            disabled={safePage === 0}
+                            onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                            style={{
+                                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                                letterSpacing: '0.08em', padding: '5px 10px',
+                                background: 'transparent',
+                                color:   safePage === 0 ? 'var(--border-default)' : 'var(--text-muted)',
+                                border:  `1px solid ${safePage === 0 ? 'var(--border-subtle)' : 'var(--border-default)'}`,
+                                borderRadius: '4px', cursor: safePage === 0 ? 'default' : 'pointer',
+                                transition: 'all 120ms ease',
+                            }}
+                        >← ANT</button>
+
+                        {/* Páginas */}
+                        {Array.from({ length: totalPages }, (_, i) => i).map(i => {
+                            // Mostrar máx. 5 páginas con ellipsis
+                            const show = totalPages <= 6
+                                || i === 0 || i === totalPages - 1
+                                || Math.abs(i - safePage) <= 1;
+                            if (!show) {
+                                if (i === 1 || i === totalPages - 2) {
+                                    return <span key={i} style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>;
+                                }
+                                return null;
+                            }
+                            const isActive = i === safePage;
+                            return (
+                                <button key={i} onClick={() => setCurrentPage(i)} style={{
+                                    fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: isActive ? 700 : 400,
+                                    padding: '4px 9px',
+                                    background:   isActive ? 'var(--accent-primary)' : 'transparent',
+                                    color:        isActive ? 'var(--text-inverse)' : 'var(--text-muted)',
+                                    border:       `1px solid ${isActive ? 'var(--accent-primary)' : 'var(--border-default)'}`,
+                                    borderRadius: '4px', cursor: 'pointer', transition: 'all 120ms ease',
+                                    minWidth: '30px',
+                                }}>{i + 1}</button>
+                            );
+                        })}
+
+                        {/* Next */}
+                        <button
+                            disabled={safePage >= totalPages - 1}
+                            onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                            style={{
+                                fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                                letterSpacing: '0.08em', padding: '5px 10px',
+                                background: 'transparent',
+                                color:   safePage >= totalPages - 1 ? 'var(--border-default)' : 'var(--text-muted)',
+                                border:  `1px solid ${safePage >= totalPages - 1 ? 'var(--border-subtle)' : 'var(--border-default)'}`,
+                                borderRadius: '4px', cursor: safePage >= totalPages - 1 ? 'default' : 'pointer',
+                                transition: 'all 120ms ease',
+                            }}
+                        >SIG →</button>
+
+                        {/* Separador */}
+                        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)' }} />
+
+                        {/* Selector de filas */}
+                        <select
+                            value={rowsPerPage}
+                            onChange={e => { setRowsPerPage(Number(e.target.value)); setCurrentPage(0); }}
+                            style={{
+                                fontFamily: 'var(--font-mono)', fontSize: '11px',
+                                color: 'var(--text-muted)', background: 'var(--bg-surface)',
+                                border: '1px solid var(--border-default)', borderRadius: '4px',
+                                padding: '4px 8px', cursor: 'pointer', outline: 'none',
+                            }}
+                        >
+                            {[10, 20, 50].map(n => (
+                                <option key={n} value={n}>{n} / pág.</option>
+                            ))}
+                        </select>
+
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginLeft: 'auto' }}>
+                            {safePage * rowsPerPage + 1}–{Math.min((safePage + 1) * rowsPerPage, filtered.length)} de {filtered.length}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* ══ COLUMNA DERECHA — Panel de movimiento ══ */}

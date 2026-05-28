@@ -54,6 +54,7 @@ const PRINT_CSS = `
     #albaran-root { display: none !important; }
 }
 @media print {
+    body, html    { background: white !important; }
     #root         { display: none !important; }
     #albaran-root { display: block !important; }
     @page {
@@ -140,8 +141,8 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
     // Fila label + valor
     const rowStyle: CSSProperties = {
         display:       'flex',
-        gap:           '6px',
-        marginBottom:  '3px',
+        gap:           '8px',
+        marginBottom:  '6px',
         fontSize:      '10.5px',
         fontFamily:    C.font,
     };
@@ -153,6 +154,8 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
             fontFamily: C.font,
             fontSize:   '11px',
             lineHeight: 1.55,
+            padding:    '20px 24px',
+            boxSizing:  'border-box',
         }}>
 
             {/* ── CABECERA ─────────────────────────────────────────────── */}
@@ -160,9 +163,9 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                 display:        'flex',
                 justifyContent: 'space-between',
                 alignItems:     'flex-start',
-                paddingBottom:  '10px',
+                paddingBottom:  '14px',
                 borderBottom:   `3px solid ${C.navy}`,
-                marginBottom:   '14px',
+                marginBottom:   '18px',
             }}>
                 {/* Izquierda: isotipo + marca */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -223,7 +226,7 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                 display:        'flex',
                 alignItems:     'center',
                 justifyContent: 'space-between',
-                marginBottom:   '14px',
+                marginBottom:   '20px',
             }}>
                 <span style={{
                     fontFamily:    C.font,
@@ -260,15 +263,15 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
             <div style={{
                 display:             'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap:                 '10px',
-                marginBottom:        '18px',
+                gap:                 '14px',
+                marginBottom:        '22px',
             }}>
                 {/* Datos del movimiento */}
                 <div style={{
                     background:   C.bgBlock,
                     border:       `1px solid ${C.line}`,
                     borderRadius: '4px',
-                    padding:      '10px 12px',
+                    padding:      '14px 16px',
                 }}>
                     <span style={blockLabel}>Datos del movimiento</span>
                     <div style={rowStyle}>
@@ -292,7 +295,7 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                     background:   C.bgBlock,
                     border:       `1px solid ${C.line}`,
                     borderRadius: '4px',
-                    padding:      '10px 12px',
+                    padding:      '14px 16px',
                 }}>
                     <span style={blockLabel}>Resultado</span>
                     <div style={rowStyle}>
@@ -323,6 +326,7 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                 border:       `1px solid ${C.line}`,
                 borderRadius: '4px',
                 overflow:     'hidden',
+                marginBottom: '22px',
             }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '10.5px' }}>
                     <thead>
@@ -382,12 +386,12 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
             {/* ── CÓDIGO DE BARRAS ─────────────────────────────────────── */}
             <div style={{
                 borderTop:     `1.5px solid ${C.line}`,
-                paddingTop:    '16px',
+                paddingTop:    '20px',
                 display:       'flex',
                 flexDirection: 'column',
                 alignItems:    'center',
-                gap:           '6px',
-                marginBottom:  '16px',
+                gap:           '8px',
+                marginBottom:  '20px',
             }}>
                 <Code39Barcode value={d.codigo} height={52} narrowWidth={1.8} showText={false} />
                 <div style={{ fontFamily: C.mono, fontSize: '11px', letterSpacing: '0.14em', color: C.navy }}>

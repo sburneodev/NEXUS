@@ -5,51 +5,38 @@ import api                  from '../services/api';
 import type { KpiData }     from '../types/models';
 import { KpiCard }          from '../components/dashboard/KpiCard';
 import { ChartsPanel }      from '../components/dashboard/ChartsPanel';
-import { MOCK_PRODUCTOS }   from '../mocks/mockProductos';
+import { productoService }  from '../services/productoService';
 import { clienteService }   from '../services/entidadService';
 
-// ── KPIs derivados de los datos reales de productos ───────────────────
-// Se calculan una sola vez al cargar el módulo (fuente de verdad: mock compartido)
-const _activos      = MOCK_PRODUCTOS.filter(p => p.activo);
-const _retro        = _activos.filter(p => p.tipoProducto === 'RETRO');
-const _estandar     = _activos.filter(p => p.tipoProducto === 'ESTANDAR');
-
-const KPI_PRODUCTOS = {
-    piezasRetroDisponibles: _retro.length,
-    productosStockCritico:  _estandar.filter(p => p.stockActual <= p.stockMinimo).length,
-    productosStockBajo:     _estandar.filter(
-        p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2
-    ).length,
-};
-
 // ── Serie de ventas demo (onda + ruido) ───────────────────────────────
-// Generada una vez, estable durante la sesión
+// Generada una vez, estable durante la sesión.
+// Se usa como fallback si el backend no devuelve ventasUltimos30Dias.
 const VENTAS_DEMO = Array.from({ length: 30 }, (_, i) => ({
     fecha:    new Date(Date.now() - (29-i)*86400000).toISOString().split('T')[0],
     total:    Math.floor(380 + Math.sin(i * 0.45) * 160 + Math.random() * 220),
     unidades: Math.floor(4   + Math.sin(i * 0.45) * 2   + Math.random() * 7),
 }));
 
-// ── Datos base (productos reales + ventas demo + clientes pendientes) ─
+// ── Estado inicial vacío ─────────────────────────────────────────────
+// Los valores reales llegan del backend. Mientras tanto se muestran
+// ceros o el indicador de carga, nunca datos del mock.
 const BASE_KPI: KpiData = {
-    ventasHoy:            0,
-    ventasAyer:           0,
-    clientesActivos:      0,
-    clientesNuevosSemana: 0,
-    ...KPI_PRODUCTOS,
-    ventasUltimos30Dias:  VENTAS_DEMO,
+    ventasHoy:              0,
+    ventasAyer:             0,
+    clientesActivos:        0,
+    clientesNuevosSemana:   0,
+    piezasRetroDisponibles: 0,
+    productosStockCritico:  0,
+    productosStockBajo:     0,
+    ventasUltimos30Dias:    VENTAS_DEMO,
 };
 
 export function DashboardPage(): JSX.Element {
-    const { user }       = useAuth();
-    const { isDark }     = useTheme();
-    const [kpiData,    setKpiData]    = useState<KpiData>(BASE_KPI);
-    const [loadState,  setLoadState]  = useState<'loading'|'ok'|'error'>('loading');
+    const { user }    = useAuth();
+    const { isDark }  = useTheme();
+    const [kpiData,   setKpiData]   = useState<KpiData>(BASE_KPI);
+    const [loadState, setLoadState] = useState<'loading'|'ok'|'error'>('loading');
 
-    // Glow values — en light mode usamos los neones reales para que
-    // el text-shadow de los KPIs tenga el mismo impacto visual que dark.
-    // El color del texto es WCAG-compliant (#059669 etc.) pero el resplandor
-    // usa los neones para crear la misma "luminosidad" de datos que en oscuro.
     const glow = isDark
         ? { green: 'rgba(0,255,136,0.40)', cyan: 'rgba(0,212,255,0.40)', gold: 'rgba(255,200,69,0.40)', danger: 'rgba(255,68,102,0.40)' }
         : { green: 'rgba(0,255,136,0.32)', cyan: 'rgba(0,212,255,0.32)', gold: 'rgba(255,200,69,0.35)', danger: 'rgba(255,68,102,0.35)' };
@@ -57,27 +44,53 @@ export function DashboardPage(): JSX.Element {
     useEffect(() => {
         let cancelled = false;
 
-        // Llamadas en paralelo: analytics + conteo de clientes
+        // Llamadas en paralelo:
+        //   1. analytics   → ventasHoy, ventasAyer, clientesNuevosSemana, ventas30d
+        //   2. productos retro activos → piezasRetroDisponibles (count real de BD)
+        //   3. productos estándar activos → stockCritico y stockBajo (real de BD)
+        //   4. clientes    → clientesActivos (total paginado)
         Promise.allSettled([
             api.get<KpiData>('/dashboard/analytics'),
+            productoService.listar(0, 200, 'RETRO'),
+            productoService.listar(0, 200, 'ESTANDAR'),
             clienteService.listar('', 0, 1),
-        ]).then(([analyticsRes, clientesRes]) => {
+        ]).then(([analyticsRes, retroRes, estandarRes, clientesRes]) => {
             if (cancelled) return;
 
-            // Partimos siempre de los KPIs de producto reales
             let merged: KpiData = { ...BASE_KPI };
 
+            // 1. Analytics del backend (ventas, clientes nuevos, etc.)
             if (analyticsRes.status === 'fulfilled') {
-                // El backend puede sobrescribir cualquier campo, pero nunca borrará los de productos
-                merged = { ...merged, ...analyticsRes.value.data, ...KPI_PRODUCTOS };
+                merged = { ...merged, ...analyticsRes.value.data };
                 setLoadState('ok');
             } else {
                 setLoadState('error');
             }
 
-            // Conteo real de clientes (endpoint paginado)
+            // 2. Bóveda Retro — conteo real desde la BD
+            if (retroRes.status === 'fulfilled') {
+                merged.piezasRetroDisponibles = retroRes.value.totalElements;
+            }
+
+            // 3. Stock crítico/bajo — calculado sobre productos estándar reales
+            if (estandarRes.status === 'fulfilled') {
+                const estandar = estandarRes.value.content;
+                merged.productosStockCritico = estandar.filter(
+                    p => p.stockActual <= p.stockMinimo
+                ).length;
+                merged.productosStockBajo = estandar.filter(
+                    p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2
+                ).length;
+            }
+
+            // 4. Total de clientes activos
             if (clientesRes.status === 'fulfilled') {
                 merged.clientesActivos = clientesRes.value.totalElements;
+            }
+
+            // Si el backend no devolvió ventasUltimos30Dias, mantener la demo
+            if (!merged.ventasUltimos30Dias?.length) {
+                merged.ventasUltimos30Dias = VENTAS_DEMO;
             }
 
             setKpiData(merged);
@@ -184,8 +197,10 @@ export function DashboardPage(): JSX.Element {
                 />
                 <KpiCard
                     title="BÓVEDA RETRO"
-                    value={String(kpiData.piezasRetroDisponibles)}
-                    sub={`de ${MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO').length} en catálogo`}
+                    value={loadState === 'loading'
+                        ? '…'
+                        : String(kpiData.piezasRetroDisponibles)}
+                    sub="piezas únicas disponibles"
                     icon="◆"
                     accent="var(--accent-gold)"
                     glow={glow.gold}
@@ -194,7 +209,9 @@ export function DashboardPage(): JSX.Element {
                 />
                 <KpiCard
                     title="STOCK CRÍTICO"
-                    value={String(kpiData.productosStockCritico)}
+                    value={loadState === 'loading'
+                        ? '…'
+                        : String(kpiData.productosStockCritico)}
                     sub={kpiData.productosStockCritico > 0
                         ? `${kpiData.productosStockBajo} en zona de alerta`
                         : 'Todo el stock en orden'}

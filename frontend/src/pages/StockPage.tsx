@@ -1,32 +1,25 @@
 /**
  * pages/StockPage.tsx — Control de Stock ACID
  *
- * ── DIAGNÓSTICO DEL "BUG" ────────────────────────────────────────────
- * La ruta /stock apuntaba a <ComingSoon> — la página no existía.
- * El StockController (Épica 4) SOLO expone endpoints POST:
- *   POST /api/stock/movimiento   → CRUD-06
- *   POST /api/stock/transaccion  → CRUD-07 (alias del mismo SP)
- * No hay GET de listado; el stock se lee de MOCK_PRODUCTOS y se
- * actualiza localmente con el valor "stockNuevo" que devuelve el SP.
- *
  * ── FLUJO ────────────────────────────────────────────────────────────
- * 1. Tabla izquierda muestra todos los productos con su stock actual.
- * 2. El usuario hace clic en un producto → se selecciona.
- * 3. Panel derecho muestra el formulario: tipo ENTRADA/SALIDA/AJUSTE,
- *    cantidad, precio, referencia, notas, cliente/proveedor opcionales.
+ * 1. Al montar, carga TODOS los productos activos desde el backend
+ *    (paginación automática hasta totalElements para obtenerlos todos).
+ * 2. La tabla izquierda muestra los productos con su stock actual real.
+ * 3. El usuario selecciona un producto y rellena el formulario.
  * 4. POST /api/stock/movimiento → SP ACID responde con:
  *      { resultado: "OK: 42 → 41", stockNuevo: 41 }
  *    o lanza 409 Conflict con "ERROR: stock insuficiente".
- * 5. Si OK: stockActual del producto se actualiza en estado local.
+ * 5. Si OK: stockActual del producto se actualiza en el estado local
+ *    con el valor devuelto por el SP (fuente de verdad = BD).
  *
  * ── ROLES PERMITIDOS ────────────────────────────────────────────────
- * CAJERO · GESTOR_INVENTARIO · ADMIN  (definido en @PreAuthorize del backend)
+ * CAJERO · GESTOR_INVENTARIO · ADMIN
  */
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import api from '../services/api';
-import type { Producto, TipoMovimiento, TipoProducto } from '../types/models';
-import { MOCK_PRODUCTOS } from '../mocks/mockProductos';
+import { productoService } from '../services/productoService';
+import type { Producto, TipoMovimiento } from '../types/models';
 import { AlbaranModal } from '../components/stock/AlbaranModal';
 import type { AlbaranInfo } from '../components/stock/AlbaranModal';
 
@@ -34,11 +27,6 @@ import type { AlbaranInfo } from '../components/stock/AlbaranModal';
 
 type StockEstado = 'OK' | 'BAJO' | 'CRITICO';
 
-/**
- * Los productos RETRO siempre tienen stock = 1 por diseño (son piezas únicas).
- * No se consideran críticos aunque stock === stockMinimo — se tratan como OK.
- * Esto alinea con la lógica de AlmacenPage (criticos excluye RETRO).
- */
 function getEstado(p: Producto): StockEstado {
     if (p.tipoProducto === 'RETRO')              return 'OK';
     if (p.stockActual <= p.stockMinimo)          return 'CRITICO';
@@ -52,21 +40,11 @@ const ESTADO_COLOR: Record<StockEstado, string> = {
     CRITICO: 'var(--accent-danger)',
 };
 
-/**
- * Color del número de stock en la tabla:
- * · RETRO   → siempre dorado (stock=1 es normal, no es alerta)
- * · ESTÁNDAR → rojo/amarillo/verde según nivel
- */
 function getStockColor(p: Producto): string {
     if (p.tipoProducto === 'RETRO') return 'var(--accent-gold)';
     return ESTADO_COLOR[getEstado(p)];
 }
 
-/**
- * Badge del estado:
- * · RETRO   → "★ RETRO" en dorado (pieza única, sin semáforo de stock)
- * · ESTÁNDAR → ● OK / ⚠ BAJO / ⛔ CRÍTICO con su color habitual
- */
 function getEstadoBadge(p: Producto): { text: string; color: string } {
     if (p.tipoProducto === 'RETRO') {
         return { text: '★ RETRO', color: 'var(--accent-gold)' };
@@ -107,12 +85,12 @@ const EMPTY_FORM: MovimientoForm = {
 };
 
 interface OpResult {
-    ok:         boolean;
-    mensaje:    string;
+    ok:          boolean;
+    mensaje:     string;
     stockNuevo?: number;
 }
 
-// ── Estilos reutilizables (fuera del componente para no recrearlos) ────
+// ── Estilos reutilizables ─────────────────────────────────────────────
 
 const labelStyle: React.CSSProperties = {
     fontFamily:    'var(--font-display)',
@@ -140,7 +118,6 @@ const inputStyle: React.CSSProperties = {
     boxSizing:     'border-box',
 };
 
-// Focus/blur handlers reutilizables
 const onFocusInput = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.currentTarget.style.borderColor = 'var(--accent-cyan)';
     e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(0,212,255,0.10)';
@@ -155,33 +132,71 @@ const onBlurInput = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>
 // ═══════════════════════════════════════════════════════════════════════
 
 export function StockPage(): JSX.Element {
-    // Estado de la lista — se actualiza con stockNuevo tras cada operación OK
-    const [productos, setProductos]       = useState<Producto[]>(MOCK_PRODUCTOS);
-    const [selected,  setSelected]        = useState<Producto | null>(null);
-    const [form,      setForm]            = useState<MovimientoForm>(EMPTY_FORM);
-    const [isSaving,  setIsSaving]        = useState(false);
-    const [result,    setResult]          = useState<OpResult | null>(null);
-    // Filtro único — un solo botón activo a la vez, sin solapamiento de estados
-    const [activeFilter, setActiveFilter] = useState<'TODOS' | 'ESTANDAR' | 'RETRO' | 'OK' | 'BAJO' | 'CRITICO'>('TODOS');
-    const [albaranOpen,   setAlbaranOpen]   = useState(false);
-    const [albaranInfo,   setAlbaranInfo]   = useState<AlbaranInfo | null>(null);
+    const [productos,    setProductos]    = useState<Producto[]>([]);
+    const [loadState,    setLoadState]    = useState<'loading'|'ok'|'error'>('loading');
+    const [selected,     setSelected]     = useState<Producto | null>(null);
+    const [form,         setForm]         = useState<MovimientoForm>(EMPTY_FORM);
+    const [isSaving,     setIsSaving]     = useState(false);
+    const [result,       setResult]       = useState<OpResult | null>(null);
+    const [activeFilter, setActiveFilter] = useState<'TODOS'|'ESTANDAR'|'RETRO'|'OK'|'BAJO'|'CRITICO'>('TODOS');
+    const [albaranOpen,  setAlbaranOpen]  = useState(false);
+    const [albaranInfo,  setAlbaranInfo]  = useState<AlbaranInfo | null>(null);
+
+    // ── Carga inicial de todos los productos activos desde el backend ──
+    useEffect(() => {
+        let cancelled = false;
+
+        async function cargarTodos() {
+            setLoadState('loading');
+            try {
+                // Primera página para saber el total
+                const primera = await productoService.listar(0, 100);
+                if (cancelled) return;
+
+                let todos = [...primera.content];
+
+                // Si hay más páginas, cargarlas en paralelo
+                if (primera.totalElements > 100) {
+                    const paginas = Math.ceil(primera.totalElements / 100);
+                    const resto = await Promise.all(
+                        Array.from({ length: paginas - 1 }, (_, i) =>
+                            productoService.listar(i + 1, 100)
+                        )
+                    );
+                    if (cancelled) return;
+                    resto.forEach(p => { todos = [...todos, ...p.content]; });
+                }
+
+                setProductos(todos);
+                setLoadState('ok');
+            } catch {
+                if (!cancelled) setLoadState('error');
+            }
+        }
+
+        cargarTodos();
+        return () => { cancelled = true; };
+    }, []);
 
     // ── Filtrado de la tabla ───────────────────────────────────────────
     const filtered = useMemo(() => productos.filter(p => {
         if (activeFilter === 'TODOS')    return true;
         if (activeFilter === 'ESTANDAR') return p.tipoProducto === 'ESTANDAR';
         if (activeFilter === 'RETRO')    return p.tipoProducto === 'RETRO';
-        return getEstado(p) === activeFilter; // OK | BAJO | CRITICO
+        return getEstado(p) === activeFilter;
     }), [productos, activeFilter]);
 
     // ── Selección de producto ──────────────────────────────────────────
     const handleSelect = useCallback((p: Producto) => {
         setSelected(p);
         setResult(null);
-        setForm(prev => ({ ...prev, cantidad: '', precioUnitario: '', referencia: '', idCliente: '', idProveedor: '', notas: '' }));
+        setForm(prev => ({
+            ...prev,
+            cantidad: '', precioUnitario: '', referencia: '',
+            idCliente: '', idProveedor: '', notas: '',
+        }));
     }, []);
 
-    // ── Cambio de campo ────────────────────────────────────────────────
     function setField<K extends keyof MovimientoForm>(key: K, val: MovimientoForm[K]): void {
         setForm(prev => ({ ...prev, [key]: val }));
         setResult(null);
@@ -200,7 +215,6 @@ export function StockPage(): JSX.Element {
         setIsSaving(true);
         setResult(null);
 
-        // Construir el body según el DTO StockMovimientoRequest del backend
         const body: Record<string, unknown> = {
             idProducto:     selected.id,
             tipoMovimiento: form.tipoMovimiento,
@@ -226,21 +240,18 @@ export function StockPage(): JSX.Element {
 
             const { data } = await api.post<MovResponse>('/stock/movimiento', body);
 
-            // El SP devuelve "OK: 42 → 41" o similar
             console.log('[NEXUS:Stock] SP resultado:', data.resultado,
                         '| stockNuevo:', data.stockNuevo,
                         '| albarán:', data.albaranCodigo);
 
-            // Actualizar el stockActual en la lista local con el valor ACID del SP
+            // Actualizar stockActual en la lista local con el valor ACID del SP
             setProductos(prev =>
                 prev.map(p => p.id === selected.id ? { ...p, stockActual: data.stockNuevo } : p)
             );
-            // Actualizar también el producto seleccionado para reflejar el nuevo stock en el panel
             setSelected(prev =>
                 prev?.id === selected.id ? { ...prev, stockActual: data.stockNuevo } : prev
             );
 
-            // Mostrar modal de albarán para ENTRADA y SALIDA (AJUSTE no genera albarán)
             if (form.tipoMovimiento !== 'AJUSTE' && data.albaranCodigo) {
                 setAlbaranInfo({
                     codigo:         data.albaranCodigo,
@@ -260,7 +271,6 @@ export function StockPage(): JSX.Element {
             setForm(EMPTY_FORM);
 
         } catch (err: unknown) {
-            // Extraer mensaje del servidor y loguear para diagnóstico
             let msg = 'Error de red o servidor no disponible.';
 
             if (err && typeof err === 'object' && 'response' in err) {
@@ -273,7 +283,6 @@ export function StockPage(): JSX.Element {
                 console.error('[NEXUS:Stock] Error API — status:', status, '| mensaje:', serverMsg);
 
                 if (status === 409) {
-                    // El SP ejecutó correctamente pero devolvió "ERROR:..." (ej: stock insuficiente)
                     msg = `Operación rechazada por el SP: ${serverMsg || 'stock insuficiente'}`;
                 } else if (status === 403) {
                     msg = 'Sin permiso. Roles requeridos: CAJERO · GESTOR_INVENTARIO · ADMIN';
@@ -283,7 +292,7 @@ export function StockPage(): JSX.Element {
                     msg = `Error ${status ?? 'desconocido'}${serverMsg ? ': ' + serverMsg : ''}`;
                 }
             } else {
-                console.error('[NEXUS:Stock] Error desconocido (posible problema de red):', err);
+                console.error('[NEXUS:Stock] Error desconocido:', err);
             }
 
             setResult({ ok: false, mensaje: msg });
@@ -325,7 +334,6 @@ export function StockPage(): JSX.Element {
 
                 {/* Filtros */}
                 <div style={{ flexShrink: 0, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                    {/* Grupo tipo: TODOS · ESTANDAR · RETRO */}
                     {(['TODOS', 'ESTANDAR', 'RETRO'] as const).map(t => {
                         const isActive = activeFilter === t;
                         const color    = t === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-primary)';
@@ -343,7 +351,6 @@ export function StockPage(): JSX.Element {
 
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)' }} />
 
-                    {/* Grupo estado: OK · BAJO · CRÍTICO — click activo → vuelve a TODOS */}
                     {(['OK', 'BAJO', 'CRITICO'] as const).map(e => {
                         const isActive = activeFilter === e;
                         const color    = ESTADO_COLOR[e];
@@ -360,126 +367,123 @@ export function StockPage(): JSX.Element {
                     })}
 
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto', letterSpacing: '0.04em' }}>
-                        {filtered.length} producto{filtered.length !== 1 ? 's' : ''}
+                        {loadState === 'loading'
+                            ? 'Cargando…'
+                            : `${filtered.length} producto${filtered.length !== 1 ? 's' : ''}`}
                     </span>
                 </div>
 
-                {/* Tabla con overflow scroll */}
+                {/* Tabla */}
                 <div style={{
                     flex: 1, minHeight: 0, overflowY: 'auto',
                     background: 'var(--bg-surface)',
                     border: '1px solid var(--border-subtle)',
                     borderRadius: '10px', overflow: 'hidden',
                 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                            <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-default)' }}>
-                                {['SKU', 'Producto', 'Tipo', 'Stock', 'Mín.', 'Estado'].map(h => (
-                                    <th key={h} style={{
-                                        padding: '10px 12px', textAlign: 'left',
-                                        fontFamily: 'var(--font-display)', fontSize: '10px',
-                                        fontWeight: 700, letterSpacing: '0.12em',
-                                        textTransform: 'uppercase', color: 'var(--text-muted)',
-                                        whiteSpace: 'nowrap',
-                                    }}>{h}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filtered.map(p => {
-                                const estado     = getEstado(p);
-                                const isSelected = selected?.id === p.id;
-                                return (
-                                    <tr
-                                        key={p.id}
-                                        onClick={() => handleSelect(p)}
-                                        style={{
-                                            borderBottom: '1px solid var(--border-subtle)',
-                                            background:   isSelected
-                                                ? 'rgba(0,212,255,0.08)'
-                                                : 'transparent',
-                                            cursor:       'pointer',
-                                            transition:   'background 120ms ease',
-                                            outline:      isSelected ? '2px solid rgba(0,212,255,0.30)' : 'none',
-                                            outlineOffset: '-2px',
-                                        }}
-                                        onMouseEnter={e => {
-                                            if (!isSelected)
-                                                (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-overlay)';
-                                        }}
-                                        onMouseLeave={e => {
-                                            if (!isSelected)
-                                                (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
-                                        }}
-                                    >
-                                        {/* SKU */}
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>
-                                                {p.sku}
-                                            </span>
-                                        </td>
-                                        {/* Nombre */}
-                                        <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
-                                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {p.nombre}
-                                            </div>
-                                        </td>
-                                        {/* Tipo */}
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <span style={{
-                                                fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.04em',
-                                                color:   p.tipoProducto === 'RETRO' ? 'var(--accent-gold)'    : 'var(--text-secondary)',
-                                                border: `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`,
-                                                borderRadius: '3px', padding: '2px 6px',
-                                            }}>
-                                                {p.tipoProducto}
-                                            </span>
-                                        </td>
-                                        {/* Stock actual */}
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <span style={{
-                                                fontFamily: 'var(--font-mono)',
-                                                fontSize:   '13px',
-                                                fontWeight: 700,
-                                                color:      getStockColor(p),
-                                                letterSpacing: '-0.01em',
-                                            }}>
-                                                {p.stockActual}
-                                            </span>
-                                        </td>
-                                        {/* Stock mínimo */}
-                                        <td style={{ padding: '10px 12px' }}>
-                                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
-                                                {p.stockMinimo}
-                                            </span>
-                                        </td>
-                                        {/* Estado badge */}
-                                        <td style={{ padding: '10px 12px' }}>
-                                            {(() => {
-                                                const badge = getEstadoBadge(p);
-                                                return (
-                                                    <span style={{
-                                                        fontFamily:    'var(--font-mono)',
-                                                        fontSize:      '10px',
-                                                        fontWeight:    700,
-                                                        letterSpacing: '0.06em',
-                                                        color:         badge.color,
-                                                        background:    `${badge.color}18`,
-                                                        border:        `1px solid ${badge.color}`,
-                                                        borderRadius:  '3px',
-                                                        padding:       '2px 8px',
-                                                        whiteSpace:    'nowrap',
-                                                    }}>
-                                                        {badge.text}
-                                                    </span>
-                                                );
-                                            })()}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {loadState === 'loading' ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                            Cargando productos…
+                        </div>
+                    ) : loadState === 'error' ? (
+                        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--accent-danger)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                            Error al cargar productos. Comprueba la conexión con el backend.
+                        </div>
+                    ) : (
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                                <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-default)' }}>
+                                    {['SKU', 'Producto', 'Tipo', 'Stock', 'Mín.', 'Estado'].map(h => (
+                                        <th key={h} style={{
+                                            padding: '10px 12px', textAlign: 'left',
+                                            fontFamily: 'var(--font-display)', fontSize: '10px',
+                                            fontWeight: 700, letterSpacing: '0.12em',
+                                            textTransform: 'uppercase', color: 'var(--text-muted)',
+                                            whiteSpace: 'nowrap',
+                                        }}>{h}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.map(p => {
+                                    const isSelected = selected?.id === p.id;
+                                    return (
+                                        <tr
+                                            key={p.id}
+                                            onClick={() => handleSelect(p)}
+                                            style={{
+                                                borderBottom: '1px solid var(--border-subtle)',
+                                                background:   isSelected ? 'rgba(0,212,255,0.08)' : 'transparent',
+                                                cursor:       'pointer',
+                                                transition:   'background 120ms ease',
+                                                outline:      isSelected ? '2px solid rgba(0,212,255,0.30)' : 'none',
+                                                outlineOffset: '-2px',
+                                            }}
+                                            onMouseEnter={e => {
+                                                if (!isSelected)
+                                                    (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-overlay)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                if (!isSelected)
+                                                    (e.currentTarget as HTMLTableRowElement).style.background = 'transparent';
+                                            }}
+                                        >
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>
+                                                    {p.sku}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px', maxWidth: '200px' }}>
+                                                <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {p.nombre}
+                                                </div>
+                                            </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{
+                                                    fontFamily: 'var(--font-mono)', fontSize: '10px', letterSpacing: '0.04em',
+                                                    color:   p.tipoProducto === 'RETRO' ? 'var(--accent-gold)'    : 'var(--text-secondary)',
+                                                    border: `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`,
+                                                    borderRadius: '3px', padding: '2px 6px',
+                                                }}>
+                                                    {p.tipoProducto}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{
+                                                    fontFamily: 'var(--font-mono)', fontSize: '13px',
+                                                    fontWeight: 700, color: getStockColor(p), letterSpacing: '-0.01em',
+                                                }}>
+                                                    {p.stockActual}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)' }}>
+                                                    {p.stockMinimo}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '10px 12px' }}>
+                                                {(() => {
+                                                    const badge = getEstadoBadge(p);
+                                                    return (
+                                                        <span style={{
+                                                            fontFamily:    'var(--font-mono)', fontSize: '10px',
+                                                            fontWeight:    700, letterSpacing: '0.06em',
+                                                            color:         badge.color,
+                                                            background:    `${badge.color}18`,
+                                                            border:        `1px solid ${badge.color}`,
+                                                            borderRadius:  '3px', padding: '2px 8px',
+                                                            whiteSpace:    'nowrap',
+                                                        }}>
+                                                            {badge.text}
+                                                        </span>
+                                                    );
+                                                })()}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
 
@@ -492,7 +496,6 @@ export function StockPage(): JSX.Element {
                 height: '100%', minHeight: 0,
             }}>
 
-                {/* Cabecera del panel */}
                 <div style={{
                     padding: '14px 18px',
                     background: 'var(--bg-elevated)',
@@ -512,11 +515,8 @@ export function StockPage(): JSX.Element {
                     )}
                 </div>
 
-                {/* Cuerpo scrollable */}
                 <div style={{ flex: 1, overflowY: 'auto', padding: '16px 18px', paddingBottom: '104px' }}>
                     {!selected ? (
-
-                        // ── Estado vacío ───────────────────────────────────
                         <div style={{
                             height: '100%', display: 'flex', flexDirection: 'column',
                             alignItems: 'center', justifyContent: 'center',
@@ -530,13 +530,10 @@ export function StockPage(): JSX.Element {
                                 Las transacciones son ACID via Stored Procedure
                             </div>
                         </div>
-
                     ) : (
-
-                        // ── Formulario ─────────────────────────────────────
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
 
-                            {/* Stock actual del producto seleccionado */}
+                            {/* Stock actual */}
                             <div style={{
                                 display: 'flex', gap: '0', overflow: 'hidden',
                                 background: 'var(--bg-elevated)',
@@ -562,7 +559,7 @@ export function StockPage(): JSX.Element {
                                 ))}
                             </div>
 
-                            {/* Selector de tipo de movimiento */}
+                            {/* Tipo de movimiento */}
                             <div>
                                 <label style={labelStyle}>Tipo de Movimiento</label>
                                 <div style={{ display: 'flex', gap: '6px' }}>
@@ -582,7 +579,7 @@ export function StockPage(): JSX.Element {
                                 </div>
                             </div>
 
-                            {/* Cantidad (obligatorio) */}
+                            {/* Cantidad */}
                             <div>
                                 <label style={labelStyle}>Cantidad *</label>
                                 <input
@@ -594,7 +591,6 @@ export function StockPage(): JSX.Element {
                                 />
                             </div>
 
-                            {/* Precio unitario — visible para ENTRADA y SALIDA */}
                             {form.tipoMovimiento !== 'AJUSTE' && (
                                 <div>
                                     <label style={labelStyle}>Precio unitario (€) <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
@@ -608,7 +604,6 @@ export function StockPage(): JSX.Element {
                                 </div>
                             )}
 
-                            {/* ID Proveedor — solo para ENTRADA */}
                             {form.tipoMovimiento === 'ENTRADA' && (
                                 <div>
                                     <label style={labelStyle}>ID Proveedor <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
@@ -622,7 +617,6 @@ export function StockPage(): JSX.Element {
                                 </div>
                             )}
 
-                            {/* ID Cliente — solo para SALIDA */}
                             {form.tipoMovimiento === 'SALIDA' && (
                                 <div>
                                     <label style={labelStyle}>ID Cliente <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
@@ -636,7 +630,6 @@ export function StockPage(): JSX.Element {
                                 </div>
                             )}
 
-                            {/* Referencia */}
                             <div>
                                 <label style={labelStyle}>Referencia <span style={{ fontWeight: 400, opacity: 0.55 }}>— albarán, factura…</span></label>
                                 <input
@@ -648,7 +641,6 @@ export function StockPage(): JSX.Element {
                                 />
                             </div>
 
-                            {/* Notas */}
                             <div>
                                 <label style={labelStyle}>Notas <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
                                 <textarea
@@ -661,7 +653,6 @@ export function StockPage(): JSX.Element {
                                 />
                             </div>
 
-                            {/* Resultado de la última operación */}
                             {result && (
                                 <div style={{
                                     padding:      '10px 14px',
@@ -682,7 +673,6 @@ export function StockPage(): JSX.Element {
                                 </div>
                             )}
 
-                            {/* Botón de envío */}
                             <button
                                 onClick={handleSubmit}
                                 disabled={isSaving}
@@ -703,7 +693,6 @@ export function StockPage(): JSX.Element {
             </div>
         </div>
 
-        {/* ══ Modal de albarán (ENTRADA / SALIDA) ══ */}
         <AlbaranModal
             isOpen={albaranOpen}
             onClose={() => setAlbaranOpen(false)}

@@ -12,6 +12,8 @@ import { createPortal }       from 'react-dom';
 import api                    from '../services/api';
 import { AlbaranTemplate }    from '../components/albaran/AlbaranTemplate';
 import type { AlbaranData }   from '../components/albaran/AlbaranTemplate';
+import { AlbaranModal }       from '../components/stock/AlbaranModal';
+import type { AlbaranInfo }   from '../components/stock/AlbaranModal';
 
 // ── Empresa emisora ───────────────────────────────────────────────────
 const EMPRESA_NEXUS = {
@@ -190,6 +192,45 @@ export function AlbaranesRangoPage(): JSX.Element {
     const [resultado,   setResultado]   = useState<RangoResponse | null>(null);
     const [loadState,   setLoadState]   = useState<'idle'|'loading'|'ok'|'error'>('idle');
     const [errorMsg,    setErrorMsg]    = useState('');
+    const [modalOpen,   setModalOpen]   = useState(false);
+    const [modalInfo,   setModalInfo]   = useState<AlbaranInfo | null>(null);
+
+    // ── Convertir AlbaranItem → AlbaranInfo para el AlbaranModal ─────
+    function abrirAlbaranModal(item: AlbaranItem) {
+        // El modal necesita un objeto Producto mínimo con los campos que usa
+        const producto = {
+            id:                  item.idTransaccion,   // aproximación: no tenemos el id real del producto aquí
+            sku:                 item.productoSku,
+            nombre:              item.productoNombre,
+            descripcion:         item.productoDescripcion ?? null,
+            tipoProducto:        item.productoTipo as 'ESTANDAR' | 'RETRO',
+            stockActual:         item.stockDespues,
+            stockMinimo:         0,
+            stockMaximo:         9999,
+            precioCoste:         0,
+            precioVenta:         item.precioUnitario ?? 0,
+            estadoConservacion:  null,
+            activo:              true,
+            idProveedor:         null, proveedorNombre: null,
+            idCategoria:         null, categoriaNombre: null,
+            idUbicacion:         null,
+            atributosEspecificos: null,
+        };
+        const info: AlbaranInfo = {
+            codigo:         item.numero,
+            fecha:          item.fecha,
+            tipoMovimiento: item.tipo,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            producto:       producto as any,
+            cantidad:       item.cantidad,
+            precioUnitario: item.precioUnitario,
+            referencia:     item.referencia ?? '',
+            notas:          item.notas      ?? '',
+            stockNuevo:     item.stockDespues,
+        };
+        setModalInfo(info);
+        setModalOpen(true);
+    }
 
     // ── Buscar ────────────────────────────────────────────────────────
     async function buscar() {
@@ -233,8 +274,8 @@ export function AlbaranesRangoPage(): JSX.Element {
     return (
         <>
             {/* CSS de impresión + documento consolidado via portal */}
-            {albaranData && createPortal(<style>{PRINT_CSS}</style>, document.head)}
-            {albaranData && createPortal(
+            {albaranData && !modalOpen && createPortal(<style>{PRINT_CSS}</style>, document.head)}
+            {albaranData && !modalOpen && createPortal(
                 <div id="albaran-consolidado-root">
                     <AlbaranTemplate data={albaranData} />
                 </div>,
@@ -387,7 +428,10 @@ export function AlbaranesRangoPage(): JSX.Element {
                                             const tc = item.tipo === 'ENTRADA' ? 'var(--accent-primary)' : 'var(--accent-danger)';
                                             const fecha = new Date(item.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
                                             return (
-                                                <tr key={item.idTransaccion} style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                                                <tr key={item.idTransaccion}
+                                                    onClick={() => abrirAlbaranModal(item)}
+                                                    title="Clic para ver el albarán de este movimiento"
+                                                    style={{ borderBottom: '1px solid var(--border-subtle)', cursor: 'pointer', transition: 'background 120ms ease' }}
                                                     onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
                                                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                                                     <td style={{ padding: '8px 12px' }}>
@@ -426,6 +470,8 @@ export function AlbaranesRangoPage(): JSX.Element {
                     )}
                 </div>
             </div>
+
+            <AlbaranModal isOpen={modalOpen} onClose={() => setModalOpen(false)} data={modalInfo} />
         </>
     );
 }

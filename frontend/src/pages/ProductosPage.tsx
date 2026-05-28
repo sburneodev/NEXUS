@@ -365,6 +365,7 @@ export function ProductosPage(): JSX.Element {
                 isOpen={modalOpen}
                 onClose={() => { setModalOpen(false); setSelected(null); }}
                 onSave={handleSave}
+                modoCreacion={selected ? undefined : 'ESTANDAR'}
             />
         </div>
     );

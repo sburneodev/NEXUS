@@ -46,6 +46,8 @@ interface TableControlsProps {
     hideLimitSelector?:   boolean;
     /** Nodo(s) extra renderizados entre el buscador y el selector de filas */
     extraFilters?:        ReactNode;
+    /** Ancho máximo del buscador. Por defecto crece sin límite (flex:1). */
+    searchMaxWidth?:      string | number;
 }
 
 // ── Opciones de filas por página ──────────────────────────────────────────────
@@ -160,6 +162,7 @@ export function TableControls({
     searchPlaceholder,
     hideLimitSelector   = false,
     extraFilters,
+    searchMaxWidth,
 }: TableControlsProps): JSX.Element {
 
     const plural      = entityLabelPlural ?? `${entityLabel}s`;
@@ -220,7 +223,7 @@ export function TableControls({
             }}>
 
                 {/* ── Buscador ──────────────────────────────────────────── */}
-                <div style={{ position: 'relative', flex: 1, minWidth: '220px' }}>
+                <div style={{ position: 'relative', flex: 1, minWidth: '160px', maxWidth: searchMaxWidth }}>
 
                     {/* Icono: lupa normal | spinner girando cuando hay actividad */}
                     <span style={{

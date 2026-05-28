@@ -2,8 +2,10 @@ package com.nexus.service;
 
 import com.nexus.dto.StockMovimientoRequest;
 import com.nexus.model.Cliente;
+import com.nexus.model.Proveedor;
 import com.nexus.model.Usuario;
 import com.nexus.repository.ClienteRepository;
+import com.nexus.repository.ProveedorRepository;
 import com.nexus.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,115 +29,86 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-/**
- * CRUD-10 — Tests unitarios de StockService.
- *
- * Mockito puro — sin Spring Context, sin base de datos real.
- *
- * Cubre:
- *   1. Venta exitosa: SALIDA, ENTRADA, AJUSTE
- *   2. Stock insuficiente: agotado, RETRO, producto no encontrado, sin auth
- *   3. Validación de cliente inválido (nuevo — lanza 422)
- *   4. Concurrencia: el SP garantiza ACID — simulamos que solo una
- *      de dos peticiones simultáneas tiene éxito
- */
 @ExtendWith(MockitoExtension.class)
 class StockServiceTest {
 
-    @Mock
-    private JdbcTemplate jdbcTemplate;
-
-    @Mock
-    private UsuarioRepository usuarioRepository;
-
-    @Mock
-    private ClienteRepository clienteRepository;
+    @Mock private JdbcTemplate        jdbcTemplate;
+    @Mock private UsuarioRepository   usuarioRepository;
+    @Mock private ClienteRepository   clienteRepository;
+    @Mock private ProveedorRepository proveedorRepository;
 
     @InjectMocks
     private StockService stockService;
 
     @BeforeEach
-    void setUp() {
-        SecurityContextHolder.clearContext();
-    }
+    void setUp() { SecurityContextHolder.clearContext(); }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────
 
-    /**
-     * Simula usuario autenticado en SecurityContext.
-     */
-    private void mockUsuarioAutenticado(String email, Long idUsuario) {
+    private void mockUsuarioAutenticado(String email, Long id) {
         Authentication auth = mock(Authentication.class);
         when(auth.isAuthenticated()).thenReturn(true);
         when(auth.getName()).thenReturn(email);
-
         SecurityContext ctx = mock(SecurityContext.class);
         when(ctx.getAuthentication()).thenReturn(auth);
         SecurityContextHolder.setContext(ctx);
 
-        Usuario usuario = new Usuario();
-        usuario.setEmail(email);
+        Usuario u = new Usuario();
+        u.setEmail(email);
         try {
-            java.lang.reflect.Field idField = Usuario.class.getDeclaredField("id");
-            idField.setAccessible(true);
-            idField.set(usuario, idUsuario);
+            var f = Usuario.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(u, id);
         } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("No se pudo asignar id al Usuario de prueba", e);
+            throw new IllegalStateException(e);
         }
-        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(usuario));
+        when(usuarioRepository.findByEmail(email)).thenReturn(Optional.of(u));
     }
 
-    /**
-     * Simula un cliente activo con el id dado en el clienteRepository.
-     */
-    private void mockClienteActivo(Long idCliente) {
-        Cliente cliente = new Cliente();
-        cliente.setActivo(true);
-        when(clienteRepository.findById(idCliente)).thenReturn(Optional.of(cliente));
+    private void mockClienteActivo(Long id) {
+        Cliente c = new Cliente(); c.setActivo(true);
+        when(clienteRepository.findById(id)).thenReturn(Optional.of(c));
     }
 
-    /**
-     * Configura JdbcTemplate para simular la respuesta del SP.
-     */
-    private void mockJdbcSp(String oResultado, int oStockNuevo) throws Exception {
+    private void mockProveedorActivo(Long id) {
+        Proveedor p = new Proveedor(); p.setActivo(true);
+        when(proveedorRepository.findById(id)).thenReturn(Optional.of(p));
+    }
+
+    private void mockJdbcSp(String resultado, int stockNuevo) throws Exception {
         CallableStatement cs = mock(CallableStatement.class);
-        when(cs.getString(10)).thenReturn(oResultado);
-        when(cs.getInt(11)).thenReturn(oStockNuevo);
-
-        doAnswer(invocation -> {
-            Object callback = invocation.getArgument(1);
+        when(cs.getString(10)).thenReturn(resultado);
+        when(cs.getInt(11)).thenReturn(stockNuevo);
+        doAnswer(inv -> {
+            Object cb = inv.getArgument(1);
             try {
-                callback.getClass()
-                        .getMethod("doInCallableStatement", CallableStatement.class)
-                        .invoke(callback, cs);
+                cb.getClass().getMethod("doInCallableStatement", CallableStatement.class).invoke(cb, cs);
             } catch (java.lang.reflect.InvocationTargetException e) {
                 if (e.getCause() instanceof RuntimeException re) throw re;
                 throw new RuntimeException(e.getCause());
-            } catch (ReflectiveOperationException e) {
-                throw new RuntimeException(e);
             }
             return null;
         }).when(jdbcTemplate).execute(anyString(),
                 any(org.springframework.jdbc.core.CallableStatementCallback.class));
     }
 
-    /** Request de SALIDA reutilizable con idCliente=1L. */
     private StockMovimientoRequest requestSalida(Long idProducto, int cantidad) {
-        StockMovimientoRequest req = new StockMovimientoRequest();
-        req.setIdProducto(idProducto);
-        req.setIdCliente(1L);
-        req.setTipoMovimiento("SALIDA");
-        req.setCantidad(cantidad);
-        req.setPrecioUnitario(new BigDecimal("59.99"));
-        req.setReferencia("VTA-TEST-001");
-        return req;
+        StockMovimientoRequest r = new StockMovimientoRequest();
+        r.setIdProducto(idProducto); r.setIdCliente(1L);
+        r.setTipoMovimiento("SALIDA"); r.setCantidad(cantidad);
+        r.setPrecioUnitario(new BigDecimal("59.99")); r.setReferencia("VTA-TEST-001");
+        return r;
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // TEST 1 — Venta exitosa
-    // ─────────────────────────────────────────────────────────────────
+    private StockMovimientoRequest requestEntrada(Long idProducto, int cantidad) {
+        StockMovimientoRequest r = new StockMovimientoRequest();
+        r.setIdProducto(idProducto); r.setIdProveedor(1L);
+        r.setTipoMovimiento("ENTRADA"); r.setCantidad(cantidad);
+        r.setPrecioUnitario(new BigDecimal("29.99")); r.setReferencia("ALB-TEST-001");
+        return r;
+    }
+
+    // ── TEST 1 — Operaciones exitosas ─────────────────────────────────
 
     @Test
     void registrarMovimiento_ventaExitosa_devuelveOkYStockNuevo() throws Exception {
@@ -143,57 +116,41 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 5 → 4", 4);
 
-        StockMovimientoResponse resultado =
-                stockService.registrarMovimiento(requestSalida(1L, 1));
+        StockMovimientoResponse r = stockService.registrarMovimiento(requestSalida(1L, 1));
 
-        assertNotNull(resultado);
-        assertTrue(resultado.getResultado().startsWith("OK"));
-        assertEquals(4, resultado.getStockNuevo());
+        assertNotNull(r);
+        assertTrue(r.getResultado().startsWith("OK"));
+        assertEquals(4, r.getStockNuevo());
     }
 
     @Test
     void registrarMovimiento_entradaProveedor_devuelveOk() throws Exception {
-        // ENTRADA no tiene idCliente — no se consulta clienteRepository
+        mockProveedorActivo(1L);
         mockUsuarioAutenticado("gestor@levelupnexus.es", 2L);
         mockJdbcSp("OK: 10 → 20", 20);
 
-        StockMovimientoRequest req = new StockMovimientoRequest();
-        req.setIdProducto(2L);
-        req.setIdProveedor(1L);
-        req.setTipoMovimiento("ENTRADA");
-        req.setCantidad(10);
-        req.setPrecioUnitario(new BigDecimal("29.99"));
-        req.setReferencia("ALB-TEST-001");
+        StockMovimientoResponse r = stockService.registrarMovimiento(requestEntrada(2L, 10));
 
-        StockMovimientoResponse resultado = stockService.registrarMovimiento(req);
-
-        assertTrue(resultado.getResultado().startsWith("OK"));
-        assertEquals(20, resultado.getStockNuevo());
-        // Verificar que no se consultó clienteRepository (ENTRADA no tiene cliente)
+        assertTrue(r.getResultado().startsWith("OK"));
+        assertEquals(20, r.getStockNuevo());
         verifyNoInteractions(clienteRepository);
     }
 
     @Test
     void registrarMovimiento_ajusteManual_devuelveOk() throws Exception {
-        // AJUSTE tampoco tiene idCliente
         mockUsuarioAutenticado("gestor@levelupnexus.es", 2L);
         mockJdbcSp("OK: 8 → 10", 10);
 
-        StockMovimientoRequest req = new StockMovimientoRequest();
-        req.setIdProducto(3L);
-        req.setTipoMovimiento("AJUSTE");
-        req.setCantidad(2);
-        req.setNotas("Corrección tras recuento de inventario");
+        StockMovimientoRequest r = new StockMovimientoRequest();
+        r.setIdProducto(3L); r.setTipoMovimiento("AJUSTE");
+        r.setCantidad(2); r.setNotas("Corrección tras recuento");
 
-        StockMovimientoResponse resultado = stockService.registrarMovimiento(req);
-
-        assertTrue(resultado.getResultado().startsWith("OK"));
+        assertTrue(stockService.registrarMovimiento(r).getResultado().startsWith("OK"));
         verifyNoInteractions(clienteRepository);
+        verifyNoInteractions(proveedorRepository);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // TEST 2 — Stock insuficiente / errores del SP
-    // ─────────────────────────────────────────────────────────────────
+    // ── TEST 2 — Errores del SP ───────────────────────────────────────
 
     @Test
     void registrarMovimiento_stockInsuficiente_lanza409() throws Exception {
@@ -201,8 +158,7 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0", 0);
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(1L, 5)));
 
         assertEquals(409, ex.getStatusCode().value());
@@ -215,8 +171,7 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(99L, 1)));
 
         assertEquals(409, ex.getStatusCode().value());
@@ -229,8 +184,7 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Producto no encontrado id=999", -1);
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(999L, 1)));
 
         assertEquals(409, ex.getStatusCode().value());
@@ -238,87 +192,91 @@ class StockServiceTest {
 
     @Test
     void registrarMovimiento_sinAutenticacion_lanza401() {
-        // idCliente=1L está en requestSalida, pero la validación de cliente
-        // ocurre ANTES de getUsuarioAutenticadoId, así que necesitamos
-        // mockear el cliente para que no falle ahí y llegue al check de auth.
         mockClienteActivo(1L);
-
         SecurityContext ctx = mock(SecurityContext.class);
         when(ctx.getAuthentication()).thenReturn(null);
         SecurityContextHolder.setContext(ctx);
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
 
         assertEquals(401, ex.getStatusCode().value());
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // TEST 3 — Validación de cliente inválido (nuevo)
-    // ─────────────────────────────────────────────────────────────────
+    // ── TEST 3 — Validación de cliente inválido ───────────────────────
 
     @Test
     void registrarMovimiento_clienteNoExistente_lanza422() {
-        // clienteRepository devuelve vacío → 422 antes de llegar al SP
         when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
 
         assertEquals(422, ex.getStatusCode().value());
-        assertTrue(ex.getReason().contains("ID no existente o inactivo"));
+        assertTrue(ex.getReason().contains("cliente"));
         verifyNoInteractions(jdbcTemplate);
         verifyNoInteractions(usuarioRepository);
     }
 
     @Test
     void registrarMovimiento_clienteInactivo_lanza422() {
-        Cliente clienteInactivo = new Cliente();
-        clienteInactivo.setActivo(false);
-        when(clienteRepository.findById(1L)).thenReturn(Optional.of(clienteInactivo));
+        Cliente c = new Cliente(); c.setActivo(false);
+        when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
                 () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
 
         assertEquals(422, ex.getStatusCode().value());
-        assertTrue(ex.getReason().contains("ID no existente o inactivo"));
+        assertTrue(ex.getReason().contains("cliente"));
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    // ── TEST 4 — Validación de proveedor inválido ─────────────────────
+
+    @Test
+    void registrarMovimiento_proveedorNoExistente_lanza422() {
+        when(proveedorRepository.findById(1L)).thenReturn(Optional.empty());
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> stockService.registrarMovimiento(requestEntrada(1L, 5)));
+
+        assertEquals(422, ex.getStatusCode().value());
+        assertTrue(ex.getReason().contains("proveedor"));
         verifyNoInteractions(jdbcTemplate);
         verifyNoInteractions(usuarioRepository);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // TEST 4 — Concurrencia
-    // ─────────────────────────────────────────────────────────────────
+    @Test
+    void registrarMovimiento_proveedorInactivo_lanza422() {
+        Proveedor p = new Proveedor(); p.setActivo(false);
+        when(proveedorRepository.findById(1L)).thenReturn(Optional.of(p));
+
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> stockService.registrarMovimiento(requestEntrada(1L, 5)));
+
+        assertEquals(422, ex.getStatusCode().value());
+        assertTrue(ex.getReason().contains("proveedor"));
+        verifyNoInteractions(jdbcTemplate);
+    }
+
+    // ── TEST 5 — Concurrencia ─────────────────────────────────────────
 
     @Test
-    void registrarMovimiento_concurrencia_primeraVentaExitosaSegundaFalla()
-            throws Exception {
-
-        // ── Primera petición: el SP dice OK (gana la carrera) ─────────
+    void registrarMovimiento_concurrencia_primeraVentaExitosaSegundaFalla() throws Exception {
         mockClienteActivo(1L);
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("OK: 1 → 0", 0);
 
-        StockMovimientoResponse primeraRespuesta =
-                stockService.registrarMovimiento(requestSalida(99L, 1));
+        StockMovimientoResponse primera = stockService.registrarMovimiento(requestSalida(99L, 1));
+        assertTrue(primera.getResultado().startsWith("OK"));
+        assertEquals(0, primera.getStockNuevo());
 
-        assertTrue(primeraRespuesta.getResultado().startsWith("OK"),
-                "La primera petición debe tener éxito");
-        assertEquals(0, primeraRespuesta.getStockNuevo(),
-                "Tras la venta el stock del RETRO debe ser 0");
-
-        // ── Segunda petición: el SP dice ERROR (pierde la carrera) ────
         reset(jdbcTemplate);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 
-        ResponseStatusException ex = assertThrows(
-                ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(99L, 1)),
-                "La segunda petición debe fallar con 409");
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class,
+                () -> stockService.registrarMovimiento(requestSalida(99L, 1)));
 
         assertEquals(409, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("RETRO"));

@@ -1,10 +1,9 @@
 /**
- * components/layout/Sidebar.tsx v2
+ * components/layout/Sidebar.tsx v3
  *
- * Cambios:
- * - Logo completo "NEXUS ERP" con isotipo SVG corporativo
- * - Rutas completas incluyendo /almacen y /auditoria
- * - Sección ADMIN separada visualmente
+ * Cambios respecto a v2:
+ * - Nueva entrada "Albaranes" en sección DOCUMENTOS,
+ *   visible para ADMIN, GESTOR_INVENTARIO y CONTABLE.
  */
 
 import { useCallback } from 'react';
@@ -13,30 +12,39 @@ import { useAuth } from '../../hooks/useAuth';
 import { Logo } from '../brand/Logo';
 
 interface NavItem {
-    path:     string;
-    label:    string;
-    icon:     string;
-    badge?:   string;
-    adminOnly?:boolean;
-    section?: string;
+    path:      string;
+    label:     string;
+    icon:      string;
+    badge?:    string;
+    section?:  string;
+    /** Si se define, el item solo se muestra si el usuario tiene alguno de esos roles */
+    roles?:    string[];
 }
 
 const NAV_ITEMS: NavItem[] = [
     // Principal
-    { path: '/dashboard',   label: 'Dashboard',     icon: '◈',  section: 'PRINCIPAL' },
+    { path: '/dashboard',       label: 'Dashboard',      icon: '◈', section: 'PRINCIPAL' },
     // Inventario
-    { path: '/productos',   label: 'Productos',      icon: '▣',  section: 'INVENTARIO' },
-    { path: '/stock',       label: 'Stock',          icon: '▦',  badge: 'ACID' },
-    { path: '/almacen',     label: 'Mapa Almacén',   icon: '▤' },
-    { path: '/boveda',      label: 'La Bóveda',      icon: '◆' },
+    { path: '/productos',       label: 'Productos',       icon: '▣', section: 'INVENTARIO' },
+    { path: '/stock',           label: 'Stock',           icon: '▦', badge: 'ACID' },
+    { path: '/almacen',         label: 'Mapa Almacén',    icon: '▤' },
+    { path: '/boveda',          label: 'La Bóveda',       icon: '◆' },
     // Clientes & Proveedores
-    { path: '/clientes',    label: 'Clientes',       icon: '◉',  section: 'RELACIONES' },
-    { path: '/proveedores', label: 'Proveedores',    icon: '◎' },
+    { path: '/clientes',        label: 'Clientes',        icon: '◉', section: 'RELACIONES' },
+    { path: '/proveedores',     label: 'Proveedores',     icon: '◎' },
+    // Documentos — visible para ADMIN, GESTOR_INVENTARIO y CONTABLE
+    {
+        path:    '/albaranes-rango',
+        label:   'Albaranes',
+        icon:    '◧',
+        section: 'DOCUMENTOS',
+        roles:   ['ADMIN', 'GESTOR_INVENTARIO', 'CONTABLE'],
+    },
     // IA
-    { path: '/ai',          label: 'IA & Analytics', icon: '◇',  section: 'INTELIGENCIA' },
+    { path: '/ai',              label: 'IA & Analytics',  icon: '◇', section: 'INTELIGENCIA' },
     // Admin
-    { path: '/usuarios',    label: 'Usuarios',       icon: '◈',  section: 'ADMINISTRACIÓN', adminOnly: true },
-    { path: '/auditoria',   label: 'Auditoría',      icon: '▷',  adminOnly: true },
+    { path: '/usuarios',        label: 'Usuarios',        icon: '◈', section: 'ADMINISTRACIÓN', roles: ['ADMIN'] },
+    { path: '/auditoria',       label: 'Auditoría',       icon: '▷', roles: ['ADMIN'] },
 ];
 
 interface SidebarProps {
@@ -45,9 +53,8 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
-    const location  = useLocation();
-    const { hasRole } = useAuth();
-    const isAdmin   = hasRole('ADMIN');
+    const location       = useLocation();
+    const { hasAnyRole } = useAuth();
 
     const isActive = useCallback(
         (path: string) => location.pathname.startsWith(path),
@@ -56,11 +63,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
 
     const width = collapsed ? 64 : 240;
 
-    // Agrupa items por sección
+    // Filtrar items según roles del usuario
+    const visibleItems = NAV_ITEMS.filter(item =>
+        !item.roles || hasAnyRole(item.roles as Parameters<typeof hasAnyRole>[0])
+    );
+
+    // Agrupar por sección
     const sections: { title: string; items: NavItem[] }[] = [];
     let currentSection = '';
-    NAV_ITEMS.forEach(item => {
-        if (item.adminOnly && !isAdmin) return;
+    visibleItems.forEach(item => {
         if (item.section && item.section !== currentSection) {
             currentSection = item.section;
             sections.push({ title: item.section, items: [] });
@@ -84,21 +95,19 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
             zIndex:        20,
         }}>
 
-            {/* Logo corporativo NEXUS — isotipo SVG + wordmark HTML
-                (texto HTML usa Rajdhani real, no escala raro como SVG text) */}
+            {/* Logo */}
             <div style={{
-                height:       '64px',
-                display:      'flex',
-                alignItems:   'center',
+                height:         '64px',
+                display:        'flex',
+                alignItems:     'center',
                 justifyContent: collapsed ? 'center' : 'flex-start',
-                padding:      collapsed ? '0' : '0 14px',
-                borderBottom: '1px solid var(--sidebar-border)',
-                flexShrink:   0,
-                gap:          '12px',
-                overflow:     'hidden',
+                padding:        collapsed ? '0' : '0 14px',
+                borderBottom:   '1px solid var(--sidebar-border)',
+                flexShrink:     0,
+                gap:            '12px',
+                overflow:       'hidden',
             }}>
                 <Logo variant="mark" size={collapsed ? 34 : 38} style={{ flexShrink: 0 }} />
-
                 {!collapsed && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0 }}>
                         <div style={{
@@ -134,7 +143,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
             <nav style={{ flex: 1, padding: '8px 0', overflowY: 'auto', overflowX: 'hidden' }}>
                 {sections.map(section => (
                     <div key={section.title}>
-                        {/* Separador de sección */}
                         {section.title && !collapsed && (
                             <div style={{
                                 fontFamily:    'var(--font-mono)',
@@ -159,9 +167,9 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                         display: 'flex', alignItems: 'center', gap: '12px',
                                         padding: '9px 20px', margin: '1px 8px',
                                         borderRadius: '6px', textDecoration: 'none',
-                                        color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                                        background: active ? 'var(--sidebar-active-bg)' : 'transparent',
-                                        boxShadow: active
+                                        color:      active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+                                        background: active ? 'var(--sidebar-active-bg)'   : 'transparent',
+                                        boxShadow:  active
                                             ? 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 14px var(--sidebar-glow-fill)'
                                             : 'none',
                                         border: '1px solid transparent',
@@ -171,28 +179,20 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                     onMouseEnter={e => {
                                         const el = e.currentTarget as HTMLElement;
                                         el.style.color = 'var(--sidebar-text-active)';
-                                        if (!active) {
-                                            el.style.boxShadow = 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 10px var(--sidebar-glow-fill)';
-                                        }
+                                        if (!active) el.style.boxShadow = 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 10px var(--sidebar-glow-fill)';
                                     }}
                                     onMouseLeave={e => {
                                         const el = e.currentTarget as HTMLElement;
-                                        if (!active) {
-                                            el.style.color = 'var(--sidebar-text)';
-                                            el.style.boxShadow = 'none';
-                                        }
+                                        if (!active) { el.style.color = 'var(--sidebar-text)'; el.style.boxShadow = 'none'; }
                                     }}
                                 >
                                     <span style={{
-                                        fontFamily: 'var(--font-mono)',
-                                        fontSize: '15px',
-                                        flexShrink: 0,
-                                        color: active ? 'var(--sidebar-icon-active)' : 'inherit',
+                                        fontFamily: 'var(--font-mono)', fontSize: '15px', flexShrink: 0,
+                                        color:      active ? 'var(--sidebar-icon-active)' : 'inherit',
                                         textShadow: active ? '0 0 8px var(--sidebar-glow-text)' : 'none',
                                     }}>
                                         {item.icon}
                                     </span>
-
                                     {!collapsed && (
                                         <>
                                             <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flex: 1 }}>
@@ -205,7 +205,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps): JSX.Element {
                                             )}
                                         </>
                                     )}
-
                                     {active && (
                                         <div style={{ position: 'absolute', left: 0, top: '20%', height: '60%', width: '2px', background: 'var(--sidebar-indicator)', borderRadius: '0 2px 2px 0', boxShadow: '0 0 8px var(--sidebar-glow-text)' }} />
                                     )}

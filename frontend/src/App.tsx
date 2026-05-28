@@ -8,7 +8,8 @@ import { AlmacenPage }       from './pages/AlmacenPage';
 import { ClientesPage }      from './pages/ClientesPage';
 import { ProveedoresPage }   from './pages/ProveedoresPage';
 import { UsuariosPage }      from './pages/UsuariosPage';
-import { AuditoriaPage }     from './pages/AuditoriaPage';
+import { AuditoriaPage }         from './pages/AuditoriaPage';
+import { AlbaranPreviewPage }    from './pages/AlbaranPreviewPage';
 import { Layout }            from './components/layout/Layout';
 import { ProtectedRoute }    from './components/auth/ProtectedRoute';
 import { AiPanelProvider }   from './context/AiPanelContext';
@@ -65,6 +66,9 @@ function App(): JSX.Element {
                         <Route path="/auditoria" element={<AuditoriaPage />} />
                     </Route>
                 </Route>
+
+                {/* Ruta pública temporal de previsualización */}
+                <Route path="/albaran-preview" element={<AlbaranPreviewPage />} />
 
                 <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>

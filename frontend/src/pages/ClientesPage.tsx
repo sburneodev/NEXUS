@@ -17,6 +17,8 @@ import { useTableFilters, calculateAutoLimit }  from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }      from '../components/table/TableControls';
 import api                                  from '../services/api';
 
+type ActivoKey = 'TODOS' | 'ACTIVOS' | 'INACTIVOS';
+
 // ── Campos del formulario ─────────────────────────────────────────────────────
 
 const FIELDS: FieldConfig[] = [
@@ -26,6 +28,44 @@ const FIELDS: FieldConfig[] = [
     { key: 'puntosFidelidad', label: 'Puntos Fidelidad',type: 'number',   min: 0 },
     { key: 'activo',          label: 'Cliente activo',  type: 'checkbox' },
 ];
+
+// ── Chips de filtro activo/inactivo ───────────────────────────────────────────
+
+function ActivoChips({ value, onChange }: { value: ActivoKey; onChange: (v: ActivoKey) => void }): JSX.Element {
+    const OPTIONS: { key: ActivoKey; label: string; color: string }[] = [
+        { key: 'TODOS',    label: 'Todos',       color: 'var(--text-muted)' },
+        { key: 'ACTIVOS',  label: '● Activos',   color: '#44cc88' },
+        { key: 'INACTIVOS',label: '○ Inactivos', color: 'var(--text-muted)' },
+    ];
+    return (
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            {OPTIONS.map(o => {
+                const active = value === o.key;
+                return (
+                    <button
+                        key={o.key}
+                        onClick={() => onChange(o.key)}
+                        style={{
+                            fontFamily:    'var(--font-display)',
+                            fontSize:      '10px',
+                            fontWeight:    700,
+                            letterSpacing: '0.10em',
+                            textTransform: 'uppercase',
+                            color:         active ? '#0a0a0a' : o.color,
+                            background:    active ? o.color : 'transparent',
+                            border:        `1px solid ${active ? o.color : 'var(--border-default)'}`,
+                            borderRadius:  '4px',
+                            padding:       '4px 10px',
+                            cursor:        'pointer',
+                            transition:    'all 120ms ease',
+                            whiteSpace:    'nowrap',
+                        }}
+                    >{o.label}</button>
+                );
+            })}
+        </div>
+    );
+}
 
 // ── Página ────────────────────────────────────────────────────────────────────
 
@@ -45,6 +85,7 @@ export function ClientesPage(): JSX.Element {
     const [toast,      setToast]      = useState('');
     // Trigger para re-fetch tras operaciones CRUD
     const [refreshKey, setRefreshKey] = useState(0);
+    const [filterActivo,  setFilterActivo]  = useState<ActivoKey>('TODOS');
 
     function showToast(msg: string): void {
         setToast(msg);
@@ -56,11 +97,28 @@ export function ClientesPage(): JSX.Element {
         let cancelled = false;
         setIsLoading(true);
 
-        api.get<PaginatedResponse<Cliente>>(`/clientes?${buildParams().toString()}`)
+        const params = buildParams();
+        if (filterActivo === 'ACTIVOS')   params.set('activo', 'true');
+        if (filterActivo === 'INACTIVOS') params.set('activo', 'false');
+
+        api.get<PaginatedResponse<Cliente>>(`/clientes?${params.toString()}`)
             .then(({ data }) => {
                 if (!cancelled) {
-                    setRows(data.content);
-                    setPagination(data.totalElements, data.totalPages);
+                    // El backend puede ignorar el param activo — aplicamos filtro
+                    // cliente sobre la respuesta como garantía.
+                    const content = data.content ?? [];
+                    const filtered = filterActivo === 'TODOS'
+                        ? content
+                        : content.filter(c =>
+                            filterActivo === 'ACTIVOS' ? c.activo === true : c.activo === false
+                        );
+                    setRows(filtered);
+                    // Si filtramos localmente, recalculamos totales
+                    if (filterActivo !== 'TODOS') {
+                        setPagination(filtered.length, Math.ceil(filtered.length / activeLimit) || 1);
+                    } else {
+                        setPagination(data.totalElements, data.totalPages);
+                    }
                 }
             })
             .catch(() => {
@@ -69,8 +127,14 @@ export function ClientesPage(): JSX.Element {
                     clienteService.listar(activeSearch, activePage, activeLimit)
                         .then(data => {
                             if (!cancelled) {
-                                setRows(data.content);
-                                setPagination(data.totalElements, data.totalPages);
+                                const content = data.content ?? [];
+                                const filtered = filterActivo === 'TODOS'
+                                    ? content
+                                    : content.filter(c =>
+                                        filterActivo === 'ACTIVOS' ? c.activo === true : c.activo === false
+                                    );
+                                setRows(filtered);
+                                setPagination(filtered.length, Math.ceil(filtered.length / activeLimit) || 1);
                             }
                         })
                         .catch(() => {
@@ -87,6 +151,7 @@ export function ClientesPage(): JSX.Element {
     }, [
         filters.querySignal,
         refreshKey,
+        filterActivo,
         buildParams,
         setPagination,
         activeSearch,
@@ -148,9 +213,9 @@ export function ClientesPage(): JSX.Element {
             )}
 
             {/* Cabecera */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: '2px' }}>
                         Clientes
                     </h1>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: '4px', letterSpacing: '0.04em' }}>
@@ -173,6 +238,12 @@ export function ClientesPage(): JSX.Element {
                     isLoading={isLoading}
                     entityLabel="cliente"
                     searchPlaceholder="Buscar por nombre, email o teléfono..."
+                    extraFilters={
+                        <ActivoChips
+                            value={filterActivo}
+                            onChange={v => { setFilterActivo(v); filters.setPage(0); }}
+                        />
+                    }
                 />
             </div>
 

@@ -1,5 +1,4 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useAuth }          from '../hooks/useAuth';
 import { useTheme }         from '../hooks/useTheme';
 import api                  from '../services/api';
 import type { KpiData }     from '../types/models';
@@ -32,7 +31,6 @@ const BASE_KPI: KpiData = {
 };
 
 export function DashboardPage(): JSX.Element {
-    const { user }    = useAuth();
     const { isDark }  = useTheme();
     const [kpiData,   setKpiData]   = useState<KpiData>(BASE_KPI);
     const [loadState, setLoadState] = useState<'loading'|'ok'|'error'>('loading');
@@ -118,30 +116,11 @@ export function DashboardPage(): JSX.Element {
 
             {/* Cabecera */}
             <div style={{ flexShrink: 0 }}>
-                <h1 style={{
-                    fontFamily:    'var(--font-display)',
-                    fontSize:      'clamp(18px, 2.2vw, 24px)',
-                    fontWeight:    700,
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color:         'var(--text-primary)',
-                    margin:        0,
-                }}>
-                    Bienvenido,{' '}
-                    <span style={{
-                        background:            'linear-gradient(135deg,var(--accent-primary),var(--accent-cyan))',
-                        WebkitBackgroundClip:  'text',
-                        WebkitTextFillColor:   'transparent',
-                        backgroundClip:        'text',
-                    }}>
-                        {user?.email.split('@')[0] ?? 'Operador'}
-                    </span>
-                </h1>
                 <p style={{
                     fontFamily:    'var(--font-mono)',
                     fontSize:      'var(--text-xs)',
                     color:         'var(--text-muted)',
-                    margin:        '4px 0 0',
+                    margin:        0,
                     letterSpacing: '0.04em',
                 }}>
                     {new Date().toLocaleDateString('es-ES', {

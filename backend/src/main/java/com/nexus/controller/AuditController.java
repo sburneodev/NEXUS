@@ -10,6 +10,16 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * AuditController — GET /api/audit
+ *
+ * Devuelve únicamente entradas generadas por la capa de aplicación
+ * (usuario_email IS NOT NULL), que son las que contienen contexto
+ * completo: quién, qué, cuándo, IP y detalles legibles.
+ *
+ * Las entradas de los triggers de BD (sin email) quedan en la tabla
+ * como backup pero no se exponen en el panel de administración.
+ */
 @RestController
 @RequestMapping("/audit")
 @PreAuthorize("hasAuthority('ADMIN')")
@@ -24,15 +34,12 @@ public class AuditController {
     /**
      * GET /api/audit
      *
-     * Parámetros de filtrado:
-     *   tabla     — filtro exacto por entidad (PRODUCTO, CLIENTE…)
-     *   operacion — filtro exacto por acción (CREATE, UPDATE, DELETE…)
-     *   buscar    — búsqueda libre en usuario_email, detalles, tabla, operacion
+     * Parámetros:
+     *   buscar    — búsqueda libre en email, detalles, tabla, operacion
+     *   operacion — filtro exacto por tipo de acción
+     *   tabla     — filtro exacto por entidad
      *   desde/hasta — rango temporal ISO-8601
      *   page / size — paginación (0-indexed, default 0/50)
-     *
-     * Respuesta: { totalElements, totalPages, number, size, content }
-     * — compatible con PaginatedResponse<T> del frontend.
      */
     @GetMapping
     public ResponseEntity<Map<String, Object>> listar(
@@ -46,7 +53,7 @@ public class AuditController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "50") int size) {
 
-        StringBuilder where = new StringBuilder("WHERE 1=1");
+        StringBuilder where = new StringBuilder("WHERE usuario_email IS NOT NULL");
         List<Object> params = new ArrayList<>();
 
         if (tabla != null && !tabla.isBlank()) {
@@ -60,7 +67,7 @@ public class AuditController {
         if (buscar != null && !buscar.isBlank()) {
             String like = "%" + buscar.toLowerCase() + "%";
             where.append(" AND (LOWER(usuario_email) LIKE ?"
-                       + " OR LOWER(detalles) LIKE ?"
+                       + " OR LOWER(COALESCE(detalles,'')) LIKE ?"
                        + " OR LOWER(tabla) LIKE ?"
                        + " OR LOWER(operacion) LIKE ?)");
             params.add(like); params.add(like); params.add(like); params.add(like);
@@ -74,7 +81,7 @@ public class AuditController {
             params.add(hasta);
         }
 
-        // Total
+        // Total de registros
         String sqlCount = "SELECT COUNT(*) FROM audit_log " + where;
         Integer totalRaw = jdbcTemplate.queryForObject(sqlCount, Integer.class, params.toArray());
         int totalElements = totalRaw != null ? totalRaw : 0;
@@ -90,21 +97,20 @@ public class AuditController {
 
         List<Map<String, Object>> filas = jdbcTemplate.queryForList(sql, pageParams.toArray());
 
-        // Normalizar claves de columna → nombres del frontend (AuditEntry interface)
+        // Normalizar columnas de BD → nombres del frontend (AuditEntry interface)
         List<Map<String, Object>> content = filas.stream().map(fila -> {
             Map<String, Object> entry = new LinkedHashMap<>();
             entry.put("id",           fila.get("id"));
             entry.put("entidad",      fila.get("tabla"));
             entry.put("accion",       fila.get("operacion"));
             entry.put("usuarioEmail", fila.get("usuario_email"));
-            entry.put("entidadId",    fila.get("entidad_id"));
+            entry.put("entidadId",    fila.get("id_registro"));   // TEXT → frontend lo muestra como string
             entry.put("detalles",     fila.get("detalles"));
             entry.put("timestamp",    fila.get("creado_en"));
             entry.put("ip",           fila.get("ip"));
             return entry;
         }).collect(Collectors.toList());
 
-        // Respuesta compatible con PaginatedResponse<T>
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("totalElements", totalElements);
         response.put("totalPages",    totalPages);
@@ -113,4 +119,4 @@ public class AuditController {
         response.put("content",       content);
         return ResponseEntity.ok(response);
     }
-}	
+}

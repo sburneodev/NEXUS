@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import com.nexus.audit.AuditService;
 import com.nexus.dto.StockMovimientoRequest;
 import com.nexus.dto.StockMovimientoResponse;
 import com.nexus.repository.ClienteRepository;
@@ -31,20 +32,22 @@ public class StockService {
     private final UsuarioRepository   usuarioRepository;
     private final ClienteRepository   clienteRepository;
     private final ProveedorRepository proveedorRepository;
+    private final AuditService        auditService;
 
     public StockService(JdbcTemplate jdbcTemplate,
                         UsuarioRepository usuarioRepository,
                         ClienteRepository clienteRepository,
-                        ProveedorRepository proveedorRepository) {
+                        ProveedorRepository proveedorRepository,
+                        AuditService auditService) {
         this.jdbcTemplate        = jdbcTemplate;
         this.usuarioRepository   = usuarioRepository;
         this.clienteRepository   = clienteRepository;
         this.proveedorRepository = proveedorRepository;
+        this.auditService        = auditService;
     }
 
     public StockMovimientoResponse registrarMovimiento(StockMovimientoRequest request) {
 
-        // ── Validación previa: cliente ────────────────────────────────
         if (request.getIdCliente() != null) {
             boolean existeYActivo = clienteRepository.findById(request.getIdCliente())
                     .map(c -> Boolean.TRUE.equals(c.getActivo()))
@@ -58,7 +61,6 @@ public class StockService {
             }
         }
 
-        // ── Validación previa: proveedor ──────────────────────────────
         if (request.getIdProveedor() != null) {
             boolean existeYActivo = proveedorRepository.findById(request.getIdProveedor())
                     .map(p -> Boolean.TRUE.equals(p.getActivo()))
@@ -136,6 +138,16 @@ public class StockService {
         if (resultado != null && resultado.startsWith("ERROR")) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, resultado);
         }
+
+        // Auditoría del movimiento de stock
+        auditService.log(
+                "STOCK",
+                "STOCK_MOVEMENT",
+                request.getIdProducto(),
+                request.getTipoMovimiento() + " x" + request.getCantidad()
+                        + " | Producto #" + request.getIdProducto()
+                        + " | " + resultado
+        );
 
         String fechaStr      = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
         String uid           = UUID.randomUUID().toString().replace("-","").substring(0,6).toUpperCase();

@@ -32,8 +32,13 @@ export function LoginPage(): JSX.Element {
                 email: email.trim().toLowerCase(),
                 password,
             });
-            login(data.token);
-            navigate('/dashboard', { replace: true });
+            if (data.token) {
+                login(data.token);
+                navigate('/dashboard', { replace: true });
+            } else {
+                setStatus('error');
+                setErrorMsg('El servidor no devolvió un token. Inténtalo de nuevo.');
+            }
         } catch (err) {
             const axiosErr = err as AxiosError<{ message?: string }>;
             if (axiosErr.response?.status === 401 || axiosErr.response?.status === 403) {

@@ -1,9 +1,19 @@
+/**
+ * pages/StockPage.tsx — Control de Stock ACID
+ *
+ * Fusión de features/stock/sebastian + main:
+ * - sebastian: selector predictivo cliente/proveedor, validación 422,
+ *              ResultPanel mejorado, carga de proveedores.
+ * - main:      búsqueda por nombre/SKU, paginación client-side.
+ */
+
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import api from '../services/api';
-import { productoService } from '../services/productoService';
+import api                     from '../services/api';
+import { productoService }     from '../services/productoService';
+import { calculateAutoLimit }  from '../hooks/useTableFilters';
 import type { Producto, TipoMovimiento } from '../types/models';
-import { AlbaranModal } from '../components/stock/AlbaranModal';
-import type { AlbaranInfo } from '../components/stock/AlbaranModal';
+import { AlbaranModal }        from '../components/stock/AlbaranModal';
+import type { AlbaranInfo }    from '../components/stock/AlbaranModal';
 
 // ── Tipos locales ─────────────────────────────────────────────────────
 
@@ -85,18 +95,22 @@ const onBI = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// Selector predictivo genérico (reutilizado para cliente y proveedor)
+// Selector predictivo genérico
 // ═══════════════════════════════════════════════════════════════════════
 
 interface SelectorProps {
-    opciones:  EntidadOpcion[];
-    selected:  EntidadOpcion | null;
-    onSelect:  (v: EntidadOpcion | null) => void;
+    opciones:     EntidadOpcion[];
+    selected:     EntidadOpcion | null;
+    onSelect:     (v: EntidadOpcion | null) => void;
     placeholder?: string;
     accentColor?: string;
 }
 
-function SelectorPredictivo({ opciones, selected, onSelect, placeholder = 'Buscar por ID o nombre…', accentColor = 'var(--accent-cyan)' }: SelectorProps): JSX.Element {
+function SelectorPredictivo({
+    opciones, selected, onSelect,
+    placeholder = 'Buscar por ID o nombre…',
+    accentColor = 'var(--accent-cyan)',
+}: SelectorProps): JSX.Element {
     const [query, setQuery] = useState('');
     const [open,  setOpen]  = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -114,7 +128,9 @@ function SelectorPredictivo({ opciones, selected, onSelect, placeholder = 'Busca
     const filtered = useMemo(() => {
         const q = query.trim().toLowerCase();
         if (!q) return opciones;
-        return opciones.filter(o => String(o.id).includes(q) || o.nombre.toLowerCase().includes(q));
+        return opciones.filter(o =>
+            String(o.id).includes(q) || o.nombre.toLowerCase().includes(q)
+        );
     }, [opciones, query]);
 
     const displayValue   = selected ? `#${selected.id} — ${selected.nombre}` : query;
@@ -131,7 +147,7 @@ function SelectorPredictivo({ opciones, selected, onSelect, placeholder = 'Busca
                 onFocus={() => setOpen(true)}
                 style={{
                     ...inputStyle,
-                    borderColor: hasInvalidText ? 'var(--accent-danger)' : open ? accentColor : 'var(--border-default)',
+                    borderColor: hasInvalidText ? 'var(--accent-danger)'  : open ? accentColor : 'var(--border-default)',
                     boxShadow:   hasInvalidText
                         ? '0 0 0 3px rgba(255,68,102,0.12)'
                         : open ? `0 0 0 3px color-mix(in srgb, ${accentColor} 15%, transparent)` : 'none',
@@ -146,31 +162,19 @@ function SelectorPredictivo({ opciones, selected, onSelect, placeholder = 'Busca
                     maxHeight: '196px', overflowY: 'auto',
                 }}>
                     {filtered.length === 0 ? (
-                        <div style={{
-                            padding: '14px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px',
-                            color: 'var(--accent-danger)', lineHeight: 1.6,
-                        }}>
+                        <div style={{ padding: '14px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-danger)', lineHeight: 1.6 }}>
                             Coincidencias no encontradas. Comprueba de nuevo o llama a servicio técnico.
                         </div>
                     ) : (
                         filtered.map(o => (
                             <div key={o.id}
                                 onMouseDown={e => { e.preventDefault(); onSelect(o); setQuery(''); setOpen(false); }}
-                                style={{
-                                    padding: '9px 14px', cursor: 'pointer',
-                                    display: 'flex', gap: '10px', alignItems: 'center',
-                                    borderBottom: '1px solid var(--border-subtle)',
-                                    transition: 'background 100ms ease',
-                                }}
+                                style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', transition: 'background 100ms ease' }}
                                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
                                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                             >
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: accentColor, minWidth: '28px', letterSpacing: '0.04em' }}>
-                                    #{o.id}
-                                </span>
-                                <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {o.nombre}
-                                </span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: accentColor, minWidth: '28px', letterSpacing: '0.04em' }}>#{o.id}</span>
+                                <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nombre}</span>
                             </div>
                         ))
                     )}
@@ -191,90 +195,31 @@ function SelectorPredictivo({ opciones, selected, onSelect, placeholder = 'Busca
 // ═══════════════════════════════════════════════════════════════════════
 
 function ResultPanel({ result }: { result: OpResult }): JSX.Element {
-    const isOk    = result.ok;
-    const color   = isOk ? 'var(--accent-primary)' : 'var(--accent-danger)';
-    const bgColor = isOk ? 'rgba(0,255,136,0.07)'  : 'rgba(255,68,102,0.07)';
-    const icon    = isOk ? '✓' : '✕';
+    const isOk  = result.ok;
+    const color = isOk ? 'var(--accent-primary)' : 'var(--accent-danger)';
+    const bg    = isOk ? 'rgba(0,255,136,0.07)'  : 'rgba(255,68,102,0.07)';
 
     return (
-        <div style={{
-            borderRadius: '8px',
-            border:       `1px solid ${color}`,
-            background:   bgColor,
-            overflow:     'hidden',
-        }}>
-            {/* Cabecera de estado */}
-            <div style={{
-                display:        'flex',
-                alignItems:     'center',
-                gap:            '10px',
-                padding:        '10px 14px',
-                borderBottom:   result.stockNuevo !== undefined ? `1px solid ${color}30` : 'none',
-                background:     `${color}12`,
-            }}>
-                <span style={{
-                    fontFamily:   'var(--font-mono)',
-                    fontSize:     '18px',
-                    fontWeight:   700,
-                    color,
-                    lineHeight:   1,
-                    flexShrink:   0,
-                }}>
-                    {icon}
+        <div style={{ borderRadius: '8px', border: `1px solid ${color}`, background: bg, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: result.stockNuevo !== undefined ? `1px solid ${color}30` : 'none', background: `${color}12` }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', fontWeight: 700, color, lineHeight: 1, flexShrink: 0 }}>
+                    {isOk ? '✓' : '✕'}
                 </span>
-                <span style={{
-                    fontFamily:    'var(--font-display)',
-                    fontSize:      '12px',
-                    fontWeight:    700,
-                    letterSpacing: '0.10em',
-                    textTransform: 'uppercase',
-                    color,
-                }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color }}>
                     {isOk ? 'Operación completada' : 'Operación rechazada'}
                 </span>
             </div>
-
-            {/* Mensaje del SP / backend */}
             <div style={{ padding: '10px 14px' }}>
-                <p style={{
-                    fontFamily:    'var(--font-mono)',
-                    fontSize:      '12px',
-                    color:         'var(--text-secondary)',
-                    margin:        0,
-                    lineHeight:    1.6,
-                    wordBreak:     'break-word',
-                }}>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6, wordBreak: 'break-word' }}>
                     {result.mensaje}
                 </p>
             </div>
-
-            {/* Stock nuevo — solo en éxito */}
             {isOk && result.stockNuevo !== undefined && (
-                <div style={{
-                    display:        'flex',
-                    alignItems:     'center',
-                    justifyContent: 'space-between',
-                    padding:        '8px 14px',
-                    borderTop:      `1px solid ${color}25`,
-                    background:     `${color}08`,
-                }}>
-                    <span style={{
-                        fontFamily:    'var(--font-display)',
-                        fontSize:      '10px',
-                        fontWeight:    700,
-                        letterSpacing: '0.10em',
-                        textTransform: 'uppercase',
-                        color:         'var(--text-muted)',
-                    }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderTop: `1px solid ${color}25`, background: `${color}08` }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                         Stock actualizado
                     </span>
-                    <span style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize:   '20px',
-                        fontWeight: 700,
-                        color,
-                        lineHeight: 1,
-                    }}>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', fontWeight: 700, color, lineHeight: 1 }}>
                         {result.stockNuevo}
                     </span>
                 </div>
@@ -299,6 +244,9 @@ export function StockPage(): JSX.Element {
     const [isSaving,          setIsSaving]           = useState(false);
     const [result,            setResult]             = useState<OpResult | null>(null);
     const [activeFilter,      setActiveFilter]       = useState<'TODOS'|'ESTANDAR'|'RETRO'|'OK'|'BAJO'|'CRITICO'>('TODOS');
+    const [searchTerm,        setSearchTerm]         = useState('');
+    const [currentPage,       setCurrentPage]        = useState(0);
+    const [rowsPerPage,       setRowsPerPage]        = useState<number>(() => calculateAutoLimit());
     const [albaranOpen,       setAlbaranOpen]        = useState(false);
     const [albaranInfo,       setAlbaranInfo]        = useState<AlbaranInfo | null>(null);
 
@@ -309,7 +257,6 @@ export function StockPage(): JSX.Element {
         async function cargarDatos() {
             setLoadState('loading');
             try {
-                // Productos con paginación completa
                 const primera = await productoService.listar(0, 100);
                 if (cancelled) return;
 
@@ -323,23 +270,16 @@ export function StockPage(): JSX.Element {
                     resto.forEach(p => { todosProductos = [...todosProductos, ...p.content]; });
                 }
 
-                // Clientes activos
                 const clientesResp = await api.get<{ content: { id: number; nombre: string }[] }>(
                     '/clientes?size=200&sort=nombre'
                 );
-
-                // Proveedores activos (endpoint devuelve List, no Page)
                 const proveedoresResp = await api.get<{ id: number; razonSocial: string }[]>('/proveedores');
 
                 if (cancelled) return;
 
                 setProductos(todosProductos);
-                setClientes(
-                    (clientesResp.data.content ?? []).map(c => ({ id: c.id, nombre: c.nombre }))
-                );
-                setProveedores(
-                    (proveedoresResp.data ?? []).map(p => ({ id: p.id, nombre: p.razonSocial }))
-                );
+                setClientes((clientesResp.data.content ?? []).map(c => ({ id: c.id, nombre: c.nombre })));
+                setProveedores((proveedoresResp.data ?? []).map(p => ({ id: p.id, nombre: p.razonSocial })));
                 setLoadState('ok');
             } catch {
                 if (!cancelled) setLoadState('error');
@@ -350,13 +290,29 @@ export function StockPage(): JSX.Element {
         return () => { cancelled = true; };
     }, []);
 
-    // ── Filtrado ──────────────────────────────────────────────────────
-    const filtered = useMemo(() => productos.filter(p => {
-        if (activeFilter === 'TODOS')    return true;
-        if (activeFilter === 'ESTANDAR') return p.tipoProducto === 'ESTANDAR';
-        if (activeFilter === 'RETRO')    return p.tipoProducto === 'RETRO';
-        return getEstado(p) === activeFilter;
-    }), [productos, activeFilter]);
+    // ── Filtrado + búsqueda ───────────────────────────────────────────
+    const filtered = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        return productos.filter(p => {
+            const matchType =
+                activeFilter === 'TODOS'    ? true :
+                activeFilter === 'ESTANDAR' ? p.tipoProducto === 'ESTANDAR' :
+                activeFilter === 'RETRO'    ? p.tipoProducto === 'RETRO' :
+                getEstado(p) === activeFilter;
+            const matchSearch = !q
+                || p.nombre.toLowerCase().includes(q)
+                || p.sku.toLowerCase().includes(q);
+            return matchType && matchSearch;
+        });
+    }, [productos, activeFilter, searchTerm]);
+
+    // ── Paginación client-side ────────────────────────────────────────
+    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+    const safePage   = Math.min(currentPage, totalPages - 1);
+    const paginated  = useMemo(
+        () => filtered.slice(safePage * rowsPerPage, (safePage + 1) * rowsPerPage),
+        [filtered, safePage, rowsPerPage]
+    );
 
     // ── Selección de producto ─────────────────────────────────────────
     const handleSelect = useCallback((p: Producto) => {
@@ -422,12 +378,12 @@ export function StockPage(): JSX.Element {
         } catch (err: unknown) {
             let msg = 'Error de red o servidor no disponible.';
             if (err && typeof err === 'object' && 'response' in err) {
-                const ae  = err as { response?: { status?: number; data?: { message?: string } } };
-                const st  = ae.response?.status;
-                const sm  = ae.response?.data?.message ?? '';
+                const ae = err as { response?: { status?: number; data?: { message?: string } } };
+                const st = ae.response?.status;
+                const sm = ae.response?.data?.message ?? '';
                 if      (st === 409) msg = sm || 'Stock insuficiente o artículo no disponible.';
                 else if (st === 422) msg = sm || 'ID no existente o inactivo. Comprueba que existe o habla con soporte.';
-                else if (st === 403) msg = 'Sin permiso. Roles requeridos: CAJERO · GESTOR_INVENTARIO · ADMIN';
+                else if (st === 403) msg = 'Sin permiso. Roles: CAJERO · GESTOR_INVENTARIO · ADMIN';
                 else if (st === 401) msg = 'Sesión expirada. Redirigiendo al login…';
                 else                 msg = sm || `Error ${st ?? 'desconocido'} al procesar la transacción.`;
             }
@@ -440,10 +396,7 @@ export function StockPage(): JSX.Element {
     // ── Render ────────────────────────────────────────────────────────
     return (
         <>
-        <div style={{
-            display: 'grid', gridTemplateColumns: '62% 38%', gap: '16px',
-            height: 'calc(100dvh - 104px)', minHeight: 0,
-        }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '62% 38%', gap: '16px', height: 'calc(100dvh - 104px)', minHeight: 0 }}>
 
             {/* ══ IZQUIERDA — Tabla ══ */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', minHeight: 0 }}>
@@ -457,18 +410,31 @@ export function StockPage(): JSX.Element {
                     </p>
                 </div>
 
+                {/* Búsqueda */}
+                <div style={{ flexShrink: 0, position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>⌕</span>
+                    <input
+                        type="text"
+                        placeholder="Buscar por nombre o SKU…"
+                        value={searchTerm}
+                        onChange={e => { setSearchTerm(e.target.value); setCurrentPage(0); }}
+                        style={{ ...inputStyle, paddingLeft: '30px', fontSize: '12px' }}
+                        onFocus={onFI} onBlur={onBI}
+                    />
+                </div>
+
                 {/* Filtros */}
                 <div style={{ flexShrink: 0, display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                     {(['TODOS','ESTANDAR','RETRO'] as const).map(t => {
                         const active = activeFilter === t;
                         const color  = t === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-primary)';
-                        return <button key={t} onClick={() => setActiveFilter(t)} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px', background: active ? color : 'transparent', color: active ? 'var(--text-inverse)' : 'var(--text-muted)', border: `1px solid ${active ? color : 'var(--border-default)'}`, borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease' }}>{t}</button>;
+                        return <button key={t} onClick={() => { setActiveFilter(t); setCurrentPage(0); }} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px', background: active ? color : 'transparent', color: active ? 'var(--text-inverse)' : 'var(--text-muted)', border: `1px solid ${active ? color : 'var(--border-default)'}`, borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease' }}>{t}</button>;
                     })}
                     <div style={{ width: '1px', height: '20px', background: 'var(--border-subtle)' }} />
                     {(['OK','BAJO','CRITICO'] as const).map(e => {
                         const active = activeFilter === e;
                         const color  = ESTADO_COLOR[e];
-                        return <button key={e} onClick={() => setActiveFilter(active ? 'TODOS' : e)} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px', background: active ? color : 'transparent', color: active ? 'var(--text-inverse)' : color, border: `1px solid ${active ? color : 'var(--border-default)'}`, borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease' }}>{e}</button>;
+                        return <button key={e} onClick={() => { setActiveFilter(active ? 'TODOS' : e); setCurrentPage(0); }} style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', padding: '5px 10px', background: active ? color : 'transparent', color: active ? 'var(--text-inverse)' : color, border: `1px solid ${active ? color : 'var(--border-default)'}`, borderRadius: '4px', cursor: 'pointer', transition: 'all 140ms ease' }}>{e}</button>;
                     })}
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', marginLeft: 'auto', letterSpacing: '0.04em' }}>
                         {loadState === 'loading' ? 'Cargando…' : `${filtered.length} producto${filtered.length !== 1 ? 's' : ''}`}
@@ -491,12 +457,14 @@ export function StockPage(): JSX.Element {
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map(p => {
+                                {paginated.map(p => {
                                     const isSel = selected?.id === p.id;
                                     return (
-                                        <tr key={p.id} onClick={() => handleSelect(p)} style={{ borderBottom: '1px solid var(--border-subtle)', background: isSel ? 'rgba(0,212,255,0.08)' : 'transparent', cursor: 'pointer', transition: 'background 120ms ease', outline: isSel ? '2px solid rgba(0,212,255,0.30)' : 'none', outlineOffset: '-2px' }}
+                                        <tr key={p.id} onClick={() => handleSelect(p)}
+                                            style={{ borderBottom: '1px solid var(--border-subtle)', background: isSel ? 'rgba(0,212,255,0.08)' : 'transparent', cursor: 'pointer', transition: 'background 120ms ease', outline: isSel ? '2px solid rgba(0,212,255,0.30)' : 'none', outlineOffset: '-2px' }}
                                             onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-overlay)'; }}
-                                            onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}>
+                                            onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                                        >
                                             <td style={{ padding: '10px 12px' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-cyan)', letterSpacing: '0.04em' }}>{p.sku}</span></td>
                                             <td style={{ padding: '10px 12px', maxWidth: '200px' }}><div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</div></td>
                                             <td style={{ padding: '10px 12px' }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-secondary)', border: `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`, borderRadius: '3px', padding: '2px 6px', letterSpacing: '0.04em' }}>{p.tipoProducto}</span></td>
@@ -510,16 +478,52 @@ export function StockPage(): JSX.Element {
                         </table>
                     )}
                 </div>
+
+                {/* Paginación */}
+                {loadState === 'ok' && (
+                    <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <button disabled={safePage === 0} onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                            style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', padding: '5px 10px', background: 'transparent', color: safePage === 0 ? 'var(--border-default)' : 'var(--text-muted)', border: `1px solid ${safePage === 0 ? 'var(--border-subtle)' : 'var(--border-default)'}`, borderRadius: '4px', cursor: safePage === 0 ? 'default' : 'pointer', transition: 'all 120ms ease' }}>
+                            ← ANT
+                        </button>
+
+                        {Array.from({ length: totalPages }, (_, i) => i).map(i => {
+                            const show = totalPages <= 6 || i === 0 || i === totalPages - 1 || Math.abs(i - safePage) <= 1;
+                            if (!show) {
+                                if (i === 1 || i === totalPages - 2) return <span key={i} style={{ color: 'var(--text-muted)', fontSize: '11px' }}>…</span>;
+                                return null;
+                            }
+                            const active = i === safePage;
+                            return (
+                                <button key={i} onClick={() => setCurrentPage(i)} style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: active ? 700 : 400, padding: '4px 9px', background: active ? 'var(--accent-primary)' : 'transparent', color: active ? 'var(--text-inverse)' : 'var(--text-muted)', border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-default)'}`, borderRadius: '4px', cursor: 'pointer', transition: 'all 120ms ease', minWidth: '30px' }}>
+                                    {i + 1}
+                                </button>
+                            );
+                        })}
+
+                        <button disabled={safePage >= totalPages - 1} onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                            style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', padding: '5px 10px', background: 'transparent', color: safePage >= totalPages - 1 ? 'var(--border-default)' : 'var(--text-muted)', border: `1px solid ${safePage >= totalPages - 1 ? 'var(--border-subtle)' : 'var(--border-default)'}`, borderRadius: '4px', cursor: safePage >= totalPages - 1 ? 'default' : 'pointer', transition: 'all 120ms ease' }}>
+                            SIG →
+                        </button>
+
+                        <div style={{ width: '1px', height: '18px', background: 'var(--border-subtle)' }} />
+
+                        <select value={rowsPerPage} onChange={e => { setRowsPerPage(Number(e.target.value)); setCurrentPage(0); }}
+                            style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer', outline: 'none' }}>
+                            {[10, 20, 50].map(n => <option key={n} value={n}>{n} / pág.</option>)}
+                        </select>
+
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em', marginLeft: 'auto' }}>
+                            {safePage * rowsPerPage + 1}–{Math.min((safePage + 1) * rowsPerPage, filtered.length)} de {filtered.length}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* ══ DERECHA — Formulario ══ */}
             <div style={{ display: 'flex', flexDirection: 'column', background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '12px', overflow: 'hidden', height: '100%', minHeight: 0 }}>
-
-                {/* Header del panel */}
                 <div style={{ padding: '14px 18px', background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-subtle)', flexShrink: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>
-                        ◈ REGISTRAR MOVIMIENTO
-                    </div>
+                    <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--accent-cyan)', marginBottom: '4px' }}>◈ REGISTRAR MOVIMIENTO</div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: selected ? 'var(--text-primary)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
                         {selected ? selected.sku : '— Selecciona un producto —'}
                     </div>
@@ -582,15 +586,10 @@ export function StockPage(): JSX.Element {
                             {/* Selector de cliente — SALIDA */}
                             {form.tipoMovimiento === 'SALIDA' && (
                                 <div>
-                                    <label style={labelStyle}>
-                                        Cliente <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span>
-                                    </label>
+                                    <label style={labelStyle}>Cliente <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
                                     <SelectorPredictivo
-                                        opciones={clientes}
-                                        selected={selectedCliente}
-                                        onSelect={setSelectedCliente}
-                                        placeholder="Buscar cliente por ID o nombre…"
-                                        accentColor="var(--accent-cyan)"
+                                        opciones={clientes} selected={selectedCliente} onSelect={setSelectedCliente}
+                                        placeholder="Buscar cliente por ID o nombre…" accentColor="var(--accent-cyan)"
                                     />
                                 </div>
                             )}
@@ -598,15 +597,10 @@ export function StockPage(): JSX.Element {
                             {/* Selector de proveedor — ENTRADA */}
                             {form.tipoMovimiento === 'ENTRADA' && (
                                 <div>
-                                    <label style={labelStyle}>
-                                        Proveedor <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span>
-                                    </label>
+                                    <label style={labelStyle}>Proveedor <span style={{ fontWeight: 400, opacity: 0.55 }}>— opcional</span></label>
                                     <SelectorPredictivo
-                                        opciones={proveedores}
-                                        selected={selectedProveedor}
-                                        onSelect={setSelectedProveedor}
-                                        placeholder="Buscar proveedor por ID o razón social…"
-                                        accentColor="var(--accent-primary)"
+                                        opciones={proveedores} selected={selectedProveedor} onSelect={setSelectedProveedor}
+                                        placeholder="Buscar proveedor por ID o razón social…" accentColor="var(--accent-primary)"
                                     />
                                 </div>
                             )}
@@ -623,11 +617,10 @@ export function StockPage(): JSX.Element {
                                 <textarea placeholder="Información adicional del movimiento…" rows={2} value={form.notas} onChange={e => setField('notas', e.target.value)} style={{ ...inputStyle, resize: 'vertical', minHeight: '52px' }} onFocus={onFI} onBlur={onBI} />
                             </div>
 
-                            {/* Panel de resultado mejorado */}
                             {result && <ResultPanel result={result} />}
 
-                            {/* Botón */}
-                            <button onClick={handleSubmit} disabled={isSaving} className="btn btn-primary" style={{ width: '100%', fontSize: '12px', letterSpacing: '0.12em', opacity: isSaving ? 0.6 : 1, cursor: isSaving ? 'not-allowed' : 'pointer', marginTop: '4px' }}>
+                            <button onClick={handleSubmit} disabled={isSaving} className="btn btn-primary"
+                                style={{ width: '100%', fontSize: '12px', letterSpacing: '0.12em', opacity: isSaving ? 0.6 : 1, cursor: isSaving ? 'not-allowed' : 'pointer', marginTop: '4px' }}>
                                 {isSaving ? 'PROCESANDO…' : `REGISTRAR ${form.tipoMovimiento}`}
                             </button>
 

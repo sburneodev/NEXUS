@@ -42,3 +42,4 @@ logs/
 .classpath
 .settings/
 .factorypath
+.claude

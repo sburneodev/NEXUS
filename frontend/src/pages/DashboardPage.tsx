@@ -4,21 +4,17 @@ import api                  from '../services/api';
 import type { KpiData }     from '../types/models';
 import { KpiCard }          from '../components/dashboard/KpiCard';
 import { ChartsPanel }      from '../components/dashboard/ChartsPanel';
+import { Nl2SqlPanel }      from '../components/ai/Nl2SqlPanel';
 import { productoService }  from '../services/productoService';
 import { clienteService }   from '../services/entidadService';
 
-// ── Serie de ventas demo (onda + ruido) ───────────────────────────────
-// Generada una vez, estable durante la sesión.
-// Se usa como fallback si el backend no devuelve ventasUltimos30Dias.
+// ── Serie de ventas demo ──────────────────────────────────────────────
 const VENTAS_DEMO = Array.from({ length: 30 }, (_, i) => ({
     fecha:    new Date(Date.now() - (29-i)*86400000).toISOString().split('T')[0],
     total:    Math.floor(380 + Math.sin(i * 0.45) * 160 + Math.random() * 220),
     unidades: Math.floor(4   + Math.sin(i * 0.45) * 2   + Math.random() * 7),
 }));
 
-// ── Estado inicial vacío ─────────────────────────────────────────────
-// Los valores reales llegan del backend. Mientras tanto se muestran
-// ceros o el indicador de carga, nunca datos del mock.
 const BASE_KPI: KpiData = {
     ventasHoy:              0,
     ventasAyer:             0,
@@ -35,6 +31,9 @@ export function DashboardPage(): JSX.Element {
     const [kpiData,   setKpiData]   = useState<KpiData>(BASE_KPI);
     const [loadState, setLoadState] = useState<'loading'|'ok'|'error'>('loading');
 
+    // UI-04 — estado para mostrar/ocultar el panel NL2SQL
+    const [showNl2Sql, setShowNl2Sql] = useState(false);
+
     const glow = isDark
         ? { green: 'rgba(0,255,136,0.40)', cyan: 'rgba(0,212,255,0.40)', gold: 'rgba(255,200,69,0.40)', danger: 'rgba(255,68,102,0.40)' }
         : { green: 'rgba(0,255,136,0.32)', cyan: 'rgba(0,212,255,0.32)', gold: 'rgba(255,200,69,0.35)', danger: 'rgba(255,68,102,0.35)' };
@@ -42,11 +41,6 @@ export function DashboardPage(): JSX.Element {
     useEffect(() => {
         let cancelled = false;
 
-        // Llamadas en paralelo:
-        //   1. analytics   → ventasHoy, ventasAyer, clientesNuevosSemana, ventas30d
-        //   2. productos retro activos → piezasRetroDisponibles (count real de BD)
-        //   3. productos estándar activos → stockCritico y stockBajo (real de BD)
-        //   4. clientes    → clientesActivos (total paginado)
         Promise.allSettled([
             api.get<KpiData>('/dashboard/analytics'),
             productoService.listar(0, 200, 'RETRO'),
@@ -57,7 +51,6 @@ export function DashboardPage(): JSX.Element {
 
             let merged: KpiData = { ...BASE_KPI };
 
-            // 1. Analytics del backend (ventas, clientes nuevos, etc.)
             if (analyticsRes.status === 'fulfilled') {
                 merged = { ...merged, ...analyticsRes.value.data };
                 setLoadState('ok');
@@ -65,31 +58,20 @@ export function DashboardPage(): JSX.Element {
                 setLoadState('error');
             }
 
-            // 2. Bóveda Retro — conteo real desde la BD
-            if (retroRes.status === 'fulfilled') {
+            if (retroRes.status === 'fulfilled')
                 merged.piezasRetroDisponibles = retroRes.value.totalElements;
-            }
 
-            // 3. Stock crítico/bajo — calculado sobre productos estándar reales
             if (estandarRes.status === 'fulfilled') {
                 const estandar = estandarRes.value.content;
-                merged.productosStockCritico = estandar.filter(
-                    p => p.stockActual <= p.stockMinimo
-                ).length;
-                merged.productosStockBajo = estandar.filter(
-                    p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2
-                ).length;
+                merged.productosStockCritico = estandar.filter(p => p.stockActual <= p.stockMinimo).length;
+                merged.productosStockBajo    = estandar.filter(p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2).length;
             }
 
-            // 4. Total de clientes activos
-            if (clientesRes.status === 'fulfilled') {
+            if (clientesRes.status === 'fulfilled')
                 merged.clientesActivos = clientesRes.value.totalElements;
-            }
 
-            // Si el backend no devolvió ventasUltimos30Dias, mantener la demo
-            if (!merged.ventasUltimos30Dias?.length) {
+            if (!merged.ventasUltimos30Dias?.length)
                 merged.ventasUltimos30Dias = VENTAS_DEMO;
-            }
 
             setKpiData(merged);
         });
@@ -148,12 +130,8 @@ export function DashboardPage(): JSX.Element {
             }}>
                 <KpiCard
                     title="VENTAS HOY"
-                    value={kpiData.ventasHoy > 0
-                        ? `€${kpiData.ventasHoy.toLocaleString('es-ES')}`
-                        : '—'}
-                    sub={kpiData.ventasAyer > 0
-                        ? `${pctVentas >= 0 ? '+' : ''}${pctVentas}% vs ayer`
-                        : 'Sin datos de ventas'}
+                    value={kpiData.ventasHoy > 0 ? `€${kpiData.ventasHoy.toLocaleString('es-ES')}` : '—'}
+                    sub={kpiData.ventasAyer > 0 ? `${pctVentas >= 0 ? '+' : ''}${pctVentas}% vs ayer` : 'Sin datos de ventas'}
                     icon="€"
                     accent="var(--accent-primary)"
                     glow={glow.green}
@@ -162,12 +140,8 @@ export function DashboardPage(): JSX.Element {
                 />
                 <KpiCard
                     title="CLIENTES ACTIVOS"
-                    value={kpiData.clientesActivos > 0
-                        ? kpiData.clientesActivos.toLocaleString('es-ES')
-                        : loadState === 'loading' ? '…' : '—'}
-                    sub={kpiData.clientesNuevosSemana > 0
-                        ? `+${kpiData.clientesNuevosSemana} esta semana`
-                        : 'Conectando con API'}
+                    value={kpiData.clientesActivos > 0 ? kpiData.clientesActivos.toLocaleString('es-ES') : loadState === 'loading' ? '…' : '—'}
+                    sub={kpiData.clientesNuevosSemana > 0 ? `+${kpiData.clientesNuevosSemana} esta semana` : 'Conectando con API'}
                     icon="◉"
                     accent="var(--accent-cyan)"
                     glow={glow.cyan}
@@ -176,9 +150,7 @@ export function DashboardPage(): JSX.Element {
                 />
                 <KpiCard
                     title="BÓVEDA RETRO"
-                    value={loadState === 'loading'
-                        ? '…'
-                        : String(kpiData.piezasRetroDisponibles)}
+                    value={loadState === 'loading' ? '…' : String(kpiData.piezasRetroDisponibles)}
                     sub="piezas únicas disponibles"
                     icon="◆"
                     accent="var(--accent-gold)"
@@ -188,12 +160,8 @@ export function DashboardPage(): JSX.Element {
                 />
                 <KpiCard
                     title="STOCK CRÍTICO"
-                    value={loadState === 'loading'
-                        ? '…'
-                        : String(kpiData.productosStockCritico)}
-                    sub={kpiData.productosStockCritico > 0
-                        ? `${kpiData.productosStockBajo} en zona de alerta`
-                        : 'Todo el stock en orden'}
+                    value={loadState === 'loading' ? '…' : String(kpiData.productosStockCritico)}
+                    sub={kpiData.productosStockCritico > 0 ? `${kpiData.productosStockBajo} en zona de alerta` : 'Todo el stock en orden'}
                     icon="▦"
                     accent="var(--accent-danger)"
                     glow={glow.danger}
@@ -202,9 +170,94 @@ export function DashboardPage(): JSX.Element {
                 />
             </div>
 
-            {/* Gráficas */}
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+            {/* Contenido principal — gráficas + NL2SQL en scroll */}
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+
+                {/* Gráficas */}
                 <ChartsPanel kpiData={kpiData} />
+
+                {/* UI-04 — Panel NL2SQL ──────────────────────────────── */}
+                <div style={{
+                    background:   'var(--bg-surface)',
+                    border:       '1px solid var(--border-default)',
+                    borderRadius: 'var(--radius-xl)',
+                    overflow:     'hidden',
+                    flexShrink:    0,
+                }}>
+                    {/* Cabecera del panel — siempre visible, hace toggle */}
+                    <button
+                        onClick={() => setShowNl2Sql(v => !v)}
+                        style={{
+                            width:          '100%',
+                            display:        'flex',
+                            alignItems:     'center',
+                            justifyContent: 'space-between',
+                            padding:        '14px 20px',
+                            background:     'transparent',
+                            border:         'none',
+                            cursor:         'pointer',
+                            borderBottom:   showNl2Sql ? '1px solid var(--border-subtle)' : 'none',
+                            transition:     'border-color 160ms',
+                        }}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            {/* Indicador animado */}
+                            <span style={{
+                                width:        '8px',
+                                height:       '8px',
+                                borderRadius: '50%',
+                                background:   'var(--accent-primary)',
+                                boxShadow:    '0 0 8px var(--accent-primary)',
+                                display:      'inline-block',
+                                flexShrink:   0,
+                                animation:    'pulse-green 2s infinite',
+                            }} />
+                            <div style={{ textAlign: 'left' }}>
+                                <div style={{
+                                    fontFamily:    'var(--font-display)',
+                                    fontSize:      '13px',
+                                    fontWeight:    700,
+                                    letterSpacing: '0.12em',
+                                    textTransform: 'uppercase',
+                                    color:         'var(--text-primary)',
+                                }}>
+                                    Motor NL2SQL — Consulta en Español
+                                </div>
+                                <div style={{
+                                    fontFamily:    'var(--font-mono)',
+                                    fontSize:      '10px',
+                                    color:         'var(--text-muted)',
+                                    letterSpacing: '0.04em',
+                                    marginTop:     '2px',
+                                }}>
+                                    Pregunta sobre el negocio en lenguaje natural · Gemini traduce a SQL y ejecuta
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Chevron toggle */}
+                        <span style={{
+                            fontFamily:  'var(--font-mono)',
+                            fontSize:    '12px',
+                            color:       'var(--text-muted)',
+                            transform:   showNl2Sql ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition:  'transform 220ms var(--ease-smooth)',
+                            flexShrink:  0,
+                        }}>
+                            ▼
+                        </span>
+                    </button>
+
+                    {/* Panel expandible */}
+                    {showNl2Sql && (
+                        <div style={{ padding: '20px 24px 24px' }}>
+                            <Nl2SqlPanel />
+                        </div>
+                    )}
+                </div>
+
+                {/* Espaciado final para que el scroll no quede pegado al FAB */}
+                <div style={{ height: '80px', flexShrink: 0 }} />
             </div>
         </div>
     );

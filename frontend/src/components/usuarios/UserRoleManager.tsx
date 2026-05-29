@@ -3,7 +3,13 @@
  *
  * Gestor de roles inline para la tabla de usuarios.
  * — Vista compacta (badges) con botón ✎ para abrir edición
- * — Vista expandida (checkboxes) con self-guard y manejo de errores 403/400
+ * — Vista expandida con checkboxes para roles granulares
+ *
+ * Reglas:
+ *   ADMIN = solo lectura desde aquí (se gestiona a nivel de DB).
+ *   Si el usuario tiene ADMIN, el panel es informativo y no permite edición.
+ *   Self-guard: el usuario autenticado no puede quitarse su último rol.
+ *   Validación: mínimo 1 rol seleccionado para poder guardar.
  */
 
 import { useState } from 'react';
@@ -16,6 +22,18 @@ const ROLES_DISPONIBLES = [
     'MARKETING_ANALYST',
     'CONTABLE',
 ] as const;
+
+type Rol = typeof ROLES_DISPONIBLES[number];
+
+// ── Metadatos de cada rol ──────────────────────────────────────────────────────
+
+const ROL_META: Record<Rol, { label: string; desc: string }> = {
+    ADMIN:              { label: 'ADMIN',              desc: 'Superusuario — acceso total' },
+    GESTOR_INVENTARIO:  { label: 'GESTOR INVENTARIO',  desc: 'Gestión de stock y productos' },
+    CAJERO:             { label: 'CAJERO',             desc: 'Ventas y movimientos de caja' },
+    MARKETING_ANALYST:  { label: 'MARKETING',          desc: 'Análisis y campañas' },
+    CONTABLE:           { label: 'CONTABLE',           desc: 'Acceso a informes financieros' },
+};
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -32,6 +50,9 @@ interface UserRoleManagerProps {
     onError:      (msg: string) => void;
 }
 
+// Roles que se pueden asignar/quitar desde la UI (ADMIN queda fuera — se gestiona a nivel de DB)
+const ROLES_EDITABLES = ROLES_DISPONIBLES.filter(r => r !== 'ADMIN');
+
 // ── Componente ────────────────────────────────────────────────────────────────
 
 export function UserRoleManager({
@@ -47,6 +68,20 @@ export function UserRoleManager({
     const [pending, setPending] = useState<string[]>([]);
     const [saving,  setSaving]  = useState(false);
 
+    // ── Helpers de estado ─────────────────────────────────────────────────────
+
+    const esAdmin = currentRoles.includes('ADMIN');
+
+    // Sin cambios respecto al estado guardado
+    const noChanges = [...pending].sort().join(',') === [...currentRoles].sort().join(',');
+
+    // Un usuario sin ningún rol no tiene sentido: bloquear guardar
+    const noRolesSelected = pending.length === 0;
+
+    const canSave = !saving && !noChanges && !noRolesSelected;
+
+    // ── Edición ───────────────────────────────────────────────────────────────
+
     function startEdit(): void {
         setPending([...currentRoles]);
         setEditing(true);
@@ -57,7 +92,8 @@ export function UserRoleManager({
         setPending([]);
     }
 
-    function toggleRole(role: string): void {
+    /** Toggle simple de rol granular (ADMIN nunca llega aquí). */
+    function handleRoleChange(role: string): void {
         setPending(prev =>
             prev.includes(role)
                 ? prev.filter(r => r !== role)
@@ -65,25 +101,17 @@ export function UserRoleManager({
         );
     }
 
-    // Self-guard: si soy yo mismo no puedo quedarme sin ningún rol
-    const selfGuardViolated = isSelf && pending.length === 0;
-    // Sin cambios respecto al estado actual
-    const noChanges =
-        [...pending].sort().join(',') === [...currentRoles].sort().join(',');
+    // ── Guardar ───────────────────────────────────────────────────────────────
 
     async function saveRoles(): Promise<void> {
-        if (selfGuardViolated || noChanges) return;
+        if (!canSave) return;
         setSaving(true);
         try {
             const toAdd    = pending.filter(r => !currentRoles.includes(r));
             const toRemove = currentRoles.filter(r => !pending.includes(r));
 
-            for (const rol of toAdd) {
-                await api.post(`/usuarios/${userId}/roles`, { rol });
-            }
-            for (const rol of toRemove) {
-                await api.delete(`/usuarios/${userId}/roles`, { data: { rol } });
-            }
+            for (const rol of toAdd)    await api.post(`/usuarios/${userId}/roles`, { rol });
+            for (const rol of toRemove) await api.delete(`/usuarios/${userId}/roles`, { data: { rol } });
 
             onSuccess([...pending]);
             setEditing(false);
@@ -98,29 +126,44 @@ export function UserRoleManager({
         }
     }
 
-    // ── Vista compacta (collapsed) ────────────────────────────────────────────
+    // ── Vista compacta (badges) ───────────────────────────────────────────────
 
     if (!editing) {
         return (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
-                {ROLES_DISPONIBLES.map(role => {
-                    const tiene = currentRoles?.includes(role);
-                    return (
-                        <span key={role} style={{
-                            fontFamily:    'var(--font-mono)',
-                            fontSize:      '9px',
-                            letterSpacing: '0.06em',
-                            color:         tiene ? 'var(--accent-primary)' : 'var(--text-muted)',
-                            border:        `1px solid ${tiene ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                            borderRadius:  '3px',
-                            padding:       '1px 5px',
-                            opacity:       tiene ? 1 : 0.3,
-                            transition:    'opacity 200ms',
-                        }}>
-                            {role.replace(/_/g, ' ')}
-                        </span>
-                    );
-                })}
+                {esAdmin ? (
+                    <span style={{
+                        fontFamily:    'var(--font-mono)',
+                        fontSize:      '9px',
+                        letterSpacing: '0.08em',
+                        color:         'var(--accent-gold)',
+                        border:        '1px solid var(--accent-gold)',
+                        borderRadius:  '3px',
+                        padding:       '1px 6px',
+                        background:    'rgba(255,204,0,0.06)',
+                    }}>
+                        ★ SUPERUSUARIO
+                    </span>
+                ) : (
+                    ROLES_DISPONIBLES.filter(r => r !== 'ADMIN').map(role => {
+                        const tiene = currentRoles.includes(role);
+                        return (
+                            <span key={role} style={{
+                                fontFamily:    'var(--font-mono)',
+                                fontSize:      '9px',
+                                letterSpacing: '0.06em',
+                                color:         tiene ? 'var(--accent-primary)' : 'var(--text-muted)',
+                                border:        `1px solid ${tiene ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                                borderRadius:  '3px',
+                                padding:       '1px 5px',
+                                opacity:       tiene ? 1 : 0.3,
+                                transition:    'opacity 200ms',
+                            }}>
+                                {ROL_META[role].label}
+                            </span>
+                        );
+                    })
+                )}
 
                 {!readOnly && (
                     <button
@@ -147,15 +190,74 @@ export function UserRoleManager({
                             e.currentTarget.style.borderColor = 'var(--border-default)';
                             e.currentTarget.style.color = 'var(--text-muted)';
                         }}
-                    >
-                        ✎
-                    </button>
+                    >✎</button>
                 )}
             </div>
         );
     }
 
-    // ── Vista expandida (checkboxes) ──────────────────────────────────────────
+    // ── Vista expandida ───────────────────────────────────────────────────────
+
+    // Si el usuario es ADMIN: panel solo lectura (no se edita desde aquí)
+    if (esAdmin) {
+        return (
+            <div style={{
+                background:   'var(--bg-elevated)',
+                border:       '1px solid rgba(255,204,0,0.25)',
+                borderRadius: 'var(--radius-base)',
+                padding:      '10px 12px',
+                minWidth:     '240px',
+                boxShadow:    '0 4px 20px rgba(0,0,0,0.40)',
+            }}>
+                <div style={{
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      '9px',
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color:         'var(--text-muted)',
+                    marginBottom:  '10px',
+                }}>
+                    Roles asignados
+                </div>
+                <div style={{
+                    display:       'flex',
+                    gap:           '6px',
+                    alignItems:    'center',
+                    background:    'rgba(255,204,0,0.06)',
+                    border:        '1px solid rgba(255,204,0,0.2)',
+                    borderRadius:  'var(--radius-base)',
+                    padding:       '8px 10px',
+                    marginBottom:  '10px',
+                    fontFamily:    'var(--font-mono)',
+                    fontSize:      '10px',
+                    color:         'var(--accent-gold)',
+                    letterSpacing: '0.06em',
+                }}>
+                    <span>★</span>
+                    <span>SUPERUSUARIO — acceso total al sistema</span>
+                </div>
+                <div style={{
+                    fontFamily:    'var(--font-mono)',
+                    fontSize:      '9px',
+                    color:         'var(--text-muted)',
+                    letterSpacing: '0.04em',
+                    marginBottom:  '10px',
+                    lineHeight:    1.5,
+                }}>
+                    El rol ADMIN no se puede modificar desde aquí.
+                </div>
+                <button
+                    onClick={cancelEdit}
+                    className="btn btn-ghost"
+                    style={{ fontSize: '10px', padding: '5px 12px' }}
+                >
+                    CERRAR
+                </button>
+            </div>
+        );
+    }
+
+    // ── Vista expandida (checkboxes) — solo roles granulares ─────────────────
 
     return (
         <div style={{
@@ -163,7 +265,7 @@ export function UserRoleManager({
             border:       '1px solid var(--border-default)',
             borderRadius: 'var(--radius-base)',
             padding:      '10px 12px',
-            minWidth:     '220px',
+            minWidth:     '240px',
             boxShadow:    '0 4px 20px rgba(0,0,0,0.40)',
         }}>
             <div style={{
@@ -172,66 +274,72 @@ export function UserRoleManager({
                 letterSpacing: '0.14em',
                 textTransform: 'uppercase',
                 color:         'var(--text-muted)',
-                marginBottom:  '9px',
+                marginBottom:  '10px',
             }}>
                 Roles asignados
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '7px', marginBottom: '10px' }}>
-                {ROLES_DISPONIBLES.map(role => {
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '10px' }}>
+                {ROLES_EDITABLES.map(role => {
                     const checked = pending.includes(role);
-                    // Self-guard: si soy yo y este es el único rol marcado, bloquear desmarcar
-                    const blocked = isSelf && checked && pending.length === 1;
+
+                    // Self-guard: si soy yo y solo queda 1 rol activo, no puedo desmarcarlo.
+                    const selfGuardLock = isSelf && checked && pending.length === 1;
+                    const isDisabled    = saving || selfGuardLock;
+
+                    const labelColor = checked ? 'var(--accent-primary)' : 'var(--text-secondary)';
 
                     return (
                         <label key={role} style={{
                             display:    'flex',
                             alignItems: 'center',
                             gap:        '8px',
-                            cursor:     blocked || saving ? 'not-allowed' : 'pointer',
-                            opacity:    blocked ? 0.4 : 1,
+                            height:     '22px',
+                            cursor:     isDisabled ? 'not-allowed' : 'pointer',
+                            opacity:    selfGuardLock ? 0.4 : 1,
                             userSelect: 'none',
+                            transition: 'opacity 160ms',
                         }}>
                             <input
                                 type="checkbox"
                                 checked={checked}
-                                disabled={blocked || saving}
-                                onChange={() => { if (!blocked) toggleRole(role); }}
+                                disabled={isDisabled}
+                                onChange={() => { if (!isDisabled) handleRoleChange(role); }}
                                 style={{
                                     accentColor: 'var(--accent-primary)',
                                     width:       '13px',
                                     height:      '13px',
                                     flexShrink:  0,
-                                    cursor:      blocked || saving ? 'not-allowed' : 'pointer',
+                                    cursor:      isDisabled ? 'not-allowed' : 'pointer',
                                 }}
                             />
                             <span style={{
+                                flex:          1,
                                 fontFamily:    'var(--font-mono)',
                                 fontSize:      '11px',
                                 letterSpacing: '0.04em',
-                                color:         checked ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                transition:    'color 120ms',
+                                color:         labelColor,
+                                transition:    'color 160ms',
                             }}>
-                                {role.replace(/_/g, ' ')}
+                                {ROL_META[role].label}
                             </span>
-                            {blocked && (
+
+                            {selfGuardLock && (
                                 <span style={{
                                     fontFamily:    'var(--font-mono)',
-                                    fontSize:      '9px',
+                                    fontSize:      '8px',
                                     color:         'var(--accent-gold)',
-                                    marginLeft:    'auto',
-                                    letterSpacing: '0.04em',
-                                }}>
-                                    mínimo
-                                </span>
+                                    letterSpacing: '0.06em',
+                                    whiteSpace:    'nowrap',
+                                }}>mínimo</span>
                             )}
                         </label>
                     );
                 })}
             </div>
 
-            {/* Self-guard warning */}
-            {selfGuardViolated && (
+            {/* Warning: sin roles seleccionados */}
+            {noRolesSelected && (
                 <div style={{
                     display:       'flex',
                     gap:           '5px',
@@ -242,20 +350,21 @@ export function UserRoleManager({
                     letterSpacing: '0.04em',
                 }}>
                     <span>▲</span>
-                    <span>No puedes quitarte todos los roles</span>
+                    <span>Selecciona al menos un rol</span>
                 </div>
             )}
 
+            {/* Acciones */}
             <div style={{ display: 'flex', gap: '6px' }}>
                 <button
-                    onClick={() => { saveRoles(); }}
-                    disabled={saving || selfGuardViolated || noChanges}
+                    onClick={() => { void saveRoles(); }}
+                    disabled={!canSave}
                     className="btn btn-primary"
                     style={{
                         fontSize: '10px',
                         padding:  '5px 14px',
-                        opacity:  saving || selfGuardViolated || noChanges ? 0.45 : 1,
-                        cursor:   saving || selfGuardViolated || noChanges ? 'not-allowed' : 'pointer',
+                        opacity:  canSave ? 1 : 0.45,
+                        cursor:   canSave ? 'pointer' : 'not-allowed',
                         minWidth: '72px',
                     }}
                 >

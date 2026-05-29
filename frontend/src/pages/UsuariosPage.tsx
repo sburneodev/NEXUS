@@ -351,16 +351,9 @@ export function UsuariosPage(): JSX.Element {
                                                 }}>
                                                     {u.username.slice(0, 2).toUpperCase()}
                                                 </div>
-                                                <div>
-                                                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', display: 'block' }}>
-                                                        {u.username}
-                                                    </span>
-                                                    {self && (
-                                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '9px', color: 'var(--accent-gold)', letterSpacing: '0.06em' }}>
-                                                            tú
-                                                        </span>
-                                                    )}
-                                                </div>
+                                                <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
+                                                    {u.username}
+                                                </span>
                                             </div>
                                         </td>
 

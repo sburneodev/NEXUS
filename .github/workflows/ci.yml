@@ -48,15 +48,20 @@ jobs:
         working-directory: backend
         run: mvn -B verify --no-transfer-progress
 
-      # QA-02: análisis estático con SonarQube usando el informe de JaCoCo
+      # QA-02: análisis estático con SonarQube.
+      # El paso se salta si SONAR_HOST_URL no está definido como secreto
+      # (p.ej. mientras sonar.sibr.app no está configurado).
+      # Cuando esté listo: añadir SONAR_HOST_URL y SONAR_TOKEN en
+      # GitHub → Settings → Secrets → Actions y el paso se activará solo.
       - name: Analizar con SonarQube
+        if: ${{ env.SONAR_HOST_URL != '' }}
         working-directory: backend
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.7.0.6970:sonar \
             -Dsonar.projectKey=nexus-erp \
             -Dsonar.projectName='LevelUp Nexus ERP' \
             --no-transfer-progress

@@ -61,4 +61,5 @@ public class UsuarioController {
                                                   @RequestBody AsignarRolRequest request) {
         return ResponseEntity.ok(usuarioService.asignarRol(id, request.getRol()));
     }
+
 }

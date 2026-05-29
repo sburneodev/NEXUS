@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import com.nexus.audit.AuditService;
 import com.nexus.dto.StockMovimientoRequest;
 import com.nexus.model.Cliente;
 import com.nexus.model.Proveedor;
@@ -32,6 +33,7 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class StockServiceTest {
 
+    @Mock private AuditService        auditService;
     @Mock private JdbcTemplate        jdbcTemplate;
     @Mock private UsuarioRepository   usuarioRepository;
     @Mock private ClienteRepository   clienteRepository;

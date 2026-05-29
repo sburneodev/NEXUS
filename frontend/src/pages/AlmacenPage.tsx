@@ -431,10 +431,32 @@ export function AlmacenPage(): JSX.Element {
     const [busqueda, setBusqueda]           = useState('');
     const [skuResaltado, setSkuResaltado]   = useState('');
 
+    // MAP-06 — Carga inicial + auto-refresh cada 30 segundos sin recargar la página
     useEffect(() => {
-        api.get<MapaResponse>('/almacen/mapa')
-            .then(({ data }) => { setMapaData(data); setLoading(false); })
-            .catch(() => setLoading(false));
+        let cancelled = false;
+
+        function cargarMapa(isFirst: boolean): void {
+            api.get<MapaResponse>('/almacen/mapa')
+                .then(({ data }) => {
+                    if (!cancelled) {
+                        setMapaData(data);
+                        if (isFirst) setLoading(false);
+                    }
+                })
+                .catch(() => {
+                    if (isFirst && !cancelled) setLoading(false);
+                });
+        }
+
+        cargarMapa(true);
+
+        // Actualizar silenciosamente cada 30 s (MAP-06)
+        const intervalo = setInterval(() => cargarMapa(false), 30_000);
+
+        return () => {
+            cancelled = true;
+            clearInterval(intervalo);
+        };
     }, []);
 
     const { pct: pctOcupado, ocupados, libres, criticos } = useMemo(

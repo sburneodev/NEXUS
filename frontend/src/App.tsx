@@ -14,6 +14,7 @@ import { AlbaranesRangoPage }     from './pages/AlbaranesRangoPage';
 import { Layout }                 from './components/layout/Layout';
 import { ProtectedRoute }         from './components/auth/ProtectedRoute';
 import { AiPanelProvider }        from './context/AiPanelContext';
+import { AiPage }                 from './pages/AiPage';
 import './styles/ia-avatar.css';
 import { AuthProvider }           from './context/AuthContext';
 
@@ -48,7 +49,7 @@ function App(): JSX.Element {
                         <Route path="/stock"       element={<StockPage />} />
                         <Route path="/boveda"      element={<BovedaRetroPage />} />
                         <Route path="/almacen"     element={<AlmacenPage />} />
-                        <Route path="/ai"          element={<ComingSoon name="IA & Analytics" />} />
+                        <Route path="/ai"          element={<AiPage />} />
                     </Route>
                 </Route>
 

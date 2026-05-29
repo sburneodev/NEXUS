@@ -53,7 +53,7 @@ public class AuditController {
             @RequestParam(defaultValue = "0")  int page,
             @RequestParam(defaultValue = "50") int size) {
 
-        StringBuilder where = new StringBuilder("WHERE usuario_email IS NOT NULL");
+        StringBuilder where = new StringBuilder("WHERE usuario_email IS NOT NULL AND TRIM(usuario_email) != ''");
         List<Object> params = new ArrayList<>();
 
         if (tabla != null && !tabla.isBlank()) {

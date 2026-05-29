@@ -403,9 +403,6 @@ export function AuditoriaPage(): JSX.Element {
                                                 fontWeight:    700,
                                                 letterSpacing: '0.08em',
                                                 color,
-                                                border:        `1px solid ${color}`,
-                                                borderRadius:  '3px',
-                                                padding:       '2px 6px',
                                                 whiteSpace:    'nowrap',
                                             }}>
                                                 {ACCION_LABEL[e.accion] ?? e.accion}

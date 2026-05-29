@@ -6,18 +6,18 @@ on:
       - main
   pull_request:
     types: [opened, synchronize, reopened]
-  workflow_dispatch: #
+  workflow_dispatch:
 
 jobs:
   build_and_analyze:
-    name: Compilar y Analizar con SonarQube
+    name: Compilar, Testear y Analizar con SonarQube
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Vital para SonarQube (necesita el historial de git)
+          fetch-depth: 0  # Vital para SonarQube (necesita historial de git)
 
       - name: Configurar Java 25
         uses: actions/setup-java@v4
@@ -36,17 +36,27 @@ jobs:
       - name: Cache de dependencias de Maven
         uses: actions/cache@v4
         with:
-          path: ~/.mrem
+          path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      - name: Construir y analizar con Maven
+      # QA-01: ejecutar todos los tests JUnit
+      # QA-02: mvn verify activa JaCoCo (prepare-agent + report)
+      #        El informe jacoco.xml queda en target/site/jacoco/
+      #        y sonar-maven-plugin lo recoge automáticamente.
+      - name: Ejecutar tests y generar cobertura (JaCoCo)
+        working-directory: backend
+        run: mvn -B verify --no-transfer-progress
+
+      # QA-02: análisis estático con SonarQube usando el informe de JaCoCo
+      - name: Analizar con SonarQube
+        working-directory: backend
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
         run: |
-          cd backend
-          mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-          -Dsonar.projectKey=nexus-erp \
-          -Dsonar.projectName='nexus-erp'
+          mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+            -Dsonar.projectKey=nexus-erp \
+            -Dsonar.projectName='LevelUp Nexus ERP' \
+            --no-transfer-progress

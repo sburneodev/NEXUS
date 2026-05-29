@@ -132,6 +132,7 @@ export function UserRoleManager({
         return (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
                 {esAdmin ? (
+                    /* Si el usuario es ADMIN, mostrar solo el badge ADMIN con indicador especial */
                     <span style={{
                         fontFamily:    'var(--font-mono)',
                         fontSize:      '9px',
@@ -145,6 +146,7 @@ export function UserRoleManager({
                         ★ SUPERUSUARIO
                     </span>
                 ) : (
+                    /* Roles granulares */
                     ROLES_DISPONIBLES.filter(r => r !== 'ADMIN').map(role => {
                         const tiene = currentRoles.includes(role);
                         return (
@@ -220,18 +222,18 @@ export function UserRoleManager({
                     Roles asignados
                 </div>
                 <div style={{
-                    display:       'flex',
-                    gap:           '6px',
-                    alignItems:    'center',
-                    background:    'rgba(255,204,0,0.06)',
-                    border:        '1px solid rgba(255,204,0,0.2)',
-                    borderRadius:  'var(--radius-base)',
-                    padding:       '8px 10px',
-                    marginBottom:  '10px',
-                    fontFamily:    'var(--font-mono)',
-                    fontSize:      '10px',
-                    color:         'var(--accent-gold)',
-                    letterSpacing: '0.06em',
+                    display:      'flex',
+                    gap:          '6px',
+                    alignItems:   'center',
+                    background:   'rgba(255,204,0,0.06)',
+                    border:       '1px solid rgba(255,204,0,0.2)',
+                    borderRadius: 'var(--radius-base)',
+                    padding:      '8px 10px',
+                    marginBottom: '10px',
+                    fontFamily:   'var(--font-mono)',
+                    fontSize:     '10px',
+                    color:        'var(--accent-gold)',
+                    letterSpacing:'0.06em',
                 }}>
                     <span>★</span>
                     <span>SUPERUSUARIO — acceso total al sistema</span>
@@ -283,7 +285,9 @@ export function UserRoleManager({
                 {ROLES_EDITABLES.map(role => {
                     const checked = pending.includes(role);
 
-                    // Self-guard: si soy yo y solo queda 1 rol activo, no puedo desmarcarlo.
+                    /**
+                     * Self-guard: si soy yo y solo queda 1 rol activo, no puedo desmarcarlo.
+                     */
                     const selfGuardLock = isSelf && checked && pending.length === 1;
                     const isDisabled    = saving || selfGuardLock;
 

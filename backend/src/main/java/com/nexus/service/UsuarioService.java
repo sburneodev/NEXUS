@@ -1,27 +1,31 @@
 package com.nexus.service;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-
+import com.nexus.audit.AuditService;
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
 import com.nexus.repository.RolRepository;
 import com.nexus.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
-import java.util.List;
+
 import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService {
 
     private final UsuarioRepository usuarioRepository;
-    private final RolRepository rolRepository;
+    private final RolRepository     rolRepository;
+    private final AuditService      auditService;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, RolRepository rolRepository) {
+    public UsuarioService(UsuarioRepository usuarioRepository,
+                          RolRepository rolRepository,
+                          AuditService auditService) {
         this.usuarioRepository = usuarioRepository;
-        this.rolRepository = rolRepository;
+        this.rolRepository     = rolRepository;
+        this.auditService      = auditService;
     }
 
     private Long getUsuarioActualId() {
@@ -52,6 +56,8 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
         u.setActive(true);
         usuarioRepository.save(u);
+        auditService.log("USUARIO", "ACTIVATE", id,
+                "Cuenta activada: " + u.getEmail());
     }
 
     public void desactivar(Long id) {
@@ -62,6 +68,8 @@ public class UsuarioService {
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
         u.setActive(false);
         usuarioRepository.save(u);
+        auditService.log("USUARIO", "DEACTIVATE", id,
+                "Cuenta desactivada: " + u.getEmail());
     }
 
     public UsuarioDTO asignarRol(Long id, String nombreRol) {
@@ -70,7 +78,10 @@ public class UsuarioService {
         Rol rol = rolRepository.findByNombre(nombreRol)
                 .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + nombreRol));
         u.getRoles().add(rol);
-        return toDTO(usuarioRepository.save(u));
+        UsuarioDTO result = toDTO(usuarioRepository.save(u));
+        auditService.log("USUARIO", "ROLE_ASSIGN", id,
+                "Rol asignado: " + nombreRol + " → " + u.getEmail());
+        return result;
     }
 
     public UsuarioDTO quitarRol(Long id, String nombreRol) {
@@ -80,7 +91,10 @@ public class UsuarioService {
         Usuario u = usuarioRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
         u.getRoles().removeIf(r -> r.getNombre().equals(nombreRol));
-        return toDTO(usuarioRepository.save(u));
+        UsuarioDTO result = toDTO(usuarioRepository.save(u));
+        auditService.log("USUARIO", "ROLE_REMOVE", id,
+                "Rol retirado: " + nombreRol + " → " + u.getEmail());
+        return result;
     }
 
     private UsuarioDTO toDTO(Usuario u) {

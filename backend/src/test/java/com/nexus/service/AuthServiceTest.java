@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import com.nexus.audit.AuditService;
 import com.nexus.auth.AuthService;
 import com.nexus.auth.dto.AuthResponse;
 import com.nexus.dto.LoginRequest;
@@ -25,10 +26,11 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+    @Mock private AuditService      auditService;
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private PasswordEncoder   passwordEncoder;
     @Mock private JwtUtil           jwtUtil;
-    @Mock private EmailService      emailService;       // requerido por com.nexus.auth.AuthService
+    @Mock private EmailService      emailService;
     @InjectMocks private AuthService authService;
 
     private Usuario usuarioValido() {

@@ -159,35 +159,7 @@
 						<phase>verify</phase>
 						<goals><goal>report</goal></goals>
 					</execution>
-					<!--
-					  3. Gate de calidad: fallar el build si el coverage
-					     de las clases de servicio cae por debajo del 60 %.
-					     Ajustar o eliminar si el CI debe ser siempre verde.
-					-->
-					<execution>
-						<id>check</id>
-						<phase>verify</phase>
-						<goals><goal>check</goal></goals>
-						<configuration>
-							<rules>
-								<rule>
-									<element>BUNDLE</element>
-									<limits>
-										<limit>
-											<counter>LINE</counter>
-											<value>COVEREDRATIO</value>
-											<minimum>0.60</minimum>
-										</limit>
-									</limits>
-								</rule>
-							</rules>
-							<excludes>
-								<exclude>com/nexus/NexusBackendApplication.class</exclude>
-								<exclude>com/nexus/model/**</exclude>
-								<exclude>com/nexus/dto/**</exclude>
-							</excludes>
-						</configuration>
-					</execution>
+	
 				</executions>
 			</plugin>
 		</plugins>

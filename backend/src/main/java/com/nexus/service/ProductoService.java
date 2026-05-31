@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import com.nexus.audit.AuditService;
 import com.nexus.dto.ProductoDTO;
 import com.nexus.model.Categoria;
 import com.nexus.model.Producto;
@@ -16,19 +17,22 @@ import org.springframework.stereotype.Service;
 @Service
 public class ProductoService {
 
-    private final ProductoRepository        productoRepository;
-    private final ProveedorRepository       proveedorRepository;
-    private final CategoriaRepository       categoriaRepository;
+    private final ProductoRepository         productoRepository;
+    private final ProveedorRepository        proveedorRepository;
+    private final CategoriaRepository        categoriaRepository;
     private final UbicacionAlmacenRepository ubicacionRepository;
+    private final AuditService               auditService;
 
     public ProductoService(ProductoRepository productoRepository,
                            ProveedorRepository proveedorRepository,
                            CategoriaRepository categoriaRepository,
-                           UbicacionAlmacenRepository ubicacionRepository) {
+                           UbicacionAlmacenRepository ubicacionRepository,
+                           AuditService auditService) {
         this.productoRepository  = productoRepository;
         this.proveedorRepository = proveedorRepository;
         this.categoriaRepository = categoriaRepository;
         this.ubicacionRepository = ubicacionRepository;
+        this.auditService        = auditService;
     }
 
     public ProductoDTO crear(ProductoDTO dto) {
@@ -36,7 +40,10 @@ public class ProductoService {
             throw new RuntimeException("Ya existe un producto con SKU: " + dto.getSku());
         }
         Producto p = toEntity(dto);
-        return toDTO(productoRepository.save(p));
+        ProductoDTO saved = toDTO(productoRepository.save(p));
+        auditService.log("PRODUCTO", "CREATE", saved.getId(),
+                "SKU: " + saved.getSku() + " | " + saved.getNombre());
+        return saved;
     }
 
     public ProductoDTO editar(Long id, ProductoDTO dto) {
@@ -54,7 +61,6 @@ public class ProductoService {
         p.setEstadoConservacion(dto.getEstadoConservacion());
         p.setAtributosEspecificos(dto.getAtributosEspecificos());
         p.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
-        // Actualiza proveedor: si idProveedor es null se desvincula; si tiene valor se busca en DB
         if (dto.getIdProveedor() != null) {
             Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
                     .orElseThrow(() -> new RuntimeException(
@@ -79,7 +85,10 @@ public class ProductoService {
         } else {
             p.setUbicacion(null);
         }
-        return toDTO(productoRepository.save(p));
+        ProductoDTO result = toDTO(productoRepository.save(p));
+        auditService.log("PRODUCTO", "UPDATE", id,
+                "SKU: " + result.getSku() + " | " + result.getNombre());
+        return result;
     }
 
     public Page<ProductoDTO> listar(Pageable pageable) {
@@ -90,12 +99,10 @@ public class ProductoService {
         return productoRepository.findByTipoProductoAndActivoTrue(tipo, pageable).map(this::toDTO);
     }
 
-    /** Búsqueda parcial (contiene) en nombre, SKU y descripción. */
     public Page<ProductoDTO> buscar(String query, Pageable pageable) {
         return productoRepository.buscarContains(query, pageable).map(this::toDTO);
     }
 
-    /** Búsqueda parcial filtrada además por tipo de producto. */
     public Page<ProductoDTO> buscarPorTipo(String query, String tipo, Pageable pageable) {
         return productoRepository.buscarContainsPorTipo(query, tipo, pageable).map(this::toDTO);
     }
@@ -105,6 +112,8 @@ public class ProductoService {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
         p.setActivo(false);
         productoRepository.save(p);
+        auditService.log("PRODUCTO", "DELETE", id,
+                "Baja lógica | SKU: " + p.getSku() + " | " + p.getNombre());
     }
 
     public ProductoDTO toDTO(Producto p) {
@@ -150,7 +159,6 @@ public class ProductoService {
         p.setEstadoConservacion(dto.getEstadoConservacion());
         p.setAtributosEspecificos(dto.getAtributosEspecificos());
         p.setActivo(true);
-        // Asignación de proveedor por FK — integridad referencial garantizada
         if (dto.getIdProveedor() != null) {
             Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
                     .orElseThrow(() -> new RuntimeException(

@@ -134,6 +134,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
             tipoProducto:         modoCreacion ?? form.tipoProducto,
             estadoConservacion:   form.estadoConservacion || null,
             activo:               form.activo,
+            categoriaNombre:      null,   // solo lectura — lo rellena el backend en GET
             atributosEspecificos: null,
         });
     }

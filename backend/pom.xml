@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.6</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.nexus</groupId>
 	<artifactId>backend</artifactId>
@@ -14,20 +14,33 @@
 	<name>nexus-backend</name>
 	<description>LevelUp Nexus ERP - Backend API REST</description>
 	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
+	<licenses><license/></licenses>
+	<developers><developer/></developers>
 	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
+		<connection/><developerConnection/><tag/><url/>
 	</scm>
+
 	<properties>
 		<java.version>25</java.version>
+		<!-- QA-02: versiones de plugins de calidad -->
+		<jacoco.version>0.8.13</jacoco.version>
+		<sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+		<sonar.coverage.jacoco.xmlReportPaths>
+			${project.build.directory}/site/jacoco/jacoco.xml
+		</sonar.coverage.jacoco.xmlReportPaths>
+		<!-- Excluir clases que no aportan cobertura significativa -->
+		<sonar.exclusions>
+			**/NexusBackendApplication.java,
+			**/model/**,
+			**/dto/**,
+			**/GenerarHashes.java
+		</sonar.exclusions>
+		<sonar.coverage.exclusions>
+			**/NexusBackendApplication.java,
+			**/model/**,
+			**/dto/**,
+			**/GenerarHashes.java
+		</sonar.coverage.exclusions>
 	</properties>
 
 	<dependencies>
@@ -120,6 +133,34 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+
+			<!--
+			 QA-02: JaCoCo — genera el informe XML que SonarQube lee
+			         para calcular el coverage y otorgar la nota.
+
+			 Fases:
+			   prepare-agent  → instrumenta las clases antes de los tests
+			   report         → genera target/site/jacoco/jacoco.xml tras los tests
+			-->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>${jacoco.version}</version>
+				<executions>
+					<!-- 1. Instrumentar antes de los tests -->
+					<execution>
+						<id>prepare-agent</id>
+						<goals><goal>prepare-agent</goal></goals>
+					</execution>
+					<!-- 2. Generar informe XML tras los tests -->
+					<execution>
+						<id>report</id>
+						<phase>verify</phase>
+						<goals><goal>report</goal></goals>
+					</execution>
+	
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

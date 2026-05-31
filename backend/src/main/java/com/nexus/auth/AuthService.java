@@ -1,5 +1,6 @@
 package com.nexus.auth;
 
+import com.nexus.audit.AuditService;
 import com.nexus.auth.dto.AuthResponse;
 import com.nexus.auth.dto.RegisterRequest;
 import com.nexus.dto.LoginRequest;
@@ -18,13 +19,6 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-/**
- * AuthService — Lógica de negocio de autenticación.
- *
- * SEC-06: registro de nuevos usuarios (Desirée).
- * SEC-05: login con JWT (integrado desde service.AuthService).
- * SEC-08: verificación de email (integrado desde service.AuthService).
- */
 @Service
 public class AuthService {
 
@@ -34,15 +28,18 @@ public class AuthService {
     private final PasswordEncoder    passwordEncoder;
     private final EmailService       emailService;
     private final JwtUtil            jwtUtil;
+    private final AuditService       auditService;
 
     public AuthService(UsuarioRepository usuarioRepository,
                        PasswordEncoder passwordEncoder,
                        EmailService emailService,
-                       JwtUtil jwtUtil) {
+                       JwtUtil jwtUtil,
+                       AuditService auditService) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder   = passwordEncoder;
         this.emailService      = emailService;
         this.jwtUtil           = jwtUtil;
+        this.auditService      = auditService;
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -91,6 +88,12 @@ public class AuthService {
                 verifyToken
         );
 
+        auditService.logAuth(
+                guardado.getEmail(),
+                "REGISTER",
+                "Nuevo usuario registrado: " + guardado.getUsername()
+        );
+
         return AuthResponse.ofMessage(
                 "Registro exitoso. Hemos enviado un enlace de activación a " + guardado.getEmail()
         );
@@ -100,26 +103,30 @@ public class AuthService {
     // SEC-05 — POST /auth/login
     // ══════════════════════════════════════════════════════════════════
 
-    public AuthResponse login(LoginRequest request) {
+    public AuthResponse login(LoginRequest loginRequest) {
 
-        Usuario usuario = usuarioRepository.findByEmail(request.getEmail())
+        Usuario usuario = usuarioRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED, "Credenciales incorrectas"));
 
-        if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
+        if (!passwordEncoder.matches(loginRequest.getPassword(), usuario.getPassword())) {
+            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+                    "Intento fallido — credenciales incorrectas");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas");
         }
 
         if (!usuario.isVerified()) {
+            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+                    "Intento fallido — cuenta no verificada");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cuenta no verificada. Revisa tu email.");
         }
 
         if (!usuario.isActive()) {
+            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+                    "Intento fallido — cuenta desactivada");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cuenta desactivada. Contacta con el administrador.");
         }
 
-        // Normalizar roles: "ROLE_ADMIN" → "ADMIN"
-        // Garantiza coherencia: BD (ROLE_ADMIN) → AuthService (ADMIN) → JWT → Frontend
         String roles = usuario.getRoles().stream()
                 .map(r -> {
                     String n = r.getNombre();
@@ -138,6 +145,13 @@ public class AuthService {
         );
 
         log.info("[AUTH][LOGIN] Login exitoso user={} roles={}", usuario.getEmail(), roles);
+
+        auditService.logAuth(
+                usuario.getEmail(),
+                "LOGIN",
+                "Login exitoso | roles: " + (roles.isBlank() ? "ninguno" : roles)
+        );
+
         return AuthResponse.ofLogin("Login exitoso", token, resumen);
     }
 
@@ -159,6 +173,13 @@ public class AuthService {
         usuario.setVerified(true);
         usuario.setVerifyToken(null);
         usuarioRepository.save(usuario);
+
+        auditService.logAuth(
+                usuario.getEmail(),
+                "VERIFY_EMAIL",
+                "Email verificado correctamente"
+        );
+
         return "Cuenta verificada correctamente.";
     }
 }

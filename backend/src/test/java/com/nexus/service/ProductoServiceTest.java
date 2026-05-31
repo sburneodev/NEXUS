@@ -1,5 +1,6 @@
 package com.nexus.service;
 
+import com.nexus.audit.AuditService;
 import com.nexus.dto.ProductoDTO;
 import com.nexus.model.Producto;
 import com.nexus.repository.ProductoRepository;
@@ -22,7 +23,8 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ProductoServiceTest {
 
-    @Mock private ProductoRepository productoRepository;
+    @Mock private AuditService        auditService;
+    @Mock private ProductoRepository  productoRepository;
     @Mock private ProveedorRepository proveedorRepository;
     @InjectMocks private ProductoService productoService;
 

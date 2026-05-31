@@ -68,7 +68,7 @@ public class InformeStockService {
                                              List<Map<String, Object>> productos) {
         try {
             String limpio = respuesta
-                .replaceAll("```json", "")
+                .replace("```json", "")
                 .replaceAll("```", "")
                 .trim();
             Map<String, Object> result = objectMapper.readValue(limpio, Map.class);

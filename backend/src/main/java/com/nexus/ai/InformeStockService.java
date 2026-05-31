@@ -69,7 +69,7 @@ public class InformeStockService {
         try {
             String limpio = respuesta
                 .replace("```json", "")
-                .replaceAll("```", "")
+                .replace("```", "")
                 .trim();
             Map<String, Object> result = objectMapper.readValue(limpio, Map.class);
             result.put("productos_afectados", productos.size());

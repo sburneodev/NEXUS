@@ -69,8 +69,8 @@ public class NL2SQLService {
     private Map<String, Object> procesarYEjecutar(String respuesta, String pregunta) {
         try {
             String limpio = respuesta
-                .replaceAll("```json", "")
-                .replaceAll("```", "")
+                .replace("```json", "")
+                .replace("```", "")
                 .trim();
 
             Map<String, Object> parsed = objectMapper.readValue(limpio, Map.class);

@@ -24,6 +24,7 @@ public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
+    private final String LoginString="LOGIN";
     private final UsuarioRepository  usuarioRepository;
     private final PasswordEncoder    passwordEncoder;
     private final EmailService       emailService;
@@ -110,19 +111,19 @@ public class AuthService {
                         HttpStatus.UNAUTHORIZED, "Credenciales incorrectas"));
 
         if (!passwordEncoder.matches(loginRequest.getPassword(), usuario.getPassword())) {
-            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+            auditService.logAuth(loginRequest.getEmail(), LoginString,
                     "Intento fallido — credenciales incorrectas");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales incorrectas");
         }
 
         if (!usuario.isVerified()) {
-            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+            auditService.logAuth(loginRequest.getEmail(),  LoginString,
                     "Intento fallido — cuenta no verificada");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cuenta no verificada. Revisa tu email.");
         }
 
         if (!usuario.isActive()) {
-            auditService.logAuth(loginRequest.getEmail(), "LOGIN",
+            auditService.logAuth(loginRequest.getEmail(),  LoginString,
                     "Intento fallido — cuenta desactivada");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cuenta desactivada. Contacta con el administrador.");
         }
@@ -148,7 +149,7 @@ public class AuthService {
 
         auditService.logAuth(
                 usuario.getEmail(),
-                "LOGIN",
+                LoginString,
                 "Login exitoso | roles: " + (roles.isBlank() ? "ninguno" : roles)
         );
 

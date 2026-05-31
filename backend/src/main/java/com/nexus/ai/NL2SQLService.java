@@ -17,6 +17,7 @@ public class NL2SQLService {
     private final GeminiService geminiService;
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private static final String KEY_DESCRIPCION = "descripcion";
     
     public NL2SQLService(GeminiService geminiService, JdbcTemplate jdbcTemplate) {
         this.geminiService = geminiService;
@@ -79,7 +80,7 @@ public class NL2SQLService {
             if (sql == null || sql.isBlank()) {
                 return Map.of(
                     "error", "No se pudo generar SQL para esta pregunta",
-                    "descripcion", parsed.getOrDefault("descripcion", "")
+                    KEY_DESCRIPCION, parsed.getOrDefault(KEY_DESCRIPCION, "")
                 );
             }
 
@@ -104,7 +105,7 @@ public class NL2SQLService {
 
             return Map.of(
                 "sql", sql,
-                "descripcion", parsed.getOrDefault("descripcion", ""),
+                KEY_DESCRIPCION, parsed.getOrDefault(KEY_DESCRIPCION, ""),
                 "columnas", resultados.isEmpty() ? List.of() :
                             resultados.get(0).keySet().stream().toList(),
                 "filas", resultados,

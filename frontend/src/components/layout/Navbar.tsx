@@ -76,7 +76,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                     borderRadius: '6px',
                     color:        'var(--text-muted)',
                     cursor:       'pointer',
-                    padding:      '6px 9px',
+                    padding:           isMobile ? '6px 9px' : '0',
                     fontSize:     '15px',
                     lineHeight:   1,
                     flexShrink:   0,
@@ -87,8 +87,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                     // Fade y escala: visible en mobile, invisible+sin espacio en desktop
                     opacity:           isMobile ? 1 : 0,
                     pointerEvents:     isMobile ? 'auto' : 'none',
-                    width:             isMobile ? undefined : '0',
-                    padding:           isMobile ? '6px 9px' : '0',
+                    width:             isMobile ? undefined : '0',                  
                     overflow:          'hidden',
                     marginRight:       isMobile ? '0' : '-10px',
                 }}

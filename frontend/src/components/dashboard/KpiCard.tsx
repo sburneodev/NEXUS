@@ -1,9 +1,8 @@
 /**
- * components/dashboard/KpiCard.tsx v2
+ * components/dashboard/KpiCard.tsx v3
  *
- * Añade micro-interacción CSS animada al borde (borderPulse).
- * El CSS variable --kpi-glow se inyecta inline para que cada
- * tarjeta pulse con su propio color de acento.
+ * Responsive: fuentes con clamp(), título en una línea (ellipsis),
+ * subtexto limitado a 2 líneas para no desbordarse en mobile.
  */
 
 interface KpiCardProps {
@@ -41,39 +40,93 @@ export function KpiCard({
                 animationDelay: `${delay}ms`,
                 position:       'relative',
                 overflow:       'hidden',
-                // Inyecta la variable CSS para la animación del borde
+                padding:        'clamp(10px, 2.5vw, 20px)',
                 ['--kpi-glow' as string]: glow,
                 animation:      `fadeInUp 0.4s ${delay}ms ease both, borderPulse 3s ${delay}ms ease infinite`,
             }}
         >
             {/* Glow line superior */}
             <div style={{
-                position: 'absolute', top: 0, left: 0, right: 0, height: '2px',
+                position:   'absolute',
+                top:        0, left: 0, right: 0,
+                height:     '2px',
                 background: `linear-gradient(90deg, ${accent}, transparent)`,
-                opacity: 0.5,
+                opacity:    0.5,
             }} />
 
-            {/* Cabecera: icono + label */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-3)' }}>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-xs)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+            {/* Cabecera: label + icono */}
+            <div style={{
+                display:       'flex',
+                alignItems:    'center',
+                justifyContent:'space-between',
+                marginBottom:  'clamp(6px, 1.5vw, 12px)',
+                gap:           '4px',
+            }}>
+                <span style={{
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      'clamp(9px, 1.8vw, 0.6875rem)',
+                    fontWeight:    700,
+                    letterSpacing: '0.10em',
+                    textTransform: 'uppercase',
+                    color:         'var(--text-secondary)',
+                    // Siempre en una línea: si no cabe, se corta con puntos suspensivos
+                    whiteSpace:    'nowrap',
+                    overflow:      'hidden',
+                    textOverflow:  'ellipsis',
+                    minWidth:      0,
+                }}>
                     {title}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', color: accent, opacity: 0.75, textShadow: `0 0 10px ${glow}` }}>
+                <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize:   'clamp(14px, 3vw, 18px)',
+                    color:      accent,
+                    opacity:    0.75,
+                    textShadow: `0 0 10px ${glow}`,
+                    flexShrink: 0,
+                }}>
                     {icon}
                 </span>
             </div>
 
             {/* Valor principal */}
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-2xl)', fontWeight: 700, color: accent, letterSpacing: '-0.02em', lineHeight: 1, marginBottom: 'var(--space-2)', textShadow: `0 0 16px ${glow}` }}>
+            <div style={{
+                fontFamily:   'var(--font-mono)',
+                fontSize:     'clamp(1.25rem, 4vw, 1.75rem)',
+                fontWeight:   700,
+                color:        accent,
+                letterSpacing:'-0.02em',
+                lineHeight:   1,
+                marginBottom: 'clamp(4px, 1vw, 8px)',
+                textShadow:   `0 0 16px ${glow}`,
+            }}>
                 {value}
             </div>
 
-            {/* Subtexto con trend */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 'var(--text-xs)', color: trendColor, fontWeight: 600 }}>
+            {/* Subtexto con trend — máximo 2 líneas */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize:   'clamp(9px, 1.8vw, var(--text-xs))',
+                    color:      trendColor,
+                    fontWeight: 600,
+                    flexShrink: 0,
+                    lineHeight: '1.4',
+                }}>
                     {trendIcon}
                 </span>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                <span style={{
+                    fontFamily:        'var(--font-mono)',
+                    fontSize:          'clamp(10px, 2vw, 12px)',
+                    color:             'var(--text-muted)',
+                    letterSpacing:     '0.03em',
+                    lineHeight:        '1.4',
+                    // Limita a 2 líneas con ellipsis
+                    display:           '-webkit-box',
+                    WebkitLineClamp:   2,
+                    WebkitBoxOrient:   'vertical',
+                    overflow:          'hidden',
+                }}>
                     {sub}
                 </span>
             </div>

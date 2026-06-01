@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useTheme }         from '../hooks/useTheme';
+import { useBreakpoint }    from '../hooks/useBreakpoint';
 import api                  from '../services/api';
 import type { KpiData }     from '../types/models';
 import { KpiCard }          from '../components/dashboard/KpiCard';
@@ -28,6 +29,7 @@ const BASE_KPI: KpiData = {
 
 export function DashboardPage(): JSX.Element {
     const { isDark }  = useTheme();
+    const { isMobile, isTablet } = useBreakpoint();
     const [kpiData,   setKpiData]   = useState<KpiData>(BASE_KPI);
     const [loadState, setLoadState] = useState<'loading'|'ok'|'error'>('loading');
 
@@ -87,13 +89,19 @@ export function DashboardPage(): JSX.Element {
         ? Math.round(((kpiData.ventasHoy - kpiData.ventasAyer) / kpiData.ventasAyer) * 100)
         : 0;
 
+    // Número de columnas según breakpoint
+    const kpiCols = isMobile ? 2 : isTablet ? 2 : 4;
+
     return (
         <div style={{
-            height:        'calc(100dvh - 104px)',
+            // Desktop: altura fija para que las gráficas llenen el espacio
+            // Mobile/tablet: alto automático y scroll natural
+            height:        isMobile || isTablet ? 'auto' : 'calc(100dvh - 104px)',
+            minHeight:     isMobile || isTablet ? 'auto' : undefined,
             display:       'flex',
             flexDirection: 'column',
-            gap:           '12px',
-            overflow:      'hidden',
+            gap:           isMobile ? '10px' : '12px',
+            overflow:      isMobile || isTablet ? 'visible' : 'hidden',
         }}>
 
             {/* Cabecera */}
@@ -125,8 +133,8 @@ export function DashboardPage(): JSX.Element {
             <div style={{
                 flexShrink:          0,
                 display:             'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap:                 '12px',
+                gridTemplateColumns: `repeat(${kpiCols}, 1fr)`,
+                gap:                 isMobile ? '8px' : '12px',
             }}>
                 <KpiCard
                     title="VENTAS HOY"

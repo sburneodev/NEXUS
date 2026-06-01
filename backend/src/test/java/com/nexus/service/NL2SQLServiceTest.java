@@ -13,19 +13,24 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 /**
- * QA-01 — Tests unitarios de NL2SQLService.
+ * QA-01 — Tests unitarios de NL2SQLService (AI-07).
+ *
+ * Usa el jdbcTemplate principal mockeado via @InjectMocks —
+ * compatible con la implementación actual que no usa readonly datasource.
  *
  * Cubre:
- *  1. Consulta SELECT válida → se ejecuta y devuelve filas
- *  2. SQL null desde Gemini → devuelve error descriptivo sin ejecutar JDBC
- *  3. Respuesta con markdown (```json) → se limpia y parsea correctamente
- *  4. SQL no-SELECT (UPDATE) → bloqueado por validación SELECT-only
- *  5. SQL con keyword peligrosa (DROP) → bloqueado
- *  6. JSON malformado de Gemini → devuelve error sin lanzar excepción al caller
+ *  1. SELECT válida → ejecuta JDBC y devuelve filas
+ *  2. Sin resultados → listas vacías sin error
+ *  3. SQL null → devuelve error sin tocar JDBC
+ *  4. Markdown wrapper → se limpia y ejecuta correctamente
+ *  5. UPDATE bloqueado → RuntimeException
+ *  6. DROP bloqueado → RuntimeException
+ *  7. DELETE bloqueado → RuntimeException
+ *  8. JSON malformado → devuelve mapa de error sin propagar excepción
  */
 @ExtendWith(MockitoExtension.class)
 class NL2SQLServiceTest {
@@ -35,18 +40,15 @@ class NL2SQLServiceTest {
 
     @InjectMocks private NL2SQLService nl2sqlService;
 
-    // ── TEST 1 — Consulta válida ──────────────────────────────────────
+    // ── TEST 1 — SELECT válida ejecuta JDBC ──────────────────────────
 
     @Test
     void consulta_select_valida_ejecuta_y_devuelve_filas() {
-        String respuestaGemini = """
-            {"sql": "SELECT id, nombre FROM productos LIMIT 10",
-             "descripcion": "Lista los primeros 10 productos"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
-
-        Map<String, Object> filaEjemplo = Map.of("id", 1, "nombre", "Super Nintendo");
-        when(jdbcTemplate.queryForList(anyString())).thenReturn(List.of(filaEjemplo));
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": \"SELECT id, nombre FROM productos LIMIT 10\", \"descripcion\": \"Lista productos\"}"
+        );
+        when(jdbcTemplate.queryForList(anyString()))
+            .thenReturn(List.of(Map.of("id", 1, "nombre", "Super Nintendo")));
 
         Map<String, Object> result = nl2sqlService.ejecutarConsulta("dame los productos");
 
@@ -56,13 +58,13 @@ class NL2SQLServiceTest {
         verify(jdbcTemplate).queryForList(anyString());
     }
 
+    // ── TEST 2 — Sin resultados ───────────────────────────────────────
+
     @Test
     void consulta_sin_resultados_devuelve_lista_vacia() {
-        String respuestaGemini = """
-            {"sql": "SELECT * FROM productos WHERE nombre = 'NoExiste'",
-             "descripcion": "Busca producto inexistente"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": \"SELECT * FROM productos WHERE nombre = 'NoExiste'\", \"descripcion\": \"Busca\"}"
+        );
         when(jdbcTemplate.queryForList(anyString())).thenReturn(List.of());
 
         Map<String, Object> result = nl2sqlService.ejecutarConsulta("busca NoExiste");
@@ -72,98 +74,88 @@ class NL2SQLServiceTest {
         assertTrue(((List<?>) result.get("columnas")).isEmpty());
     }
 
-    // ── TEST 2 — SQL null ─────────────────────────────────────────────
+    // ── TEST 3 — SQL null no toca JDBC ───────────────────────────────
 
     @Test
     void sql_null_devuelve_error_sin_ejecutar_jdbc() {
-        String respuestaGemini = """
-            {"sql": null, "descripcion": "No es posible responder esta pregunta"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": null, \"descripcion\": \"No es posible responder\"}"
+        );
 
-        Map<String, Object> result = nl2sqlService.ejecutarConsulta("¿cuánto mide la luna?");
+        Map<String, Object> result = nl2sqlService.ejecutarConsulta("pregunta imposible");
 
         assertNotNull(result.get("error"));
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ── TEST 3 — Markdown wrapper ─────────────────────────────────────
+    // ── TEST 4 — Markdown wrapper ─────────────────────────────────────
 
     @Test
     void respuesta_con_markdown_se_limpia_y_ejecuta() {
-        // Gemini a veces envuelve el JSON en ```json ... ```
-        String respuestaConMarkdown = """
-            ```json
-            {"sql": "SELECT COUNT(*) FROM clientes", "descripcion": "Cuenta clientes"}
-            ```
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaConMarkdown);
+        when(geminiService.llamar(anyString())).thenReturn(
+            "```json\n{\"sql\": \"SELECT COUNT(*) FROM clientes\", \"descripcion\": \"Cuenta\"}\n```"
+        );
         when(jdbcTemplate.queryForList(anyString()))
-                .thenReturn(List.of(Map.of("count", 5L)));
+            .thenReturn(List.of(Map.of("count", 5L)));
 
-        Map<String, Object> result = nl2sqlService.ejecutarConsulta("cuántos clientes hay");
+        Map<String, Object> result = nl2sqlService.ejecutarConsulta("cuantos clientes hay");
 
         assertNull(result.get("error"), "No debe haber error: " + result.get("error"));
         assertEquals(1, result.get("total_filas"));
-        verify(jdbcTemplate).queryForList(anyString());
     }
 
-    // ── TEST 4 — SQL no-SELECT bloqueado ──────────────────────────────
+    // ── TEST 5 — UPDATE bloqueado ─────────────────────────────────────
 
     @Test
-    void sql_update_bloqueado_por_validacion_select_only() {
-        String respuestaGemini = """
-            {"sql": "UPDATE productos SET precio_venta = 0", "descripcion": "Borra precios"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
+    void sql_update_bloqueado_lanza_excepcion() {
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": \"UPDATE productos SET precio_venta = 0\", \"descripcion\": \"Destructivo\"}"
+        );
 
         assertThrows(RuntimeException.class,
-                () -> nl2sqlService.ejecutarConsulta("pon todos los precios a cero"));
+            () -> nl2sqlService.ejecutarConsulta("pon todos los precios a cero"));
 
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ── TEST 5 — Keyword peligrosa DROP ──────────────────────────────
+    // ── TEST 6 — DROP bloqueado ───────────────────────────────────────
 
     @Test
-    void sql_con_drop_bloqueado_por_keyword_check() {
-        // Intentar colar DROP dentro de un SELECT (comentario SQL)
-        String respuestaGemini = """
-            {"sql": "SELECT 1; DROP TABLE productos", "descripcion": "Destructivo"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
+    void sql_con_drop_bloqueado_lanza_excepcion() {
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": \"SELECT 1; DROP TABLE productos\", \"descripcion\": \"Destructivo\"}"
+        );
 
         assertThrows(RuntimeException.class,
-                () -> nl2sqlService.ejecutarConsulta("borra los productos"));
+            () -> nl2sqlService.ejecutarConsulta("borra los productos"));
 
         verifyNoInteractions(jdbcTemplate);
     }
 
+    // ── TEST 7 — DELETE bloqueado ─────────────────────────────────────
+
     @Test
-    void sql_con_delete_bloqueado_por_keyword_check() {
-        String respuestaGemini = """
-            {"sql": "SELECT * FROM productos WHERE DELETE FROM clientes", "descripcion": "Intento"}
-            """;
-        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
+    void sql_con_delete_bloqueado_lanza_excepcion() {
+        when(geminiService.llamar(anyString())).thenReturn(
+            "{\"sql\": \"SELECT * FROM clientes WHERE DELETE FROM clientes\", \"descripcion\": \"Intento\"}"
+        );
 
         assertThrows(RuntimeException.class,
-                () -> nl2sqlService.ejecutarConsulta("elimina clientes"));
+            () -> nl2sqlService.ejecutarConsulta("elimina clientes"));
 
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ── TEST 6 — JSON malformado ──────────────────────────────────────
+    // ── TEST 8 — JSON malformado ──────────────────────────────────────
 
     @Test
     void json_malformado_devuelve_error_sin_propagar_excepcion() {
         when(geminiService.llamar(anyString())).thenReturn("esto no es JSON {{{");
 
-        // El servicio captura el error y devuelve un mapa con "error"
-        // en lugar de propagar la excepción al caller (comportamiento defensivo)
         Map<String, Object> result = nl2sqlService.ejecutarConsulta("pregunta cualquiera");
 
         assertNotNull(result.get("error"),
-                "Debería devolver un mapa con clave 'error' ante JSON inválido");
+            "Debe devolver mapa con 'error' ante JSON inválido");
         verifyNoInteractions(jdbcTemplate);
     }
 }

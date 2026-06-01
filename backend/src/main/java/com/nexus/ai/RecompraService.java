@@ -47,8 +47,8 @@ public class RecompraService {
     private Map<String, Object> parsearJSON(String respuesta) {
         try {
             String limpio = respuesta
-                .replaceAll("```json", "")
-                .replaceAll("```", "")
+                .replace("```json", "")
+                .replace("```", "")
                 .trim();
             return objectMapper.readValue(limpio, Map.class);
         } catch (Exception e) {

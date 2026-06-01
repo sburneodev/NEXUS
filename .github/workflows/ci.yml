@@ -9,15 +9,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_and_analyze:
-    name: Compilar, Testear y Analizar con SonarQube
+  # ── JOB 1: Tests + JaCoCo ─────────────────────────────────────────
+  # Este job SIEMPRE debe pasar. Es el gate de calidad real.
+  # Un fallo aquí bloquea el merge del PR y cancela el despliegue.
+  test:
+    name: Tests JUnit + Cobertura JaCoCo
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Vital para SonarQube (necesita historial de git)
+          fetch-depth: 0
 
       - name: Configurar Java 25
         uses: actions/setup-java@v4
@@ -26,35 +29,64 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Cache de paquetes de SonarQube
-        uses: actions/cache@v4
-        with:
-          path: ~/.sonar/cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-
-      - name: Cache de dependencias de Maven
+      - name: Cache de dependencias Maven
         uses: actions/cache@v4
         with:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
 
-      # QA-01: ejecutar todos los tests JUnit
-      # QA-02: mvn verify activa JaCoCo (prepare-agent + report)
-      #        El informe jacoco.xml queda en target/site/jacoco/
-      #        y sonar-maven-plugin lo recoge automáticamente.
-      - name: Ejecutar tests y generar cobertura (JaCoCo)
+      - name: Ejecutar tests y generar cobertura
         working-directory: backend
         run: mvn -B verify --no-transfer-progress
 
-      # QA-02: análisis estático con SonarQube.
-      # El paso se salta si SONAR_HOST_URL no está definido como secreto
-      # (p.ej. mientras sonar.sibr.app no está configurado).
-      # Cuando esté listo: añadir SONAR_HOST_URL y SONAR_TOKEN en
-      # GitHub → Settings → Secrets → Actions y el paso se activará solo.
-      - name: Analizar con SonarQube
-        if: ${{ env.SONAR_HOST_URL != '' }}
+      - name: Subir informe JaCoCo como artefacto
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-report
+          path: backend/target/site/jacoco/
+
+  # ── JOB 2: SonarQube ──────────────────────────────────────────────
+  # Opcional: falla sin bloquear el pipeline.
+  sonar:
+    name: Análisis SonarQube
+    runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Java 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Cache de dependencias Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Cache SonarQube
+        uses: actions/cache@v4
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: Regenerar cobertura para Sonar
+        working-directory: backend
+        run: mvn -B verify --no-transfer-progress
+
+      - name: Enviar análisis a SonarQube
         working-directory: backend
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

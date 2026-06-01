@@ -17,6 +17,7 @@ import static org.mockito.Mockito.*;
 /**
  * QA-01 — Tests unitarios de TasadorService (AI-04).
  *
+<<<<<<< HEAD
  * Nota: TasadorService.parsearJSON llama a respuesta.replace() antes del try-catch,
  * por lo que si geminiService.llamar() devuelve null la excepción NullPointerException
  * se lanza antes de poder capturarla. El test de respuesta nula verifica ese comportamiento.
@@ -28,6 +29,15 @@ import static org.mockito.Mockito.*;
  *  4. Atributos vacíos → llama a Gemini y procesa
  *  5. Confianza ALTA en respuesta válida
  *  6. Gemini devuelve string vacío → devuelve mapa de error
+=======
+ * Cubre:
+ *  1. Tasación válida — JSON correcto parseado y devuelto
+ *  2. JSON con wrapper markdown — limpiado y parseado correctamente
+ *  3. Respuesta nula de Gemini — devuelve mapa de error sin lanzar excepción
+ *  4. JSON malformado — devuelve mapa de error con respuesta_raw
+ *  5. Atributos vacíos — llama a Gemini y procesa la respuesta
+ *  6. Confianza ALTA presente en respuesta válida
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
  */
 @ExtendWith(MockitoExtension.class)
 class TasadorServiceTest {
@@ -49,11 +59,19 @@ class TasadorServiceTest {
 
     private Map<String, Object> atributosEjemplo() {
         return Map.of(
+<<<<<<< HEAD
             "plataforma", "SNES",
             "nombre",     "Super Nintendo",
             "estado",     "CIB",
             "region",     "PAL",
             "anio",       1992
+=======
+            "plataforma",   "SNES",
+            "nombre",       "Super Nintendo",
+            "estado",       "CIB",
+            "region",       "PAL",
+            "anio",         1992
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         );
     }
 
@@ -76,7 +94,12 @@ class TasadorServiceTest {
 
     @Test
     void tasarArticulo_respuestaConMarkdown_seLimpiaYParsea() {
+<<<<<<< HEAD
         when(geminiService.llamar(anyString())).thenReturn("```json\n" + JSON_VALIDO + "\n```");
+=======
+        String conMarkdown = "```json\n" + JSON_VALIDO + "\n```";
+        when(geminiService.llamar(anyString())).thenReturn(conMarkdown);
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
         Map<String, Object> result = tasadorService.tasarArticulo(atributosEjemplo());
 
@@ -84,7 +107,23 @@ class TasadorServiceTest {
         assertNotNull(result.get("precio_recomendado"));
     }
 
+<<<<<<< HEAD
     // ── TEST 3 — JSON malformado ──────────────────────────────────────
+=======
+    // ── TEST 3 — Respuesta nula ───────────────────────────────────────
+
+    @Test
+    void tasarArticulo_respuestaNula_devuelveMapaDeError() {
+        when(geminiService.llamar(anyString())).thenReturn(null);
+
+        Map<String, Object> result = tasadorService.tasarArticulo(atributosEjemplo());
+
+        assertTrue(result.containsKey("error") || result.containsKey("respuesta_raw"),
+            "Debe manejar respuesta nula sin lanzar excepción");
+    }
+
+    // ── TEST 4 — JSON malformado ──────────────────────────────────────
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
     @Test
     void tasarArticulo_jsonMalformado_devuelveErrorConRespuestaRaw() {
@@ -95,10 +134,17 @@ class TasadorServiceTest {
         assertTrue(result.containsKey("error"),
             "Debe devolver mapa con 'error' ante JSON inválido");
         assertTrue(result.containsKey("respuesta_raw"),
+<<<<<<< HEAD
             "Debe incluir respuesta_raw para diagnóstico");
     }
 
     // ── TEST 4 — Atributos vacíos ─────────────────────────────────────
+=======
+            "Debe incluir la respuesta raw para diagnóstico");
+    }
+
+    // ── TEST 5 — Atributos vacíos ─────────────────────────────────────
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
     @Test
     void tasarArticulo_atributosVacios_llamaAGeminiYProcesa() {
@@ -110,7 +156,11 @@ class TasadorServiceTest {
         assertNotNull(result);
     }
 
+<<<<<<< HEAD
     // ── TEST 5 — Confianza ALTA ───────────────────────────────────────
+=======
+    // ── TEST 6 — Confianza en respuesta ───────────────────────────────
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
     @Test
     void tasarArticulo_respuestaValida_contieneConfianzaAlta() {
@@ -121,6 +171,7 @@ class TasadorServiceTest {
         assertEquals("ALTA", result.get("confianza"));
         assertNotNull(result.get("factores_clave"));
     }
+<<<<<<< HEAD
 
     // ── TEST 6 — String vacío → error controlado ─────────────────────
 
@@ -134,4 +185,6 @@ class TasadorServiceTest {
         assertTrue(result.containsKey("error") || result.containsKey("respuesta_raw"),
             "Debe manejar string vacío sin lanzar excepción al caller");
     }
+=======
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 }

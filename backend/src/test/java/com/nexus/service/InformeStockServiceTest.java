@@ -21,11 +21,19 @@ import static org.mockito.Mockito.*;
  *
  * Cubre:
  *  1. Informe válido con productos bajo mínimo
+<<<<<<< HEAD
  *  2. Sin productos bajo mínimo → llama a Gemini con lista vacía
  *  3. productos_afectados refleja el conteo real de la BD
  *  4. Sin productos → productos_afectados es 0
  *  5. Markdown wrapper → parseado correctamente
  *  6. JSON malformado → devuelve error con productos_afectados
+=======
+ *  2. Sin productos bajo mínimo — devuelve informe con lista vacía
+ *  3. productos_afectados refleja el conteo real de la BD
+ *  4. Markdown wrapper — limpiado y parseado correctamente
+ *  5. JSON malformado — devuelve error con productos_afectados
+ *  6. Gemini lanza excepción — se propaga correctamente
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
  */
 @ExtendWith(MockitoExtension.class)
 class InformeStockServiceTest {
@@ -37,7 +45,11 @@ class InformeStockServiceTest {
 
     private static final String JSON_INFORME = """
         {
+<<<<<<< HEAD
           "alertas_criticas": ["Super Nintendo: 0 uds (mínimo 2)", "Game Boy: 1 ud (mínimo 3)"],
+=======
+          "alertas_criticas": ["Super Nintendo: 0 unidades (mínimo 2)", "Game Boy: 1 unidad (mínimo 3)"],
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
           "plan_pedidos": [
             {
               "proveedor": "RetroDistrib S.L.",
@@ -46,12 +58,21 @@ class InformeStockServiceTest {
               "urgencia": "ALTA"
             }
           ],
+<<<<<<< HEAD
           "prevision_impacto": "Sin reposición se perderían ~1.200 EUR en ventas esta semana",
           "resumen_ejecutivo": "2 productos críticos. Pedido urgente recomendado a RetroDistrib."
         }
         """;
 
     private List<Map<String, Object>> dosProductos() {
+=======
+          "prevision_impacto": "Sin reposición se perderían aproximadamente 1.200 EUR en ventas esta semana",
+          "resumen_ejecutivo": "2 productos en situación crítica. Pedido urgente recomendado a RetroDistrib."
+        }
+        """;
+
+    private List<Map<String, Object>> productosBajoMinimo() {
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         return List.of(
             Map.of("sku", "SNES-001", "nombre", "Super Nintendo",
                    "stock_actual", 0, "stock_minimo", 2, "proveedor", "RetroDistrib S.L."),
@@ -64,7 +85,11 @@ class InformeStockServiceTest {
 
     @Test
     void generarInforme_conProductosBajoMinimo_devuelveInformeCompleto() {
+<<<<<<< HEAD
         when(jdbcTemplate.queryForList(anyString())).thenReturn(dosProductos());
+=======
+        when(jdbcTemplate.queryForList(anyString())).thenReturn(productosBajoMinimo());
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         when(geminiService.llamar(anyString())).thenReturn(JSON_INFORME);
 
         Map<String, Object> result = informeStockService.generarInforme();
@@ -76,7 +101,11 @@ class InformeStockServiceTest {
         assertNotNull(result.get("resumen_ejecutivo"));
     }
 
+<<<<<<< HEAD
     // ── TEST 2 — Sin productos ────────────────────────────────────────
+=======
+    // ── TEST 2 — Sin productos bajo mínimo ───────────────────────────
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
     @Test
     void generarInforme_sinProductosBajoMinimo_llamaAGeminiConListaVacia() {
@@ -89,11 +118,19 @@ class InformeStockServiceTest {
         assertNotNull(result);
     }
 
+<<<<<<< HEAD
     // ── TEST 3 — productos_afectados correcto ─────────────────────────
 
     @Test
     void generarInforme_dosProductos_productosAfectadosEs2() {
         when(jdbcTemplate.queryForList(anyString())).thenReturn(dosProductos());
+=======
+    // ── TEST 3 — productos_afectados refleja conteo real ─────────────
+
+    @Test
+    void generarInforme_dosProductos_productosAfectadosEs2() {
+        when(jdbcTemplate.queryForList(anyString())).thenReturn(productosBajoMinimo());
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         when(geminiService.llamar(anyString())).thenReturn(JSON_INFORME);
 
         Map<String, Object> result = informeStockService.generarInforme();
@@ -101,8 +138,11 @@ class InformeStockServiceTest {
         assertEquals(2, result.get("productos_afectados"));
     }
 
+<<<<<<< HEAD
     // ── TEST 4 — Sin productos → afectados es 0 ───────────────────────
 
+=======
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
     @Test
     void generarInforme_sinProductos_productosAfectadosEs0() {
         when(jdbcTemplate.queryForList(anyString())).thenReturn(List.of());
@@ -113,11 +153,19 @@ class InformeStockServiceTest {
         assertEquals(0, result.get("productos_afectados"));
     }
 
+<<<<<<< HEAD
     // ── TEST 5 — Markdown wrapper ─────────────────────────────────────
 
     @Test
     void generarInforme_respuestaConMarkdown_seLimpiaYParsea() {
         when(jdbcTemplate.queryForList(anyString())).thenReturn(dosProductos());
+=======
+    // ── TEST 4 — Markdown wrapper ─────────────────────────────────────
+
+    @Test
+    void generarInforme_respuestaConMarkdown_seLimpiaYParsea() {
+        when(jdbcTemplate.queryForList(anyString())).thenReturn(productosBajoMinimo());
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         when(geminiService.llamar(anyString())).thenReturn("```json\n" + JSON_INFORME + "\n```");
 
         Map<String, Object> result = informeStockService.generarInforme();
@@ -126,17 +174,41 @@ class InformeStockServiceTest {
         assertNotNull(result.get("alertas_criticas"));
     }
 
+<<<<<<< HEAD
     // ── TEST 6 — JSON malformado ──────────────────────────────────────
 
     @Test
     void generarInforme_jsonMalformado_devuelveErrorConProductosAfectados() {
         when(jdbcTemplate.queryForList(anyString())).thenReturn(dosProductos());
+=======
+    // ── TEST 5 — JSON malformado ──────────────────────────────────────
+
+    @Test
+    void generarInforme_jsonMalformado_devuelveErrorConProductosAfectados() {
+        when(jdbcTemplate.queryForList(anyString())).thenReturn(productosBajoMinimo());
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
         when(geminiService.llamar(anyString())).thenReturn("no es json {{{");
 
         Map<String, Object> result = informeStockService.generarInforme();
 
         assertTrue(result.containsKey("error"));
         assertEquals(2, result.get("productos_afectados"),
+<<<<<<< HEAD
             "productos_afectados debe estar aunque el JSON falle");
+=======
+            "productos_afectados debe estar presente aunque el JSON falle");
+    }
+
+    // ── TEST 6 — Gemini lanza excepción ──────────────────────────────
+
+    @Test
+    void generarInforme_geminiLanzaExcepcion_sePropaga() {
+        when(jdbcTemplate.queryForList(anyString())).thenReturn(productosBajoMinimo());
+        when(geminiService.llamar(anyString()))
+            .thenThrow(new RuntimeException("Error llamando a Gemini: HTTP 429"));
+
+        assertThrows(RuntimeException.class,
+            () -> informeStockService.generarInforme());
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
     }
 }

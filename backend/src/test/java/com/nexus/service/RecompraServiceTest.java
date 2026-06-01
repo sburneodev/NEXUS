@@ -18,12 +18,21 @@ import static org.mockito.Mockito.*;
  * QA-01 — Tests unitarios de RecompraService (AI-05).
  *
  * Cubre:
+<<<<<<< HEAD
  *  1. Análisis válido → JSON parseado con todos los campos
  *  2. Recomendación COMPRAR presente
  *  3. Recomendación RECHAZAR presente
  *  4. Markdown wrapper → limpiado correctamente
  *  5. JSON malformado → devuelve error sin lanzar excepción
  *  6. Descripción vacía → llama a Gemini igualmente
+=======
+ *  1. Análisis válido — JSON parseado con todos los campos
+ *  2. Recomendación COMPRAR presente
+ *  3. Recomendación RECHAZAR presente
+ *  4. Markdown wrapper — limpiado correctamente
+ *  5. JSON malformado — devuelve error sin lanzar excepción
+ *  6. Descripción vacía — llama a Gemini y procesa
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
  */
 @ExtendWith(MockitoExtension.class)
 class RecompraServiceTest {
@@ -85,7 +94,13 @@ class RecompraServiceTest {
     void analizarRecompra_articuloValioso_recomiendaComprar() {
         when(geminiService.llamar(anyString())).thenReturn(JSON_COMPRAR);
 
+<<<<<<< HEAD
         Map<String, Object> result = recompraService.analizarRecompra("Zelda Ocarina N64 CIB");
+=======
+        Map<String, Object> result = recompraService.analizarRecompra(
+            "Zelda Ocarina N64 CIB perfecto estado"
+        );
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
         assertEquals("COMPRAR", result.get("recomendacion"));
         assertTrue((Double) result.get("margen_estimado") > 0);
@@ -108,7 +123,12 @@ class RecompraServiceTest {
 
     @Test
     void analizarRecompra_respuestaConMarkdown_seLimpiaYParsea() {
+<<<<<<< HEAD
         when(geminiService.llamar(anyString())).thenReturn("```json\n" + JSON_COMPRAR + "\n```");
+=======
+        String conMarkdown = "```json\n" + JSON_COMPRAR + "\n```";
+        when(geminiService.llamar(anyString())).thenReturn(conMarkdown);
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
         Map<String, Object> result = recompraService.analizarRecompra("Zelda N64");
 
@@ -120,7 +140,11 @@ class RecompraServiceTest {
 
     @Test
     void analizarRecompra_jsonMalformado_devuelveErrorSinExcepcion() {
+<<<<<<< HEAD
         when(geminiService.llamar(anyString())).thenReturn("no es json {{{");
+=======
+        when(geminiService.llamar(anyString())).thenReturn("no es json");
+>>>>>>> b0e3f97b29deff65b9a906a3bee3bb9c178cff8e
 
         Map<String, Object> result = recompraService.analizarRecompra("descripcion cualquiera");
 

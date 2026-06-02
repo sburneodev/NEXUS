@@ -242,4 +242,7 @@ El servidor es un VPS IONOS con 6 vCore, 8 GB RAM y 240 GB NVMe SSD. Caddy gesti
 
 ---
 
-Desirée Cobo Batalla · Sebastián Burneo Reyes
+## 👥 Autores
+
+* **Sebastián Burneo Reyes** - *Arquitectura, Backend & DevOps (Despliegue)* - [GitHub](https://github.com/sburneodev) · [LinkedIn](TU_LINK_DE_LINKEDIN)
+* **Desirée Cobo Batalla** - *Frontend Lead & Desarrollo Backend* - [GitHub](https://github.com/desireecampusfp) · [LinkedIn](LINK_DE_LINKEDIN_DE_DESIREE)

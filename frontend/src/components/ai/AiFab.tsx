@@ -254,7 +254,9 @@ function Bubble({ msg, copiedId, onCopy }: BubbleProps): JSX.Element {
 
 // ── Componente principal ───────────────────────────────────────────────────────
 
-export function AiFab(): JSX.Element {
+interface AiFabProps { mobileMenuOpen?: boolean; }
+
+export function AiFab({ mobileMenuOpen = false }: AiFabProps): JSX.Element {
     const { isOpen, toggle, close } = useAiPanel();
 
     const [messages,     setMessages]     = useState<Message[]>([WELCOME]);
@@ -350,11 +352,8 @@ export function AiFab(): JSX.Element {
                 ));
 
                 // — AVT-07: TALKING al llegar la respuesta —
-                // showOutput=false en el avatar → solo anima el monitor retro,
-                // el texto ya está visible en la burbuja del chat.
                 setHeaderStatus('responding');
                 avatarRef.current?.hablando(responseText, 8, () => {
-                    // idle() se llama internamente en IAAvatar; aquí solo sincronizamos el header
                     setHeaderStatus('online');
                 });
             }
@@ -414,7 +413,7 @@ export function AiFab(): JSX.Element {
             transform:      isOpen ? 'translateY(0)' : 'translateY(100%)',
             transformOrigin:'bottom center',
             transition:     'opacity 280ms var(--ease-smooth), transform 300ms var(--ease-smooth)',
-            pointerEvents:  isOpen ? 'auto' : 'none',
+            pointerEvents:  isOpen && !mobileMenuOpen ? 'auto' : 'none',  // ← CAMBIO 1
         }
         : {
             position:       'fixed',
@@ -484,7 +483,6 @@ export function AiFab(): JSX.Element {
                     background:     'var(--bg-elevated)',
                 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {/* AVT-07 — Avatar retro en miniatura, conectado al estado del fetch */}
                         <IAAvatar
                             ref={avatarRef}
                             showOutput={false}
@@ -502,7 +500,6 @@ export function AiFab(): JSX.Element {
                                 lineHeight:    1.2,
                             }}>NEXUS AI</div>
 
-                            {/* Estado dinámico según headerStatus */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '3px' }}>
                                 <span style={{
                                     display:      'inline-block',
@@ -527,7 +524,6 @@ export function AiFab(): JSX.Element {
                     </div>
 
                     <div style={{ display: 'flex', gap: '6px' }}>
-                        {/* Limpiar conversación */}
                         <button
                             onClick={handleLimpiar}
                             title="Limpiar conversación"
@@ -550,7 +546,6 @@ export function AiFab(): JSX.Element {
                             onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)';  e.currentTarget.style.color = 'var(--text-muted)'; }}
                         >↺</button>
 
-                        {/* Cerrar */}
                         <button
                             onClick={close}
                             aria-label="Cerrar NEXUS AI"
@@ -583,7 +578,6 @@ export function AiFab(): JSX.Element {
                     display:       'flex',
                     flexDirection: 'column',
                 }}>
-                    {/* Chips de ejemplo — solo en estado de bienvenida */}
                     {messages.length === 1 && (
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{
@@ -679,7 +673,6 @@ export function AiFab(): JSX.Element {
                         }}
                     />
 
-                    {/* Botón enviar */}
                     <button
                         onClick={() => void sendMessage(input)}
                         disabled={!input.trim() || loading}
@@ -709,7 +702,6 @@ export function AiFab(): JSX.Element {
             </div>
 
             {/* ── FAB flotante ──────────────────────────────────────── */}
-            {/* En móvil con panel abierto se oculta (el header del panel tiene ✕) */}
             <button
                 onClick={toggle}
                 aria-label={isOpen ? 'Cerrar NEXUS AI' : 'Abrir NEXUS AI'}
@@ -719,7 +711,7 @@ export function AiFab(): JSX.Element {
                     bottom:        '28px',
                     right:         '28px',
                     zIndex:        401,
-                    display:       isMobile && isOpen ? 'none' : 'flex',
+                    display:       (isMobile && isOpen) || mobileMenuOpen ? 'none' : 'flex',  // ← CAMBIO 2
                     alignItems:    'center',
                     gap:           '9px',
                     padding:       '11px 22px 11px 18px',

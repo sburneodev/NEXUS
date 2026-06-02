@@ -94,7 +94,7 @@ export function Layout(): JSX.Element {
                 style={{
                     position:             'fixed',
                     inset:                0,
-                    zIndex:               199,
+                    zIndex:               300,
                     background:           'rgba(0,0,0,0.60)',
                     backdropFilter:       'blur(2px)',
                     WebkitBackdropFilter: 'blur(2px)',
@@ -124,17 +124,18 @@ export function Layout(): JSX.Element {
                     isMobile={isMobile}
                 />
                 <main style={{
-                    flex:      1,
-                    padding:   isMobile ? '12px' : 'clamp(16px, 2vw, 24px)',
-                    overflowY: 'auto',
-                    overflowX: 'hidden',
-                    transition: 'padding 300ms ease',
+                    flex:          1,
+                    padding:       isMobile ? '12px' : 'clamp(16px, 2vw, 24px)',
+                    overflowY:     'auto',
+                    overflowX:     'hidden',
+                    transition:    'padding 300ms ease',
+                    pointerEvents: isMobile && mobileOpen ? 'none' : 'auto',  
                 }}>
                     <Outlet />
                 </main>
             </div>
 
-            <AiFab />
+            <AiFab mobileMenuOpen={isMobile && mobileOpen} />
         </div>
     );
 }

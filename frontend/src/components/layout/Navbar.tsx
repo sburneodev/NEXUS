@@ -83,7 +83,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                     display:      'flex',
                     alignItems:   'center',
                     justifyContent: 'center',
-                    transition:   `opacity ${TRANSITION}, transform ${TRANSITION}, all 160ms ease`,
+                   transition: `all ${TRANSITION}`,
                     // Fade y escala: visible en mobile, invisible+sin espacio en desktop
                     opacity:           isMobile ? 1 : 0,
                     pointerEvents:     isMobile ? 'auto' : 'none',

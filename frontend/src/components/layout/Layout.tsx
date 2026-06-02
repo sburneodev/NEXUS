@@ -1,11 +1,5 @@
 /**
  * components/layout/Layout.tsx v5
- *
- * Responsive con transición suave en resize:
- *   El sidebar exterior siempre está en el flujo flex y transiciona su ancho
- *   (240 → 64 → 0) mediante CSS transition, de modo que el contenido se adapta
- *   de forma imperceptible sin "saltos" de layout.
- *   En mobile el panel visual se renderiza como overlay fijo encima del contenido.
  */
 
 import { useState, useCallback, useEffect } from 'react';
@@ -30,9 +24,9 @@ const ROUTE_TITLES: Record<string, string> = {
     '/albaranes-rango': 'Albaranes',
 };
 
-const IDLE_TIMEOUT   = 30 * 60 * 1000;
-const BP_MOBILE      = 768;
-const BP_TABLET      = 1024;
+const IDLE_TIMEOUT = 30 * 60 * 1000;
+const BP_MOBILE    = 768;
+const BP_TABLET    = 1024;
 
 function getBreakpoint(w: number) {
     return { isMobile: w < BP_MOBILE, isTablet: w >= BP_MOBILE && w < BP_TABLET };
@@ -43,13 +37,12 @@ export function Layout(): JSX.Element {
         typeof window !== 'undefined' ? window.innerWidth : 1280
     );
     const [isMobile,   setIsMobile]   = useState(initMobile);
-    const [collapsed,  setCollapsed]  = useState(initTablet);   // tablet arranca colapsado
+    const [collapsed,  setCollapsed]  = useState(initTablet);
     const [mobileOpen, setMobileOpen] = useState(false);
 
     const location                    = useLocation();
     const { logout, isAuthenticated } = useAuth();
 
-    // Seguimiento de breakpoint en tiempo real — no necesita ser instantáneo
     useEffect(() => {
         let frame: number;
         const handle = () => {
@@ -65,10 +58,8 @@ export function Layout(): JSX.Element {
         return () => { window.removeEventListener('resize', handle); cancelAnimationFrame(frame); };
     }, []);
 
-    // Cerrar sidebar mobile al navegar
     useEffect(() => { setMobileOpen(false); }, [location.pathname]);
 
-    // CSS var para centrado de modales
     useEffect(() => {
         document.documentElement.style.setProperty(
             '--sidebar-w',
@@ -88,22 +79,6 @@ export function Layout(): JSX.Element {
     return (
         <div style={{ display: 'flex', minHeight: '100dvh', background: 'var(--bg-base)' }}>
 
-            {/* Backdrop mobile — fade suave */}
-            <div
-                onClick={() => setMobileOpen(false)}
-                style={{
-                    position:             'fixed',
-                    inset:                0,
-                    zIndex:               300,
-                    background:           'rgba(0,0,0,0.60)',
-                    backdropFilter:       'blur(2px)',
-                    WebkitBackdropFilter: 'blur(2px)',
-                    opacity:              isMobile && mobileOpen ? 1 : 0,
-                    pointerEvents:        isMobile && mobileOpen ? 'auto' : 'none',
-                    transition:           'opacity 300ms ease',
-                }}
-            />
-
             <Sidebar
                 collapsed={isMobile ? false : collapsed}
                 onToggle={toggleDesktop}
@@ -112,11 +87,15 @@ export function Layout(): JSX.Element {
                 onMobileClose={() => setMobileOpen(false)}
             />
 
+            {/* El filter aplica blur/dim al contenido cuando el menú mobile está abierto.
+                El cierre se hace con el botón ✕ del sidebar o navegando. */}
             <div style={{
-                flex:           1,
-                display:        'flex',
-                flexDirection:  'column',
-                minWidth:       0,
+                flex:          1,
+                display:       'flex',
+                flexDirection: 'column',
+                minWidth:      0,
+                filter:        isMobile && mobileOpen ? 'blur(3px) brightness(0.45)' : 'none',
+                transition:    'filter 300ms ease',
             }}>
                 <Navbar
                     title={title}
@@ -124,12 +103,11 @@ export function Layout(): JSX.Element {
                     isMobile={isMobile}
                 />
                 <main style={{
-                    flex:          1,
-                    padding:       isMobile ? '12px' : 'clamp(16px, 2vw, 24px)',
-                    overflowY:     'auto',
-                    overflowX:     'hidden',
-                    transition:    'padding 300ms ease',
-                    pointerEvents: isMobile && mobileOpen ? 'none' : 'auto',  
+                    flex:      1,
+                    padding:   isMobile ? '12px' : 'clamp(16px, 2vw, 24px)',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    transition: 'padding 300ms ease',
                 }}>
                     <Outlet />
                 </main>

@@ -73,11 +73,11 @@ services:
     networks:
       - nexus_internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/api/actuator/health || exit 1"]
       interval: 15s
       timeout:  5s
       retries:  5
-      start_period: 30s
+      start_period: 60s
 
   # ────────────────────────────────────────────────────────
   # SERVICIO 3 · nexus-frontend — Nginx + React/Vite
@@ -93,21 +93,19 @@ services:
     restart: unless-stopped
     depends_on:
       nexus-backend:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "${FRONTEND_PORT_EXTERNAL:-3000}:80"
     networks:
       - nexus_internal
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:80 || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:80 || exit 1"]
       interval: 15s
       timeout:  5s
       retries:  3
 
   # ────────────────────────────────────────────────────────
   # SERVICIO 4 · nexus-sonar — SonarQube Community
-  # Usa H2 embebida en local, sin tocar la BD principal
-  # Acceso: http://localhost:9000  (admin / admin)
   # ────────────────────────────────────────────────────────
   nexus-sonar:
     image: sonarqube:community
@@ -128,7 +126,6 @@ services:
 
   # ────────────────────────────────────────────────────────
   # SERVICIO 5 · nexus-caddy — Solo producción
-  # Activar con: docker compose --profile production up
   # ────────────────────────────────────────────────────────
   nexus-caddy:
     image: caddy:2-alpine

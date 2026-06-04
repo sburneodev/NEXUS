@@ -1,5 +1,3 @@
-#Esto es el chore, todas las varibles se modificaran mas adelante.
-
 spring:
   application:
     name: nexus-backend
@@ -87,10 +85,17 @@ management:
   endpoints:
     web:
       exposure:
-        include: health, info
+        include: health,info
   endpoint:
     health:
-      show-details: when-authorized
+      probes:
+        enabled: false
+      show-details: always
+  health:
+    livenessstate:
+      enabled: false
+    readinessstate:
+      enabled: false
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}

@@ -3,31 +3,28 @@ FROM eclipse-temurin:25-jdk-alpine AS build
 
 WORKDIR /app
 
-# Copia el wrapper y el pom primero (cachea dependencias)
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline -q
+RUN apk add --no-cache maven
 
-# Copia el código fuente y compila
+# Cachea dependencias
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+
+# Compila
 COPY src/ src/
-COPY .mvn/ .mvn/
-COPY mvnw pom.xml ./
-RUN chmod +x mvnw        # ← añadir esta línea
-RUN ./mvnw dependency:go-offline -q
-RUN ./mvnw package -DskipTests -q
+RUN mvn package -DskipTests -q
 
 # ── FASE 2: Runtime ────────────────────────────────────
 FROM eclipse-temurin:25-jre-alpine AS runtime
 
 WORKDIR /app
 
-# Crea usuario no-root por seguridad
+# Usuario no-root por seguridad
 RUN addgroup -S nexus && adduser -S nexus -G nexus
 
-# Copia solo el jar compilado
+# Copia el jar compilado
 COPY --from=build /app/target/*.jar app.jar
 
-# Crea carpeta de logs
+# Carpeta de logs
 RUN mkdir -p /app/logs && chown -R nexus:nexus /app
 
 USER nexus

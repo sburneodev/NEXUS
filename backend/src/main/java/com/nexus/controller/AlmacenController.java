@@ -14,6 +14,7 @@ import java.util.*;
 public class AlmacenController {
 
     private final JdbcTemplate jdbcTemplate;
+    private final String pasillo="pasillo";
 
     public AlmacenController(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;

@@ -83,11 +83,12 @@ public class SecurityConfig {
 
         // Orígenes permitidos: frontend en local y en producción
         config.setAllowedOrigins(List.of(
-            "http://localhost:5173",   // Vite dev server
-            "http://localhost:3000",   // por si acaso
-            "http://localhost:80",     // Nginx local
-            "http://localhost"
-        ));
+        	    "http://localhost:5173",
+        	    "http://localhost:3000",
+        	    "http://localhost:80",
+        	    "http://localhost",
+        	    "https://sibr.app"        // ← añadir
+        	));
 
         // Métodos HTTP permitidos
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

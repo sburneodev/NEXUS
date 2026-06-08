@@ -6,8 +6,9 @@
  * a que expire el consentimiento (12 meses).
  */
 
-import { useState }          from 'react';
-import { useCookieConsent }  from '../../hooks/useCookieConsent';
+import { useState }             from 'react';
+import { createPortal }          from 'react-dom';
+import { useCookieConsent }      from '../../hooks/useCookieConsent';
 import { COOKIE_POLICY_VERSION } from '../../services/cookieService';
 
 interface CookiePreferencesProps {
@@ -32,7 +33,7 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
             day: '2-digit', month: 'long', year: 'numeric',
         });
 
-    return (
+    return createPortal(
         <>
             {/* Backdrop — cierra al hacer clic fuera */}
             <div
@@ -46,25 +47,31 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
                 }}
             />
 
-            {/* Modal */}
+            {/* Contenedor centrador — flexbox, sin transform, animación libre */}
+            <div style={{
+                position:       'fixed',
+                inset:          0,
+                zIndex:         9999,
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'center',
+                padding:        '16px',
+                pointerEvents:  'none', // el backdrop intercepta los clicks fuera
+            }}>
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-label="Preferencias de privacidad"
                 style={{
-                    position:   'fixed',
-                    top:        '50%',
-                    left:       '50%',
-                    transform:  'translate(-50%, -50%)',
-                    zIndex:     9999,
-                    width:      'min(500px, calc(100vw - 32px))',
-                    background: 'var(--bg-surface)',
-                    borderTop:  '2px solid var(--accent-primary)',
-                    border:     '1px solid var(--border-default)',
-                    borderRadius:'14px',
-                    boxShadow:  'var(--shadow-xl)',
-                    padding:    '24px',
-                    animation:  'fadeInUp 0.25s cubic-bezier(0.23, 1, 0.32, 1) both',
+                    pointerEvents: 'auto',
+                    width:         'min(500px, 100%)',
+                    background:    'var(--bg-surface)',
+                    borderTop:     '2px solid var(--accent-primary)',
+                    border:        '1px solid var(--border-default)',
+                    borderRadius:  '14px',
+                    boxShadow:     'var(--shadow-xl)',
+                    padding:       '24px',
+                    animation:     'fadeInUp 0.25s cubic-bezier(0.23, 1, 0.32, 1) both',
                 }}
             >
                 {/* Header */}
@@ -82,7 +89,7 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
                                 fontFamily: 'var(--font-mono)', fontSize: '10px',
                                 color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '2px',
                             }}>
-                                Política v{COOKIE_POLICY_VERSION} · Modifica tu consentimiento en cualquier momento
+                                Modifica tu consentimiento en cualquier momento
                             </div>
                         </div>
                     </div>
@@ -106,9 +113,7 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
                     <div style={{
                         background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
                         borderRadius: '8px', padding: '10px 14px', marginBottom: '20px',
-                        display: 'flex', alignItems: 'center', gap: '8px',
                     }}>
-                        <span style={{ fontSize: '12px' }}>📋</span>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                             Última decisión:{' '}
                             <strong style={{ color: status === 'granted' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
@@ -228,6 +233,8 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
                     </div>
                 )}
             </div>
-        </>
+            </div>
+        </>,
+        document.body
     );
 }

@@ -21,11 +21,11 @@ export const COOKIE_POLICY_VERSION = '1.0';
 
 export const COOKIE_NAMES = {
     /** Registro de consentimiento (status + timestamp + versión) */
-    CONSENT: 'nexus_consent',
+    CONSENT: 'nexus_cookie_consent',
 } as const;
 
-/** Duración del consentimiento: 12 meses en segundos */
-const CONSENT_MAX_AGE = 365 * 24 * 60 * 60;
+/** Duración del consentimiento: 30 días en segundos */
+const CONSENT_MAX_AGE = 30 * 24 * 60 * 60;
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 

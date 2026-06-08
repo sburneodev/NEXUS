@@ -348,15 +348,16 @@ code, pre, .mono {
     justify-content:center;
     gap:            var(--space-2);
     font-family:    var(--font-display);
-    font-size:      var(--text-sm);
+    font-size:      12px;
     font-weight:    600;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.10em;
     text-transform: uppercase;
-    padding:        calc(var(--space-3) + 2px) var(--space-6);
+    padding:        8px 18px;
     border-radius:  var(--radius-base);
     border:         1px solid transparent;
     cursor:         pointer;
-    transition:     all var(--duration-base) var(--ease-smooth);
+    transition:     transform 160ms var(--ease-smooth), box-shadow 160ms var(--ease-smooth),
+                    background 160ms var(--ease-smooth), opacity 160ms var(--ease-smooth);
     position:       relative;
     overflow:       hidden;
     white-space:    nowrap;
@@ -377,19 +378,27 @@ code, pre, .mono {
 @media (hover: hover) and (pointer: fine) {
     .btn:hover { opacity: 0.95; }
 }
-.btn:active   { transform: scale(0.97) !important; transition-duration: 80ms !important; }
+.btn:active   {
+    transform:         scale(0.94) !important;
+    transition-duration: 60ms !important;
+    filter:            brightness(0.90);
+}
 .btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 
 /* Primario */
 .btn-primary {
     background: var(--accent-primary);
     color:      #ffffff;
-    box-shadow: none;
+    box-shadow: 0 2px 8px rgba(59,130,246,0.20);
 }
 .btn-primary:hover {
     background: var(--accent-primary-dim);
-    box-shadow: 0 4px 12px var(--accent-primary-glow);
-    transform:  translateY(-1px);
+    box-shadow: 0 4px 16px rgba(59,130,246,0.38), 0 1px 4px rgba(59,130,246,0.20);
+    transform:  translateY(-2px);
+}
+.btn-primary:active {
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.28), 0 1px 4px rgba(59,130,246,0.20) !important;
+    transform:  scale(0.94) translateY(0) !important;
 }
 
 /* Secundario */

@@ -162,7 +162,7 @@ export function ProductosPage(): JSX.Element {
                 <button
                     onClick={openNew}
                     className="btn btn-primary"
-                    style={{ letterSpacing: '0.10em', fontSize: '11px', padding: '6px 14px', flexShrink: 0 }}
+                    style={{ flexShrink: 0 }}
                 >
                     + AÑADIR PRODUCTO
                 </button>

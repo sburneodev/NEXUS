@@ -227,11 +227,11 @@ export function BovedaRetroPage(): JSX.Element {
                     }}>
                         LA{' '}
                         <span style={{
-                            background:              'linear-gradient(125deg, #FCD34D 0%, #F59E0B 45%, #D97706 100%)',
+                            background:              'linear-gradient(125deg, #D4920A 0%, #B97310 50%, #9A5C08 100%)',
                             WebkitBackgroundClip:    'text',
                             WebkitTextFillColor:     'transparent',
                             backgroundClip:          'text',
-                            filter:                  'drop-shadow(0 0 12px rgba(251,191,36,0.35))',
+                            filter:                  'drop-shadow(0 0 8px rgba(180,110,8,0.22))',
                             display:                 'inline-block',
                         }}>
                             BÓVEDA

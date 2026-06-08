@@ -19,7 +19,7 @@ import type { AlbaranInfo }   from '../components/stock/AlbaranModal';
 const EMPRESA_NEXUS = {
     markUrl:   '/nexus-mark.svg',
     brandName: 'NEXUS',
-    tagline:   'ERP · LEVELUP',
+    tagline:   'ERP · LEVELUP ARCADE',
     nombre:    'NEXUS Distribución S.L.',
     nif:       'B-12345678',
     direccion: 'C/ Tecnología 14, Nave 3 — 28001 Madrid',
@@ -171,7 +171,7 @@ const inputStyle: React.CSSProperties = {
 
 const focusIn  = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
     e.currentTarget.style.borderColor = 'var(--accent-cyan)';
-    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(0,212,255,0.10)';
+    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(56,189,248,0.12)';
 };
 const focusOut = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) => {
     e.currentTarget.style.borderColor = 'var(--border-default)';
@@ -354,7 +354,7 @@ export function AlbaranesRangoPage(): JSX.Element {
                     </div>
 
                     {loadState === 'error' && (
-                        <div style={{ marginTop: '14px', padding: '10px 14px', background: 'rgba(255,68,102,0.07)', border: '1px solid var(--accent-danger)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-danger)' }}>
+                        <div style={{ marginTop: '14px', padding: '10px 14px', background: 'rgba(248,113,113,0.08)', border: '1px solid var(--accent-danger)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-danger)' }}>
                             ✕ {errorMsg}
                         </div>
                     )}
@@ -385,11 +385,11 @@ export function AlbaranesRangoPage(): JSX.Element {
                             <div style={{
                                 display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap',
                                 padding: '10px 16px',
-                                background: 'rgba(0,212,255,0.06)',
-                                border: '1px solid rgba(0,212,255,0.20)',
+                                background: 'var(--accent-primary-glow)',
+                                border: '1px solid var(--border-accent)',
                                 borderRadius: '8px',
                                 fontFamily: 'var(--font-mono)', fontSize: '12px',
-                                color: 'var(--accent-cyan)', letterSpacing: '0.04em', flexShrink: 0,
+                                color: 'var(--accent-primary)', letterSpacing: '0.04em', flexShrink: 0,
                             }}>
                                 <span style={{ fontWeight: 700 }}>
                                     {albaranes.length} movimiento{albaranes.length !== 1 ? 's' : ''}

@@ -53,7 +53,8 @@ const NAV_ITEMS: NavItem[] = [
     { path: '/auditoria',      label: 'Auditoría',      icon: '▷', roles: ['ADMIN'] },
 ];
 
-const TRANSITION = '320ms cubic-bezier(0.4, 0, 0.2, 1)';
+/* Emil: cubic-bezier(0.32, 0.72, 0, 1) es la curva iOS para drawers — mucho más natural */
+const TRANSITION = '300ms cubic-bezier(0.32, 0.72, 0, 1)';
 
 interface SidebarProps {
     collapsed:     boolean;
@@ -110,6 +111,9 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
 
             background:    'var(--sidebar-bg)',
             borderRight:   '1px solid var(--sidebar-border)',
+            boxShadow:     isMobile
+                ? '4px 0 32px rgba(0,0,0,0.55), 2px 0 0 rgba(255,255,255,0.06)'
+                : '4px 0 24px rgba(0,0,0,0.40), 1px 0 0 rgba(255,255,255,0.05)',
             display:       'flex',
             flexDirection: 'column',
             overflow:      'hidden',
@@ -203,15 +207,29 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
                     <div key={section.title}>
                         {section.title && showLabels && (
                             <div style={{
-                                fontFamily:    'var(--font-mono)',
-                                fontSize:      '9px',
-                                fontWeight:    700,
-                                letterSpacing: '0.16em',
-                                textTransform: 'uppercase',
-                                color:         'var(--sidebar-text-muted)',
-                                padding:       '12px 20px 4px',
+                                display:        'flex',
+                                alignItems:     'center',
+                                gap:            '8px',
+                                padding:        '16px 16px 5px',
                             }}>
-                                {section.title}
+                                <div style={{
+                                    width:      '14px',
+                                    height:     '1px',
+                                    background: 'var(--sidebar-text-muted)',
+                                    opacity:    0.4,
+                                    flexShrink: 0,
+                                }} />
+                                <span style={{
+                                    fontFamily:    'var(--font-mono)',
+                                    fontSize:      '9px',
+                                    fontWeight:    700,
+                                    letterSpacing: '0.18em',
+                                    textTransform: 'uppercase',
+                                    color:         'var(--sidebar-text-muted)',
+                                    opacity:       0.6,
+                                }}>
+                                    {section.title}
+                                </span>
                             </div>
                         )}
                         {section.items.map(item => {
@@ -223,32 +241,41 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
                                     title={!showLabels ? item.label : undefined}
                                     onClick={() => { if (isMobile) onMobileClose(); }}
                                     style={{
-                                        display: 'flex', alignItems: 'center', gap: '12px',
-                                        padding: '9px 20px', margin: '1px 8px',
-                                        borderRadius: '6px', textDecoration: 'none',
-                                        color:      active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
-                                        background: active ? 'var(--sidebar-active-bg)'   : 'transparent',
-                                        boxShadow:  active
-                                            ? 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 14px var(--sidebar-glow-fill)'
-                                            : 'none',
-                                        border:     '1px solid transparent',
-                                        transition: `box-shadow 160ms ease, color 160ms ease`,
-                                        position:   'relative', overflow: 'hidden', whiteSpace: 'nowrap',
+                                        display:        'flex',
+                                        alignItems:     'center',
+                                        gap:            '12px',
+                                        padding:        '9px 16px',
+                                        margin:         '1px 8px',
+                                        borderRadius:   '8px',
+                                        textDecoration: 'none',
+                                        color:          active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
+                                        background:     active
+                                            ? 'var(--sidebar-glow-fill)'
+                                            : 'transparent',
+                                        borderLeft:     active ? '2px solid var(--sidebar-indicator)' : '2px solid transparent',
+                                        boxShadow:      'none',
+                                        transition:     `background ${TRANSITION}, color ${TRANSITION}, border-color ${TRANSITION}`,
+                                        position:       'relative',
+                                        overflow:       'hidden',
+                                        whiteSpace:     'nowrap',
                                     }}
                                     onMouseEnter={e => {
                                         const el = e.currentTarget as HTMLElement;
                                         el.style.color = 'var(--sidebar-text-active)';
-                                        if (!active) el.style.boxShadow = 'inset 0 0 0 1px var(--sidebar-glow), inset 0 0 10px var(--sidebar-glow-fill)';
+                                        if (!active) el.style.background = 'var(--sidebar-glow-fill)';
                                     }}
                                     onMouseLeave={e => {
                                         const el = e.currentTarget as HTMLElement;
-                                        if (!active) { el.style.color = 'var(--sidebar-text)'; el.style.boxShadow = 'none'; }
+                                        if (!active) {
+                                            el.style.color = 'var(--sidebar-text)';
+                                            el.style.background = 'transparent';
+                                        }
                                     }}
                                 >
                                     <span style={{
                                         fontFamily: 'var(--font-mono)', fontSize: '15px', flexShrink: 0,
                                         color:      active ? 'var(--sidebar-icon-active)' : 'inherit',
-                                        textShadow: active ? '0 0 8px var(--sidebar-glow-text)' : 'none',
+                                        textShadow: 'none',
                                     }}>
                                         {item.icon}
                                     </span>
@@ -278,7 +305,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
                                             position: 'absolute', left: 0, top: '20%', height: '60%',
                                             width: '2px', background: 'var(--sidebar-indicator)',
                                             borderRadius: '0 2px 2px 0',
-                                            boxShadow: '0 0 8px var(--sidebar-glow-text)',
+                                            boxShadow: 'none',
                                         }} />
                                     )}
                                 </NavLink>

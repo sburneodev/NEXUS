@@ -1,7 +1,7 @@
 /**
- * AlbaranPreviewPage — página temporal de previsualización.
+ * AlbaranPreviewPage — página de previsualización de albarán.
  * Ruta pública: /albaran-preview (sin auth requerida).
- * Eliminar cuando ya no se necesite.
+ * Fondo dark NEXUS, barra de herramientas con el design system.
  */
 
 import { AlbaranTemplate } from '../components/albaran/AlbaranTemplate';
@@ -18,7 +18,7 @@ const DEMO_DATA = {
     empresa: {
         markUrl:   '/nexus-mark.svg',
         brandName: 'NEXUS',
-        tagline:   'ERP · LEVELUP',
+        tagline:   'ERP · LEVELUP ARCADE',
         nombre:    'NEXUS Distribución S.L.',
         nif:       'B-12345678',
         direccion: 'C/ Tecnología 14, Nave 3 — 28001 Madrid',
@@ -46,53 +46,120 @@ const DEMO_DATA = {
 
 export function AlbaranPreviewPage(): JSX.Element {
     return (
-        <div style={{
-            minHeight:  '100vh',
-            background: '#d0d5dd',
-            padding:    '32px 16px',
-            display:    'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap:        '16px',
-        }}>
-            {/* Barra de acciones */}
+        <>
+            <style>{`
+                @media print {
+                    .ap-toolbar { display: none !important; }
+                    body { background: white !important; }
+                }
+                /* Ocultar la app en impresión — mostrar solo el documento */
+                @media print { #root { display: none !important; } }
+            `}</style>
+
             <div style={{
-                display:      'flex',
-                alignItems:   'center',
-                gap:          '12px',
-                background:   '#1a2b4c',
-                color:        '#fff',
-                padding:      '10px 20px',
-                borderRadius: '8px',
-                width:        '210mm',
-                maxWidth:     '100%',
-                boxSizing:    'border-box',
-                fontFamily:   'Inter, Helvetica, Arial, sans-serif',
-                fontSize:     '12px',
+                minHeight:        '100dvh',
+                /* Fondo NEXUS dark: halo azul + retícula de puntos */
+                backgroundColor:  '#0D1117',
+                backgroundImage: [
+                    'radial-gradient(ellipse 140% 70% at 50% -10%, rgba(59,130,246,0.20) 0%, transparent 55%)',
+                    'radial-gradient(ellipse 60% 40% at 95% 92%,   rgba(56,189,248,0.10) 0%, transparent 50%)',
+                    'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.055) 1px, transparent 0)',
+                ].join(', '),
+                backgroundSize:   '100% 100%, 100% 100%, 26px 26px',
+                backgroundAttachment: 'fixed',
+                padding:          '32px 16px 48px',
+                display:          'flex',
+                flexDirection:    'column',
+                alignItems:       'center',
+                gap:              '20px',
             }}>
-                <span style={{ fontWeight: 700, letterSpacing: '0.1em', flex: 1 }}>
-                    NEXUS ERP — Previsualización de Albarán
-                </span>
-                <button
-                    onClick={() => window.print()}
+
+                {/* ── Barra de herramientas NEXUS ─────────────────────── */}
+                <div
+                    className="ap-toolbar"
                     style={{
-                        background:    '#ffffff22',
-                        border:        '1px solid #ffffff44',
-                        color:         '#fff',
-                        padding:       '6px 16px',
-                        borderRadius:  '4px',
-                        cursor:        'pointer',
-                        fontSize:      '11px',
-                        fontWeight:    700,
-                        letterSpacing: '0.08em',
+                        display:     'flex',
+                        alignItems:  'center',
+                        gap:         '12px',
+                        /* Card NEXUS */
+                        background:  '#1C2128',
+                        borderTop:   '2px solid #3B82F6',
+                        borderLeft:  '1px solid rgba(255,255,255,0.13)',
+                        borderRight: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom:'1px solid rgba(255,255,255,0.05)',
+                        borderRadius:'10px',
+                        boxShadow:   '0 4px 28px rgba(0,0,0,0.55), 0 1px 0 rgba(255,255,255,0.07) inset',
+                        padding:     '12px 20px',
+                        width:       '210mm',
+                        maxWidth:    '100%',
+                        boxSizing:   'border-box',
                     }}
                 >
-                    🖨 IMPRIMIR
-                </button>
-            </div>
+                    {/* Logo + título */}
+                    <img
+                        src="/nexus-mark.svg"
+                        alt="NEXUS"
+                        style={{ height: '28px', width: 'auto', flexShrink: 0 }}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                            fontFamily:    'var(--font-display, Inter, sans-serif)',
+                            fontSize:      '12px',
+                            fontWeight:    700,
+                            letterSpacing: '0.12em',
+                            textTransform: 'uppercase',
+                            color:         '#F0F6FC',
+                            lineHeight:    1.2,
+                        }}>
+                            NEXUS ERP
+                        </div>
+                        <div style={{
+                            fontFamily:    'var(--font-mono, monospace)',
+                            fontSize:      '9px',
+                            color:         '#8B949E',
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            marginTop:     '1px',
+                        }}>
+                            Previsualización de Albarán
+                        </div>
+                    </div>
 
-            {/* Documento A4 */}
-            <AlbaranTemplate data={DEMO_DATA} />
-        </div>
+                    {/* Botón imprimir */}
+                    <button
+                        onClick={() => window.print()}
+                        style={{
+                            background:    'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                            border:        'none',
+                            color:         '#fff',
+                            padding:       '8px 18px',
+                            borderRadius:  '6px',
+                            cursor:        'pointer',
+                            fontFamily:    'var(--font-display, Inter, sans-serif)',
+                            fontSize:      '11px',
+                            fontWeight:    700,
+                            letterSpacing: '0.10em',
+                            textTransform: 'uppercase',
+                            boxShadow:     '0 2px 10px rgba(37,99,235,0.35)',
+                            flexShrink:    0,
+                            transition:    'opacity 160ms ease, transform 120ms ease',
+                        }}
+                        onMouseEnter={e => {
+                            (e.currentTarget as HTMLButtonElement).style.opacity = '0.88';
+                            (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={e => {
+                            (e.currentTarget as HTMLButtonElement).style.opacity = '1';
+                            (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
+                        }}
+                    >
+                        🖨 IMPRIMIR
+                    </button>
+                </div>
+
+                {/* ── Documento A4 ───────────────────────────────────── */}
+                <AlbaranTemplate data={DEMO_DATA} />
+            </div>
+        </>
     );
 }

@@ -91,7 +91,7 @@ const inputStyle: React.CSSProperties = {
 
 const onFI = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.currentTarget.style.borderColor = 'var(--accent-cyan)';
-    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(0,212,255,0.10)';
+    e.currentTarget.style.boxShadow   = '0 0 0 3px rgba(56,189,248,0.12)';
 };
 const onBI = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     e.currentTarget.style.borderColor = 'var(--border-default)';
@@ -153,7 +153,7 @@ function SelectorPredictivo({
                     ...inputStyle,
                     borderColor: hasInvalidText ? 'var(--accent-danger)'  : open ? accentColor : 'var(--border-default)',
                     boxShadow:   hasInvalidText
-                        ? '0 0 0 3px rgba(255,68,102,0.12)'
+                        ? '0 0 0 3px rgba(248,113,113,0.14)'
                         : open ? `0 0 0 3px color-mix(in srgb, ${accentColor} 15%, transparent)` : 'none',
                 }}
             />
@@ -201,7 +201,7 @@ function SelectorPredictivo({
 function ResultPanel({ result }: { result: OpResult }): JSX.Element {
     const isOk  = result.ok;
     const color = isOk ? 'var(--accent-primary)' : 'var(--accent-danger)';
-    const bg    = isOk ? 'rgba(0,255,136,0.07)'  : 'rgba(255,68,102,0.07)';
+    const bg    = isOk ? 'rgba(59,130,246,0.08)'  : 'rgba(248,113,113,0.08)';
 
     return (
         <div style={{ borderRadius: '8px', border: `1px solid ${color}`, background: bg, overflow: 'hidden' }}>
@@ -465,7 +465,7 @@ export function StockPage(): JSX.Element {
                                     const isSel = selected?.id === p.id;
                                     return (
                                         <tr key={p.id} onClick={() => handleSelect(p)}
-                                            style={{ borderBottom: '1px solid var(--border-subtle)', background: isSel ? 'rgba(0,212,255,0.08)' : 'transparent', cursor: 'pointer', transition: 'background 120ms ease', outline: isSel ? '2px solid rgba(0,212,255,0.30)' : 'none', outlineOffset: '-2px' }}
+                                            style={{ borderBottom: '1px solid var(--border-subtle)', background: isSel ? 'rgba(59,130,246,0.10)' : 'transparent', cursor: 'pointer', transition: 'background 120ms ease', outline: isSel ? '2px solid rgba(59,130,246,0.30)' : 'none', outlineOffset: '-2px' }}
                                             onMouseEnter={e => { if (!isSel) (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-overlay)'; }}
                                             onMouseLeave={e => { if (!isSel) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
                                         >

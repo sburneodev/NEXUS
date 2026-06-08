@@ -154,12 +154,12 @@ export function UserRoleManager({
                                 fontFamily:    'var(--font-mono)',
                                 fontSize:      '9px',
                                 letterSpacing: '0.06em',
-                                color:         tiene ? 'var(--accent-primary)' : 'var(--text-muted)',
-                                border:        `1px solid ${tiene ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                                color:         tiene ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                border:        `1px solid ${tiene ? 'var(--accent-primary)' : 'var(--border-default)'}`,
                                 borderRadius:  '3px',
                                 padding:       '1px 5px',
-                                opacity:       tiene ? 1 : 0.3,
-                                transition:    'opacity 200ms',
+                                background:    tiene ? 'var(--accent-primary-glow)' : 'transparent',
+                                transition:    'color 200ms, border-color 200ms',
                             }}>
                                 {ROL_META[role].label}
                             </span>

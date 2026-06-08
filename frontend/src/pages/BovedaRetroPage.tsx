@@ -1,9 +1,8 @@
 /**
- * pages/BovedaRetroPage.tsx — Arcade Retro Theme v3
+ * pages/BovedaRetroPage.tsx — v4
  *
- * Aplica html.theme-retro al montar (tipografía Courier New + acentos ámbar)
- * pero sobreescribe las vars de fondo con valores casi-negros para evitar
- * la saturación naranja. El ámbar aparece solo como acento/glow, no como fondo.
+ * Mismo estilo que el resto de la app (Rajdhani + JetBrains Mono, vars CSS globales).
+ * Catálogo en tabla con filas expandibles en lugar de tarjetas grandes.
  */
 
 import { useState, useEffect, useCallback } from 'react';
@@ -13,54 +12,23 @@ import { TasadorIA }           from '../components/boveda/TasadorIA';
 import { ProductModal }        from '../components/productos/ProductModal';
 import type { ProductForm }    from '../components/productos/ProductModal';
 import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
-import { TableControls }       from '../components/table/TableControls';
-import api                     from '../services/api';
+import { TableControls, SkeletonRows } from '../components/table/TableControls';
+import api from '../services/api';
 
-// ── Paleta interna — fondos casi negros, texto blanco y naranja claro ────────
-const R = {
-    bg:        '#060606',   // negro neutro puro — fondo de página
-    surface:   '#0d0d0d',   // tarjetas: neutral puro sin calidez
-    elevated:  '#131313',   // cabeceras HUD: neutral oscuro
-    amber:     '#ffb830',   // naranja para acentos de acción
-    amberHi:   '#ffe080',   // ámbar muy claro / casi amarillo para precio/highlight
-    cream:     '#f5ead8',   // texto primario: blanco cálido muy legible
-    sand:      '#e8e2d8',   // texto secundario: blanco cálido tenue — naranja muy claro
-    dust:      '#c8c2b8',   // texto terciario: blanco cálido apagado — tirando a blanco
-    red:       '#ff4444',   // peligro/vendido
-    border:    'rgba(255,180,40,0.09)',   // borde sutil — más discreto
-    borderHi:  'rgba(255,200,80,0.24)',   // borde activo
-} as const;
+// ── Constantes de estado de conservación ─────────────────────────────────────
 
-// ── Colores únicos por estado — se usan en chips, badges y tarjetas ──────────
 type EstadoKey = EstadoConservacion | 'TODOS';
-
-const ESTADO_COLOR: Record<EstadoConservacion, string> = {
-    MINT:    '#ffd700',  // dorado  — perfecto, precintado
-    CIB:     '#44ffaa',  // verde   — completo con caja y manual
-    LOOSE:   '#ffaa33',  // ámbar   — solo cartucho
-    LOOSE_D: '#ff4444',  // rojo    — con daños
-};
-
-const ESTADO_INFO: Record<EstadoKey, { label: string; icon: string; desc: string; color: string }> = {
-    TODOS:   { icon: '■', label: 'Todos',  color: R.sand,                desc: 'Ver todas las piezas del catálogo sin filtrar.' },
-    MINT:    { icon: '★', label: 'MINT',   color: ESTADO_COLOR.MINT,    desc: 'Precintado de fábrica. Nunca abierto ni usado.' },
-    CIB:     { icon: '◈', label: 'CIB',    color: ESTADO_COLOR.CIB,     desc: 'Complete In Box — caja, cartucho y manual originales.' },
-    LOOSE:   { icon: '◎', label: 'LOOSE',  color: ESTADO_COLOR.LOOSE,   desc: 'Solo cartucho o disco, sin caja ni manual.' },
-    LOOSE_D: { icon: '▲', label: 'DMG',    color: ESTADO_COLOR.LOOSE_D, desc: 'Con daños visibles en caja, cartucho o manual.' },
-};
-
-// ── Badge de conservación para las tarjetas ───────────────────────────────────
-const BADGE_MAP: Record<EstadoConservacion, { label: string; color: string }> = {
-    MINT:    { label: '★ MINT',  color: ESTADO_COLOR.MINT    },
-    CIB:     { label: '◈ CIB',   color: ESTADO_COLOR.CIB     },
-    LOOSE:   { label: '◎ LOOSE', color: ESTADO_COLOR.LOOSE   },
-    LOOSE_D: { label: '▲ DMG',   color: ESTADO_COLOR.LOOSE_D },
-};
-
-// ── Filtro de estado activo/vendido ───────────────────────────────────────────
 type ActivoKey = 'TODOS' | 'ACTIVOS' | 'VENDIDOS';
 
-// ── Helper: filtrado local como fallback ──────────────────────────────────────
+const ESTADO_META: Record<EstadoKey, { label: string; color: string; desc: string }> = {
+    TODOS:   { label: 'Todos',  color: 'var(--text-muted)',    desc: '' },
+    MINT:    { label: 'MINT',   color: '#ffd700',              desc: 'Precintado de fábrica — nunca abierto' },
+    CIB:     { label: 'CIB',    color: 'var(--accent-primary)',desc: 'Complete In Box — caja, cartucho y manual' },
+    LOOSE:   { label: 'LOOSE',  color: 'var(--accent-gold)',   desc: 'Solo cartucho o disco, sin caja ni manual' },
+    LOOSE_D: { label: 'DMG',    color: 'var(--accent-danger)', desc: 'Con daños visibles en caja o cartucho' },
+};
+
+// ── Fallback filtrado local ───────────────────────────────────────────────────
 function simulateFilter(
     data: Producto[], search: string,
     estado: EstadoKey, activo: ActivoKey, page: number, size: number,
@@ -73,394 +41,132 @@ function simulateFilter(
             || (activo === 'ACTIVOS' ? p.activo === true : p.activo === false);
         return matchSearch && matchEstado && matchActivo;
     });
-    const totalElements = filtered.length;
-    return { content: filtered.slice(page * size, (page + 1) * size), totalElements, totalPages: Math.ceil(totalElements / size) || 1 };
+    return {
+        content: filtered.slice(page * size, (page + 1) * size),
+        totalElements: filtered.length,
+        totalPages: Math.ceil(filtered.length / size) || 1,
+    };
 }
 
-// ── Selector de estado con chips y descripción en línea ───────────────────────
-function EstadoFilter({
-    value,
-    onChange,
+// ── Chip de filtro ────────────────────────────────────────────────────────────
+function FilterChip({
+    label, color, active, onClick, onMouseEnter, onMouseLeave,
 }: {
-    value:    EstadoKey;
-    onChange: (v: EstadoKey) => void;
-}): JSX.Element {
-    const [hovered, setHovered] = useState<EstadoKey | null>(null);
-
-    // Descripción visible: hover tiene prioridad; si no, la del chip activo (no TODOS)
-    const infoVisible = hovered
-        ? ESTADO_INFO[hovered]
-        : value !== 'TODOS' ? ESTADO_INFO[value] : null;
-
+    label: string; color: string; active: boolean;
+    onClick: () => void;
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
+}) {
     return (
-        // position: relative para que la descripción absoluta se ancle aquí
-        <div style={{ position: 'relative', display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {(Object.entries(ESTADO_INFO) as [EstadoKey, typeof ESTADO_INFO['TODOS']][]).map(([key, info]) => {
-                const isActive = value === key;
-                const isHover  = hovered === key;
-                return (
-                    <button
-                        key={key}
-                        onClick={() => onChange(key)}
-                        onMouseEnter={() => setHovered(key)}
-                        onMouseLeave={() => setHovered(null)}
-                        style={{
-                            fontFamily:    'Courier New, monospace',
-                            fontSize:      '10px',
-                            fontWeight:    700,
-                            letterSpacing: '0.10em',
-                            textTransform: 'uppercase',
-                            color:         isActive ? '#09080a' : isHover ? info.color : R.sand,
-                            background:    isActive ? info.color : isHover ? `${info.color}18` : 'transparent',
-                            border:        `1.5px solid ${isActive || isHover ? info.color : R.border}`,
-                            borderRadius:  '0px',
-                            padding:       '5px 9px',
-                            cursor:        'pointer',
-                            transition:    'all 130ms ease',
-                            boxShadow:     isActive ? `0 0 10px ${info.color}55` : 'none',
-                            whiteSpace:    'nowrap',
-                        }}
-                    >
-                        {info.icon} {info.label}
-                    </button>
-                );
-            })}
-
-            {/* Descripción flotante — position:absolute, no afecta la altura del flex */}
-            {infoVisible && (
-                <div style={{
-                    position:      'absolute',
-                    top:           'calc(100% + 7px)',
-                    left:          0,
-                    fontFamily:    'Courier New, monospace',
-                    fontSize:      '10px',
-                    letterSpacing: '0.05em',
-                    color:         infoVisible.color,
-                    whiteSpace:    'nowrap',
-                    pointerEvents: 'none',
-                    zIndex:        20,
-                    opacity:       0.88,
-                    transition:    'opacity 150ms ease',
-                }}>
-                    ▸ {infoVisible.desc}
-                </div>
-            )}
-        </div>
-    );
-}
-// ── Chips Activos / Vendidos ──────────────────────────────────────────────────
-const ACTIVO_INFO: Record<ActivoKey, { label: string; icon: string; color: string }> = {
-    TODOS:    { icon: '▪', label: 'Todos',    color: R.sand    },
-    ACTIVOS:  { icon: '●', label: 'Activos',  color: '#44ffaa' },
-    VENDIDOS: { icon: '✕', label: 'Vendidos', color: R.red     },
-};
-
-function ActivoFilter({
-    value,
-    onChange,
-}: {
-    value:    ActivoKey;
-    onChange: (v: ActivoKey) => void;
-}): JSX.Element {
-    const KEYS: Exclude<ActivoKey, 'TODOS'>[] = ['ACTIVOS', 'VENDIDOS'];
-    return (
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-            {KEYS.map(key => {
-                const info     = ACTIVO_INFO[key];
-                const isActive = value === key;
-                return (
-                    <button
-                        key={key}
-                        // Toggle: clic sobre el activo lo desactiva (vuelve a TODOS)
-                        onClick={() => onChange(isActive ? 'TODOS' : key)}
-                        title={key === 'ACTIVOS' ? 'Mostrar solo artículos en venta' : 'Mostrar solo artículos vendidos'}
-                        style={{
-                            fontFamily:    'Courier New, monospace',
-                            fontSize:      '10px',
-                            fontWeight:    700,
-                            letterSpacing: '0.10em',
-                            textTransform: 'uppercase',
-                            color:         isActive ? '#09080a' : R.sand,
-                            background:    isActive ? info.color : 'transparent',
-                            border:        `1.5px solid ${isActive ? info.color : R.border}`,
-                            borderRadius:  '0px',
-                            padding:       '5px 9px',
-                            cursor:        'pointer',
-                            transition:    'all 130ms ease',
-                            boxShadow:     isActive ? `0 0 10px ${info.color}55` : 'none',
-                            whiteSpace:    'nowrap',
-                        }}
-                    >
-                        {info.icon} {info.label}
-                    </button>
-                );
-            })}
-        </div>
-    );
-}
-// ── Separador de puntos parpadeantes (entre título y subtítulo) ──────────────
-function PixelDotSeparator(): JSX.Element {
-    const dots = [0, 1, 2, 3, 4];
-    return (
-        <div style={{
-            display:       'flex',
-            flexDirection: 'column',
-            alignItems:    'center',
-            justifyContent:'center',
-            gap:           '4px',
-            flexShrink:    0,
-            padding:       '1px 0',
-        }}>
-            {dots.map(i => (
-                <div
-                    key={i}
-                    style={{
-                        width:      '3px',
-                        height:     '3px',
-                        flexShrink: 0,
-                        background: i % 2 === 0 ? R.amberHi : R.amber,
-                        animation:  `pixelPulse ${1.0 + i * 0.20}s ease-in-out ${i * 110}ms infinite`,
-                    }}
-                />
-            ))}
-        </div>
-    );
-}
-
-// ── Tarjeta de pieza retro — Dark Terminal Arcade ─────────────────────────────
-function RetroCard({ producto: p }: { producto: Producto }): JSX.Element {
-    const badge        = p.estadoConservacion ? BADGE_MAP[p.estadoConservacion] : null;
-    const estadoColor  = p.estadoConservacion ? ESTADO_COLOR[p.estadoConservacion] : R.border;
-    const attrs        = p.atributosEspecificos as Record<string, unknown> | null;
-    const plataforma   = attrs?.['plataforma']      as string | undefined;
-    const anio         = attrs?.['anio']            as number | undefined;
-    const tasacion     = attrs?.['tasacion_ia_eur'] as number | undefined;
-
-    return (
-        <div
+        <button
+            onClick={onClick}
             style={{
-                display:       'flex',
-                flexDirection: 'column',
-                height:        '100%',
-                background:    R.surface,
-                border:        `2px solid ${estadoColor}30`,
-                borderRadius:  '0px',
-                boxShadow:     `4px 4px 0 rgba(0,0,0,0.90)`,
-                position:      'relative',
-                overflow:      'hidden',
-                opacity:       p.activo ? 1 : 0.50,
-                transition:    'transform 130ms ease, box-shadow 130ms ease, border-color 130ms ease',
+                fontFamily:    'var(--font-display)',
+                fontSize:      '10px',
+                fontWeight:    700,
+                letterSpacing: '0.10em',
+                textTransform: 'uppercase',
+                color:         active ? 'var(--text-inverse)' : 'var(--text-secondary)',
+                background:    active ? color : 'transparent',
+                border:        `1px solid ${active ? color : 'var(--border-default)'}`,
+                borderRadius:  'var(--radius-base)',
+                padding:       '4px 10px',
+                cursor:        'pointer',
+                transition:    'all 150ms var(--ease-out)',
+                whiteSpace:    'nowrap',
             }}
             onMouseEnter={e => {
-                const d = e.currentTarget as HTMLDivElement;
-                d.style.transform   = 'translate(-3px, -3px)';
-                d.style.boxShadow   = `7px 7px 0 rgba(0,0,0,0.90), 0 0 22px ${estadoColor}30`;
-                d.style.borderColor = `${estadoColor}70`;
+                if (!active) (e.currentTarget as HTMLButtonElement).style.borderColor = color;
+                onMouseEnter?.();
             }}
             onMouseLeave={e => {
-                const d = e.currentTarget as HTMLDivElement;
-                d.style.transform   = 'translate(0,0)';
-                d.style.boxShadow   = `4px 4px 0 rgba(0,0,0,0.90)`;
-                d.style.borderColor = `${estadoColor}30`;
+                if (!active) (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                onMouseLeave?.();
             }}
         >
-            {/* Línea de acento superior — color del estado */}
-            <div style={{
-                position:   'absolute', top: 0, left: 0, right: 0,
-                height:     '3px',
-                background: `linear-gradient(90deg, transparent, ${estadoColor}, transparent)`,
-                boxShadow:  `0 0 8px ${estadoColor}80`,
-                zIndex:     5,
-                pointerEvents: 'none',
-            }} />
-
-            {/* Scanlines — capa CRT muy sutil */}
-            <div style={{
-                position:      'absolute', inset: 0, pointerEvents: 'none', zIndex: 4,
-                background:    'repeating-linear-gradient(0deg, transparent 0px, transparent 2px, rgba(0,0,0,0.05) 2px, rgba(0,0,0,0.05) 4px)',
-            }} />
-
-            {/* Overlay VENDIDO — sello retro */}
-            {!p.activo && (
-                <div style={{
-                    position: 'absolute', inset: 0, zIndex: 10,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: 'rgba(5,4,3,0.75)',
-                }}>
-                    <span style={{
-                        fontFamily:    'Courier New, monospace',
-                        fontSize:      '16px',
-                        fontWeight:    700,
-                        letterSpacing: '0.28em',
-                        color:         R.red,
-                        border:        `2px solid ${R.red}`,
-                        outline:       `1px solid ${R.red}40`,
-                        outlineOffset: '4px',
-                        padding:       '5px 16px',
-                        transform:     'rotate(-12deg)',
-                        display:       'inline-block',
-                        textShadow:    `0 0 8px ${R.red}50`,
-                    }}>VENDIDO</span>
-                </div>
-            )}
-
-            {/* HUD bar — SKU · badge */}
-            <div style={{
-                background:     R.elevated,
-                borderBottom:   `1px solid ${R.border}`,
-                padding:        '6px 12px',
-                display:        'flex',
-                justifyContent: 'space-between',
-                alignItems:     'center',
-                gap:            '8px',
-            }}>
-                <span style={{
-                    fontFamily: 'Courier New, monospace', fontSize: '12px', fontWeight: 700,
-                    color: R.sand, letterSpacing: '0.06em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>{p.sku}</span>
-                {badge && (
-                    <span style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '12px', fontWeight: 700,
-                        color: badge.color, letterSpacing: '0.08em', flexShrink: 0,
-                        textShadow: `0 0 6px ${badge.color}50`,
-                    }}>{badge.label}</span>
-                )}
-            </div>
-
-            {/* Cuerpo */}
-            <div style={{ padding: '12px 14px 0', display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
-                <h3 style={{
-                    fontFamily: 'Courier New, monospace', fontSize: '16px', fontWeight: 700,
-                    letterSpacing: '0.03em', textTransform: 'uppercase',
-                    color: R.cream, margin: 0, lineHeight: 1.3,
-                    display: '-webkit-box', WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                }}>{p.nombre}</h3>
-
-                {plataforma && (
-                    <div style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '13px',
-                        color: R.sand, letterSpacing: '0.05em',
-                        display: 'flex', alignItems: 'center', gap: '5px',
-                    }}>
-                        <span style={{ color: R.amber }}>▶</span>
-                        {plataforma}{anio ? ` / ${anio}` : ''}
-                    </div>
-                )}
-
-                {p.descripcion && (
-                    <p style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '13px',
-                        color: R.dust, lineHeight: 1.6, margin: 0, flex: 1,
-                        display: '-webkit-box', WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
-                    }}>{p.descripcion}</p>
-                )}
-
-                {/* Precio estilo HIGH SCORE */}
-                <div style={{
-                    borderTop:     `1px dashed ${R.border}`,
-                    marginTop:     'auto',
-                    paddingTop:    '11px',
-                    paddingBottom: '14px',
-                    background:    'rgba(0,0,0,0.18)',
-                    borderRadius:  '0 0 0 0',
-                }}>
-                    <div style={{
-                        fontFamily: 'Courier New, monospace', fontSize: '10px', fontWeight: 700,
-                        letterSpacing: '0.20em', color: R.dust, textTransform: 'uppercase', marginBottom: '5px',
-                    }}>HIGH SCORE</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
-                        <span style={{
-                            fontFamily: 'Courier New, monospace', fontSize: '30px', fontWeight: 700,
-                            color: R.amberHi, lineHeight: 1,
-                            textShadow: `0 0 12px rgba(255,224,128,0.26)`,
-                        }}>€{p.precioVenta.toFixed(2)}</span>
-                        {tasacion && (
-                            <span style={{
-                                fontFamily: 'Courier New, monospace', fontSize: '12px', color: R.dust,
-                            }}>IA €{tasacion.toFixed(2)}</span>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </div>
+            {label}
+        </button>
     );
 }
 
-// ── Página principal ──────────────────────────────────────────────────────────
+// ── Fila expandida con detalle completo ───────────────────────────────────────
+function DetailRow({ p }: { p: Producto }) {
+    const attrs     = p.atributosEspecificos as Record<string, unknown> | null;
+    const anio      = attrs?.['anio']            as number | undefined;
+    const tasacion  = attrs?.['tasacion_ia_eur'] as number | undefined;
+    const plataforma= attrs?.['plataforma']      as string | undefined;
+
+    return (
+        <tr>
+            <td colSpan={7} style={{ padding: 0, borderBottom: '1px solid var(--border-subtle)' }}>
+                <div style={{
+                    background:   'var(--bg-elevated)',
+                    padding:      '16px 20px 16px 44px',
+                    display:      'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap:          '16px',
+                    borderTop:    '1px solid var(--border-subtle)',
+                    animation:    'fadeInUp 160ms var(--ease-out) both',
+                }}>
+                    {p.descripcion && (
+                        <div style={{ gridColumn: '1 / -1' }}>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Descripción</div>
+                            <div style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>{p.descripcion}</div>
+                        </div>
+                    )}
+
+                    {plataforma && (
+                        <div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Plataforma</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-primary)' }}>{plataforma}{anio ? ` · ${anio}` : ''}</div>
+                        </div>
+                    )}
+
+                    <div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Precio venta</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '14px', fontWeight: 700, color: 'var(--accent-gold)' }}>€{p.precioVenta.toFixed(2)}</div>
+                    </div>
+
+                    <div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Precio coste</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)' }}>€{p.precioCoste.toFixed(2)}</div>
+                    </div>
+
+                    {tasacion !== undefined && (
+                        <div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Tasación IA</div>
+                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-cyan)' }}>€{tasacion.toFixed(2)}</div>
+                        </div>
+                    )}
+
+                    <div>
+                        <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Stock</div>
+                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-primary)' }}>{p.stockActual} ud.</div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+    );
+}
+
+// ── Página ────────────────────────────────────────────────────────────────────
 export function BovedaRetroPage(): JSX.Element {
-
-    // Activa el tema retro (tipografía + acentos ámbar) mientras esta página está montada.
-    // Los fondos se sobreescriben directamente en html.style para que body y el shell
-    // de la app reciban también los valores casi negros (el body usa var(--bg-base)).
-    useEffect(() => {
-        const html = document.documentElement;
-        const body = document.body;
-        html.classList.add('theme-retro');
-
-        // Fondos: inline backgroundColor directo en html y body garantiza que
-        // ninguna regla CSS (incluida html.theme-retro) pueda reintroducir
-        // el tono cálido, independientemente de los custom properties.
-        html.style.backgroundColor = '#060606';
-        body.style.backgroundColor = '#060606';
-
-        // Inline style en <html> tiene mayor especificidad que html.theme-retro { }
-        html.style.setProperty('--bg-void',    '#040404');
-        html.style.setProperty('--bg-base',    '#060606');
-        html.style.setProperty('--bg-surface', '#0d0d0d');
-        html.style.setProperty('--bg-elevated','#131313');
-        html.style.setProperty('--bg-overlay', '#1a1a1a');
-        // Acentos: totalmente neutros en los controles de UI (búsqueda,
-        // paginación, focus rings) — el ámbar solo aparece en las RetroCards.
-        html.style.setProperty('--accent-primary',      '#3e3e3e');
-        html.style.setProperty('--accent-primary-glow', 'rgba(60,60,60,0.04)');
-        html.style.setProperty('--accent-cyan',         '#363636');
-        html.style.setProperty('--accent-cyan-glow',    'rgba(54,54,54,0.03)');
-        html.style.setProperty('--border-subtle',       'rgba(200,194,184,0.08)');
-        html.style.setProperty('--border-default',      'rgba(200,194,184,0.13)');
-        html.style.setProperty('--text-primary',        '#f5ead8');
-        html.style.setProperty('--text-secondary',      '#e8e2d8');
-        html.style.setProperty('--text-muted',          '#c8c2b8');
-
-        return (): void => {
-            html.classList.remove('theme-retro');
-            html.style.backgroundColor = '';
-            body.style.backgroundColor = '';
-            html.style.removeProperty('--bg-void');
-            html.style.removeProperty('--bg-base');
-            html.style.removeProperty('--bg-surface');
-            html.style.removeProperty('--bg-elevated');
-            html.style.removeProperty('--bg-overlay');
-            html.style.removeProperty('--accent-primary');
-            html.style.removeProperty('--accent-primary-glow');
-            html.style.removeProperty('--accent-cyan');
-            html.style.removeProperty('--accent-cyan-glow');
-            html.style.removeProperty('--border-subtle');
-            html.style.removeProperty('--border-default');
-            html.style.removeProperty('--text-primary');
-            html.style.removeProperty('--text-secondary');
-            html.style.removeProperty('--text-muted');
-        };
-    }, []);
 
     const filters = useTableFilters({ key: 'boveda', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination, search: activeSearch, page: activePage, limit: activeLimit } = filters;
 
-    const [rows,          setRows]          = useState<Producto[]>([]);
-    const [isLoading,     setIsLoading]     = useState(true);
-    const [filterEstado,  setFilterEstado]  = useState<EstadoKey>('TODOS');
-    const [filterActivo,  setFilterActivo]  = useState<ActivoKey>('TODOS');
-    const [modalOpen,     setModalOpen]     = useState(false);
+    const [rows,         setRows]         = useState<Producto[]>([]);
+    const [isLoading,    setIsLoading]    = useState(true);
+    const [filterEstado, setFilterEstado] = useState<EstadoKey>('TODOS');
+    const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [expandedId,      setExpandedId]      = useState<number | null>(null);
+    const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
+    const [modalOpen,    setModalOpen]    = useState(false);
     const [prefill,      setPrefill]      = useState<Partial<ProductForm> | undefined>(undefined);
-
-    const [localData] = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
+    const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
     useEffect(() => {
         let cancelled = false;
-
-        // Siempre activar loading — el skeleton solo se muestra si rows.length === 0,
-        // así no hay parpadeo cuando ya hay datos cargados.
         setIsLoading(true);
 
         const params = buildParams();
@@ -472,19 +178,17 @@ export function BovedaRetroPage(): JSX.Element {
         api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
             .then(({ data }) => {
                 if (!cancelled) {
-                    // El backend puede ignorar los params estado/activo.
-                    // Aplicamos filtro cliente sobre la respuesta como garantía.
-                    const filteredContent = data.content.filter(p => {
+                    const filtered = data.content.filter(p => {
                         const matchEstado = filterEstado === 'TODOS' || p.estadoConservacion === filterEstado;
                         const matchActivo = filterActivo === 'TODOS'
                             || (filterActivo === 'ACTIVOS' ? p.activo === true : p.activo === false);
                         return matchEstado && matchActivo;
                     });
                     const hasFilter = filterEstado !== 'TODOS' || filterActivo !== 'TODOS';
-                    setRows(filteredContent);
+                    setRows(filtered);
                     setPagination(
-                        hasFilter ? filteredContent.length                                   : data.totalElements,
-                        hasFilter ? (Math.ceil(filteredContent.length / activeLimit) || 1)  : data.totalPages,
+                        hasFilter ? filtered.length : data.totalElements,
+                        hasFilter ? (Math.ceil(filtered.length / activeLimit) || 1) : data.totalPages,
                     );
                     setIsLoading(false);
                 }
@@ -498,229 +202,239 @@ export function BovedaRetroPage(): JSX.Element {
                 }
             });
 
-        return (): void => { cancelled = true; };
+        return () => { cancelled = true; };
     }, [filters.querySignal, filterEstado, filterActivo, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
     function handleRegistrar(data: Partial<ProductForm>): void { setPrefill(data); setModalOpen(true); }
-
-    const handleSave = useCallback((
-        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>
-    ): void => { void data; setModalOpen(false); setPrefill(undefined); }, []);
+    const handleSave = useCallback((data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>): void => {
+        void data; setModalOpen(false); setPrefill(undefined);
+    }, []);
 
     return (
-        <>
-            <style>{`
-                @keyframes retroBlink {
-                    0%,49% { opacity:1; } 50%,100% { opacity:0; }
-                }
-                @keyframes retroGlow {
-                    0%,100% { text-shadow: 0 0 10px rgba(196,138,18,0.28), 0 0 24px rgba(168,114,6,0.10); }
-                    50%     { text-shadow: 0 0 16px rgba(196,138,18,0.42), 0 0 36px rgba(168,114,6,0.16); }
-                }
-                @keyframes retroFadeIn {
-                    from { opacity:0; transform:translateY(8px); }
-                    to   { opacity:1; transform:translateY(0); }
-                }
-                @keyframes skRetro {
-                    0%,100% { opacity:0.15; } 50% { opacity:0.38; }
-                }
-                @keyframes pixelPulse {
-                    0%,100% { opacity:0.25; transform:scale(1); }
-                    50%     { opacity:0.80; transform:scale(1.35); }
-                }
-            `}</style>
-
-            {/*
-              Sobreescribimos las vars de fondo de theme-retro (que son cálidas/naranjas)
-              con valores casi-negros. El ámbar sigue siendo el acento, pero no el fondo.
-            */}
-            <div
-                className="crt-overlay"
-                style={{
-                    minHeight:   '100%',
-                    background:  R.bg,
-                    // Fondos casi negros — ningún tono cálido en el fondo
-                    '--bg-void':     '#040404',
-                    '--bg-base':     R.bg,
-                    '--bg-surface':  R.surface,
-                    '--bg-elevated': R.elevated,
-                    '--bg-overlay':  '#141414',
-                    // Acentos neutros en controles de UI — el ámbar solo aparece
-                    // en las RetroCards (precio, badges, SKU) mediante R.amber / R.amberHi.
-                    '--accent-primary':      '#3e3e3e',
-                    '--accent-primary-glow': 'rgba(60,60,60,0.04)',
-                    '--accent-cyan':         '#363636',
-                    '--accent-cyan-glow':    'rgba(54,54,54,0.03)',
-                    '--border-subtle':       'rgba(200,194,184,0.08)',
-                    '--border-default':      'rgba(200,194,184,0.13)',
-                    '--border-strong':       'rgba(200,194,184,0.22)',
-                    // Texto: blanco cálido muy claro — "naranja muy claro, tirando a blanco"
-                    '--text-primary':   R.cream,
-                    '--text-secondary': R.sand,
-                    '--text-muted':     R.dust,
-                } as React.CSSProperties}
-            >
-
-                {/* ── Tasador IA ─────────────────────────────────────────────── */}
-                <TasadorIA onRegistrar={handleRegistrar} />
-
-                {/* ── Marquee header con puntos laterales animados ────────────── */}
-                <div style={{
-                    position:     'relative',
-                    marginBottom: '24px',
-                    padding:      '18px 20px',
-                    border:       `1px solid ${R.border}`,
-                    // Fondo muy sutil, casi transparente
-                    background:   'transparent',
-                    minHeight:    '56px',
-                }}>
-                    {/* ── Esquinas pixel art ── */}
-                    {(['tl','tr','bl','br'] as const).map(pos => (
-                        <div key={pos} style={{
-                            position:    'absolute',
-                            width: '10px', height: '10px',
-                            top:    pos.startsWith('t') ? '-1px' : 'auto',
-                            bottom: pos.startsWith('b') ? '-1px' : 'auto',
-                            left:   pos.endsWith('l')   ? '-1px' : 'auto',
-                            right:  pos.endsWith('r')   ? '-1px' : 'auto',
-                            borderTop:    pos.startsWith('t') ? `2px solid ${R.amberHi}` : 'none',
-                            borderBottom: pos.startsWith('b') ? `2px solid ${R.amberHi}` : 'none',
-                            borderLeft:   pos.endsWith('l')   ? `2px solid ${R.amberHi}` : 'none',
-                            borderRight:  pos.endsWith('r')   ? `2px solid ${R.amberHi}` : 'none',
-                        }} />
-                    ))}
-
-                    {/* ── Contenido centrado entre los puntos ── */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                        <PixelDotSeparator />
-
-                        <h1 style={{
-                            fontFamily:    'Courier New, monospace',
-                            fontSize:      'clamp(20px, 3vw, 32px)',
-                            fontWeight:    700,
-                            letterSpacing: '0.10em',
-                            textTransform: 'uppercase',
-                            color:         R.cream,
-                            margin:        0,
-                            lineHeight:    1,
-                        }}>
-                            La Bóveda{' '}
-                            <span style={{ color: R.amberHi, animation: 'retroGlow 2.8s ease-in-out infinite' }}>
-                                RETRO
-                            </span>
-                        </h1>
-
-                        <PixelDotSeparator />
-
+        <div>
+            {/* ── Cabecera ── */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                    <h1 style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      'var(--text-3xl)',
+                        fontWeight:    700,
+                        letterSpacing: '-0.02em',
+                        textTransform: 'uppercase',
+                        color:         'var(--text-primary)',
+                        lineHeight:    1.1,
+                        margin:        0,
+                    }}>
+                        LA{' '}
                         <span style={{
-                            fontFamily:    'Courier New, monospace',
-                            fontSize:      '13px',
-                            color:         R.sand,
-                            letterSpacing: '0.16em',
-                            textTransform: 'uppercase',
-                        }}>Coleccionismo</span>
-
-                        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span style={{ width: '1px', height: '14px', background: R.border, flexShrink: 0 }} />
-                            <span style={{
-                                fontFamily:    'Courier New, monospace',
-                                fontSize:      '12px',
-                                color:         R.amber,
-                                letterSpacing: '0.14em',
-                                textTransform: 'uppercase',
-                                textShadow:    `0 0 6px rgba(255,184,48,0.30)`,
-                                animation:     'retroBlink 1.2s step-end infinite',
-                            }}>► INSERT COIN</span>
-                        </span>
-                    </div>
-                </div>
-
-                {/* ── Controles de búsqueda y filtros ────────────────────────── */}
-                <div style={{ marginBottom: '24px' }}>
-                    <TableControls
-                        filters={filters}
-                        isLoading={isLoading}
-                        entityLabel="pieza"
-                        entityLabelPlural="piezas"
-                        searchPlaceholder="Buscar por nombre o SKU..."
-                        extraFilters={
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                <EstadoFilter
-                                    value={filterEstado}
-                                    onChange={v => {
-                                        setFilterEstado(v);
-                                        // Siempre resetea filterActivo — así aunque filterEstado
-                                        // ya fuera 'TODOS', filterActivo cambia y el effect se dispara.
-                                        setFilterActivo('TODOS');
-                                        filters.setPage(0);
-                                    }}
-                                />
-                                <span style={{ width: '1px', height: '22px', background: R.border, flexShrink: 0 }} />
-                                <ActivoFilter
-                                    value={filterActivo}
-                                    onChange={v => {
-                                        setFilterActivo(v);
-                                        // Siempre resetea filterEstado — misma razón.
-                                        setFilterEstado('TODOS');
-                                        filters.setPage(0);
-                                    }}
-                                />
-                            </div>
-                        }
-                    />
-                </div>
-
-                {/* ── Grid de piezas ─────────────────────────────────────────── */}
-                {/* Skeleton solo en la carga inicial (sin datos previos).
-                    En cambios de filtro se conserva el grid con fade para evitar el parpadeo. */}
-                {(isLoading && rows.length === 0) ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '18px' }}>
-                        {Array.from({ length: Math.min(filters.limit, 8) }).map((_, i) => (
-                            <div key={i} style={{
-                                background: R.surface, border: `2px solid ${R.border}`,
-                                borderRadius: '0', boxShadow: '4px 4px 0 rgba(0,0,0,0.9)',
-                                minHeight: '210px', overflow: 'hidden',
-                            }}>
-                                <div style={{
-                                    height: '26px', background: R.elevated,
-                                    borderBottom: `1px solid ${R.border}`,
-                                    animation: `skRetro 1.5s ease-in-out ${i * 100}ms infinite`,
-                                }} />
-                                <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                    {[55, 80, 60].map((w, j) => (
-                                        <div key={j} style={{
-                                            height: '10px', width: `${w}%`, borderRadius: '0',
-                                            background: `rgba(200,145,20,0.10)`,
-                                            animation: `skRetro 1.5s ease-in-out ${i * 100 + j * 50}ms infinite`,
-                                        }} />
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : rows.length === 0 ? (
-                    <div style={{
-                        textAlign: 'center', padding: '60px 20px',
-                        border: `1px solid ${R.border}`, background: R.surface,
+                            background:              'linear-gradient(125deg, #FCD34D 0%, #F59E0B 45%, #D97706 100%)',
+                            WebkitBackgroundClip:    'text',
+                            WebkitTextFillColor:     'transparent',
+                            backgroundClip:          'text',
+                            filter:                  'drop-shadow(0 0 12px rgba(251,191,36,0.35))',
+                            display:                 'inline-block',
+                        }}>
+                            BÓVEDA
+                        </span>{' '}
+                        RETRO
+                    </h1>
+                    <span style={{
+                        fontFamily:    'var(--font-mono)',
+                        fontSize:      '10px',
+                        color:         'var(--accent-gold)',
+                        border:        '1px solid rgba(251,191,36,0.45)',
+                        borderRadius:  '3px',
+                        padding:       '2px 8px',
+                        letterSpacing: '0.10em',
+                        background:    'rgba(251,191,36,0.07)',
+                        flexShrink:    0,
+                        alignSelf:     'center',
                     }}>
-                        <div style={{ fontFamily: 'Courier New, monospace', fontSize: '32px', color: `${R.amber}30`, marginBottom: '12px' }}>◈◈◈</div>
-                        <div style={{ fontFamily: 'Courier New, monospace', fontSize: '14px', fontWeight: 700, color: R.sand, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: '6px' }}>
-                            NO DATA FOUND
+                        ◆ COLECCIONISMO
+                    </span>
+                </div>
+            </div>
+
+            {/* ── Tasador IA ── */}
+            <TasadorIA onRegistrar={handleRegistrar} />
+
+            {/* ── Filtros de estado ── */}
+            {(() => {
+                const activeDesc = hoveredEstado
+                    ? ESTADO_META[hoveredEstado].desc
+                    : filterEstado !== 'TODOS' ? ESTADO_META[filterEstado].desc : '';
+                return (
+                    <div style={{ marginBottom: '8px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                            {(Object.keys(ESTADO_META) as EstadoKey[]).map(key => (
+                                <FilterChip
+                                    key={key}
+                                    label={ESTADO_META[key].label}
+                                    color={ESTADO_META[key].color}
+                                    active={filterEstado === key}
+                                    onClick={() => { setFilterEstado(key); setFilterActivo('TODOS'); filters.setPage(0); }}
+                                    onMouseEnter={() => setHoveredEstado(key)}
+                                    onMouseLeave={() => setHoveredEstado(null)}
+                                />
+                            ))}
+                            <div style={{ width: '1px', background: 'var(--border-subtle)', margin: '0 2px', alignSelf: 'stretch' }} />
+                            {(['ACTIVOS', 'VENDIDOS'] as ActivoKey[]).map(key => (
+                                <FilterChip
+                                    key={key}
+                                    label={key === 'ACTIVOS' ? 'Disponibles' : 'Vendidos'}
+                                    color={key === 'ACTIVOS' ? 'var(--accent-primary)' : 'var(--accent-danger)'}
+                                    active={filterActivo === key}
+                                    onClick={() => { setFilterActivo(filterActivo === key ? 'TODOS' : key); setFilterEstado('TODOS'); filters.setPage(0); }}
+                                />
+                            ))}
                         </div>
-                        <div style={{ fontFamily: 'Courier New, monospace', fontSize: '11px', color: R.dust, letterSpacing: '0.08em' }}>
-                            {filters.search ? `0 RESULTADOS PARA "${filters.search.toUpperCase()}"` : 'SIN PIEZAS EN EL CATÁLOGO'}
+                        {/* Descripción del estado — fade in/out */}
+                        <div style={{
+                            height:        '18px',
+                            marginTop:     '5px',
+                            fontFamily:    'var(--font-mono)',
+                            fontSize:      '10px',
+                            color:         hoveredEstado ? ESTADO_META[hoveredEstado].color : 'var(--text-muted)',
+                            letterSpacing: '0.04em',
+                            opacity:       activeDesc ? 0.75 : 0,
+                            transition:    'opacity 150ms ease, color 150ms ease',
+                            pointerEvents: 'none',
+                        }}>
+                            {activeDesc ? `▸ ${activeDesc}` : ''}
                         </div>
                     </div>
-                ) : (
-                    <div style={{
-                        display:             'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                        gridAutoRows:        '252px',
-                        gap:                 '18px',
-                    }}>
-                        {rows.map(p => <RetroCard key={p.id} producto={p} />)}
-                    </div>
-                )}
+                );
+            })()}
+
+            {/* ── Búsqueda y paginación ── */}
+            <div style={{ marginBottom: '16px' }}>
+                <TableControls
+                    filters={filters}
+                    isLoading={isLoading}
+                    entityLabel="pieza"
+                    entityLabelPlural="piezas"
+                    searchPlaceholder="Buscar por nombre o SKU..."
+                />
+            </div>
+
+            {/* ── Tabla ── */}
+            <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
+                                {['Estado', 'SKU', 'Nombre', 'Plataforma', 'Precio', 'Disponibilidad', ''].map(h => (
+                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                                        {h}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody style={{ opacity: isLoading && rows.length > 0 ? 0.5 : 1, transition: 'opacity 200ms' }}>
+                            {isLoading && rows.length === 0 && (
+                                <SkeletonRows rows={Math.min(filters.limit, 8)} cols={7} />
+                            )}
+                            {!isLoading && rows.length === 0 && (
+                                <tr>
+                                    <td colSpan={7} style={{ padding: '48px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
+                                        {filters.search
+                                            ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
+                                            : 'SIN PIEZAS EN EL CATÁLOGO'}
+                                    </td>
+                                </tr>
+                            )}
+                            {rows.map(p => {
+                                const isExpanded = expandedId === p.id;
+                                const estadoMeta = p.estadoConservacion ? ESTADO_META[p.estadoConservacion] : null;
+                                const attrs      = p.atributosEspecificos as Record<string, unknown> | null;
+                                const plataforma = attrs?.['plataforma'] as string | undefined;
+                                const anio       = attrs?.['anio']       as number | undefined;
+
+                                return (
+                                    <>
+                                        <tr
+                                            key={p.id}
+                                            onClick={() => setExpandedId(isExpanded ? null : p.id)}
+                                            style={{
+                                                borderBottom:  isExpanded ? 'none' : '1px solid var(--border-subtle)',
+                                                cursor:        'pointer',
+                                                background:    isExpanded ? 'var(--bg-elevated)' : 'transparent',
+                                                opacity:       p.activo ? 1 : 0.45,
+                                                transition:    'background 120ms ease',
+                                                borderLeft:    isExpanded ? '2px solid var(--accent-gold)' : '2px solid transparent',
+                                            }}
+                                            onMouseEnter={e => { if (!isExpanded) (e.currentTarget as HTMLTableRowElement).style.background = 'var(--bg-overlay)'; }}
+                                            onMouseLeave={e => { if (!isExpanded) (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                                        >
+                                            {/* Estado */}
+                                            <td style={{ padding: '12px 16px' }}>
+                                                {estadoMeta && (
+                                                    <span style={{
+                                                        fontFamily:    'var(--font-mono)',
+                                                        fontSize:      '9px',
+                                                        fontWeight:    700,
+                                                        letterSpacing: '0.08em',
+                                                        color:         estadoMeta.color,
+                                                        border:        `1px solid ${estadoMeta.color}`,
+                                                        borderRadius:  '3px',
+                                                        padding:       '2px 6px',
+                                                        background:    `${estadoMeta.color}12`,
+                                                        whiteSpace:    'nowrap',
+                                                    }}>
+                                                        {estadoMeta.label}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* SKU */}
+                                            <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                                {p.sku}
+                                            </td>
+
+                                            {/* Nombre */}
+                                            <td style={{ padding: '12px 16px', fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-primary)', maxWidth: '260px' }}>
+                                                <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                    {p.nombre}
+                                                </div>
+                                            </td>
+
+                                            {/* Plataforma */}
+                                            <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                                                {plataforma ? `${plataforma}${anio ? ` · ${anio}` : ''}` : '—'}
+                                            </td>
+
+                                            {/* Precio */}
+                                            <td style={{ padding: '12px 16px', fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--accent-gold)', whiteSpace: 'nowrap' }}>
+                                                €{p.precioVenta.toFixed(2)}
+                                            </td>
+
+                                            {/* Disponibilidad */}
+                                            <td style={{ padding: '12px 16px' }}>
+                                                <span className={p.activo ? 'badge badge-green' : 'badge badge-danger'} style={{ fontSize: '9px' }}>
+                                                    {p.activo ? '● DISPONIBLE' : '✕ VENDIDO'}
+                                                </span>
+                                            </td>
+
+                                            {/* Expand */}
+                                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                <span style={{
+                                                    display:    'inline-block',
+                                                    fontFamily: 'var(--font-mono)',
+                                                    fontSize:   '10px',
+                                                    color:      'var(--text-muted)',
+                                                    transform:  isExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                                                    transition: 'transform 200ms var(--ease-out)',
+                                                }}>▶</span>
+                                            </td>
+                                        </tr>
+
+                                        {isExpanded && <DetailRow key={`${p.id}-detail`} p={p} />}
+                                    </>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <ProductModal
@@ -730,6 +444,7 @@ export function BovedaRetroPage(): JSX.Element {
                 onSave={handleSave}
                 initialValues={prefill}
             />
-        </>
+        </div>
     );
 }
+

@@ -45,6 +45,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
 
     useEffect(() => { setShowMenu(false); }, [user]);
 
+    const isDark      = theme === 'dark';
     const email       = user?.email ?? '';
     const initials    = email ? email.slice(0, 2).toUpperCase() : '';
     const username    = email ? email.split('@')[0].toUpperCase() : '';
@@ -52,18 +53,23 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
 
     return (
         <header style={{
-            height:       '56px',
-            background:   'var(--bg-surface)',
-            borderBottom: '1px solid var(--border-subtle)',
-            display:      'flex',
-            alignItems:   'center',
-            padding:      '0 16px',
-            gap:          '10px',
-            flexShrink:   0,
-            position:     'sticky',
-            top:          0,
-            zIndex:       10,
-            transition:   `padding ${TRANSITION}`,
+            height:              '56px',
+            background:          isDark ? 'rgba(22,27,34,0.90)' : 'rgba(255,255,255,0.92)',
+            backdropFilter:      'blur(16px)',
+            WebkitBackdropFilter:'blur(16px)',
+            borderBottom:        `1px solid ${isDark ? 'rgba(240,246,252,0.16)' : 'rgba(15,23,42,0.12)'}`,
+            display:             'flex',
+            alignItems:          'center',
+            padding:             '0 16px',
+            gap:                 '10px',
+            flexShrink:          0,
+            position:            'sticky',
+            top:                 0,
+            zIndex:              10,
+            transition:          `padding ${TRANSITION}, background 260ms ease, border-color 260ms ease`,
+            boxShadow:           isDark
+                ? '0 1px 0 rgba(59,130,246,0.12), 0 6px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35)'
+                : '0 1px 0 rgba(15,23,42,0.06), 0 2px 8px rgba(0,0,0,0.04)',
         }}>
 
             {/* ── Hamburger — fade in/out suave ── */}
@@ -141,7 +147,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                 <div style={{
                     width: '6px', height: '6px', borderRadius: '50%',
                     background: 'var(--accent-primary)',
-                    boxShadow: '0 0 6px var(--accent-primary)',
+                    boxShadow: 'none',
                     flexShrink: 0,
                 }} />
                 <span style={{

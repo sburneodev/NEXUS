@@ -8,14 +8,14 @@
   width: 80px;
   height: 80px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border: 3px solid var(--accent-cyan, #00d4ff);
+  background: linear-gradient(135deg, #1C2128 0%, #22272E 100%);
+  border: 3px solid var(--accent-cyan, #38BDF8);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 
-    0 0 20px rgba(0, 212, 255, 0.4),
-    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  box-shadow:
+    0 2px 12px rgba(56, 189, 248, 0.20),
+    inset 0 0 8px rgba(0, 0, 0, 0.5);
   transition: border-color 0.4s ease, box-shadow 0.4s ease;
 }
 
@@ -25,11 +25,11 @@
   position: absolute;
   inset: 6px;
   border-radius: 6px;
-  background: 
+  background:
     repeating-linear-gradient(
       0deg,
       transparent 0px,
-      rgba(0, 0, 0, 0.15) 1px,
+      rgba(0, 0, 0, 0.12) 1px,
       transparent 2px,
       transparent 4px
     );
@@ -48,8 +48,7 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--accent-cyan, #00d4ff);
-  box-shadow: 0 0 8px currentColor;
+  background: var(--accent-cyan, #38BDF8);
 }
 
 /* ============================================================
@@ -57,12 +56,12 @@
    ============================================================ */
 
 .ia-avatar--idle {
-  border-color: var(--accent-cyan, #00d4ff);
+  border-color: var(--accent-cyan, #38BDF8);
   animation: ia-flotar 3s ease-in-out infinite;
 }
 
 .ia-avatar--idle .ia-avatar__eye {
-  background: var(--accent-cyan, #00d4ff);
+  background: var(--accent-cyan, #38BDF8);
   animation: ia-parpadeo 4s ease-in-out infinite;
 }
 
@@ -81,15 +80,15 @@
    ============================================================ */
 
 .ia-avatar--processing {
-  border-color: var(--accent-warning, #ff8800);
-  box-shadow: 
-    0 0 25px rgba(255, 136, 0, 0.6),
-    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent-warning, #F59E0B);
+  box-shadow:
+    0 2px 12px rgba(245, 158, 11, 0.25),
+    inset 0 0 8px rgba(0, 0, 0, 0.5);
   animation: ia-procesar 0.5s ease-in-out infinite;
 }
 
 .ia-avatar--processing .ia-avatar__eye {
-  background: var(--accent-warning, #ff8800);
+  background: var(--accent-warning, #F59E0B);
   animation: ia-ojos-oscilar 0.4s ease-in-out infinite;
 }
 
@@ -108,14 +107,14 @@
    ============================================================ */
 
 .ia-avatar--alerta {
-  border-color: var(--accent-danger, #ff3355);
-  animation: 
+  border-color: var(--accent-danger, #F87171);
+  animation:
     ia-alerta-vibrar 0.3s ease-in-out infinite,
     ia-alerta-glow 1s ease-in-out infinite;
 }
 
 .ia-avatar--alerta .ia-avatar__eye {
-  background: var(--accent-danger, #ff3355);
+  background: var(--accent-danger, #F87171);
   animation: ia-alerta-eye 0.5s ease-in-out infinite;
 }
 
@@ -126,16 +125,15 @@
 }
 
 @keyframes ia-alerta-glow {
-  0%, 100% { 
-    box-shadow: 
-      0 0 15px rgba(255, 51, 85, 0.5),
-      inset 0 0 8px rgba(0, 0, 0, 0.6);
+  0%, 100% {
+    box-shadow:
+      0 2px 10px rgba(248, 113, 113, 0.25),
+      inset 0 0 8px rgba(0, 0, 0, 0.5);
   }
-  50% { 
-    box-shadow: 
-      0 0 35px rgba(255, 51, 85, 1),
-      0 0 50px rgba(255, 51, 85, 0.6),
-      inset 0 0 8px rgba(0, 0, 0, 0.6);
+  50% {
+    box-shadow:
+      0 4px 20px rgba(248, 113, 113, 0.50),
+      inset 0 0 8px rgba(0, 0, 0, 0.5);
   }
 }
 
@@ -145,19 +143,19 @@
 }
 
 /* ============================================================
-   AVT-04 · ESTADO TALKING — Verde, vibración suave, guiños alternos
+   AVT-04 · ESTADO TALKING — Azul primario, vibración suave
    ============================================================ */
 
 .ia-avatar--talking {
-  border-color: var(--accent-success, #00ff88);
-  box-shadow: 
-    0 0 25px rgba(0, 255, 136, 0.5),
-    inset 0 0 8px rgba(0, 0, 0, 0.6);
+  border-color: var(--accent-primary, #3B82F6);
+  box-shadow:
+    0 2px 12px rgba(59, 130, 246, 0.22),
+    inset 0 0 8px rgba(0, 0, 0, 0.5);
   animation: ia-talking-vibrar 0.4s ease-in-out infinite;
 }
 
 .ia-avatar--talking .ia-avatar__eye {
-  background: var(--accent-success, #00ff88);
+  background: var(--accent-primary, #3B82F6);
 }
 
 .ia-avatar--talking .ia-avatar__eye:nth-child(1) {
@@ -185,15 +183,14 @@
 }
 
 /* ============================================================
-   AVT-06 · CURSOR MÁQUINA DE ESCRIBIR — parpadeo sincronizado
-   con el estado TALKING del avatar
+   AVT-06 · CURSOR MÁQUINA DE ESCRIBIR
    ============================================================ */
 
 .ia-typewriter-cursor {
   display:        inline-block;
   width:          2px;
   height:         1em;
-  background:     var(--accent-success, #00ff88);
+  background:     var(--accent-primary, #3B82F6);
   margin-left:    1px;
   vertical-align: text-bottom;
   border-radius:  1px;
@@ -206,7 +203,7 @@
 }
 
 /* ============================================================
-   ACCESIBILIDAD — Reducir animaciones si el usuario lo prefiere
+   ACCESIBILIDAD
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {

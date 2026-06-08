@@ -37,7 +37,7 @@ type HeaderStatus = 'online' | 'thinking' | 'responding' | 'error';
 const STATUS_META: Record<HeaderStatus, { color: string; label: string }> = {
     online:     { color: 'var(--accent-primary)',          label: 'En línea'      },
     thinking:   { color: 'var(--accent-warning, #ff8800)', label: 'Pensando…'     },
-    responding: { color: 'var(--accent-success, #00ff88)', label: 'Respondiendo…' },
+    responding: { color: 'var(--accent-primary)',          label: 'Respondiendo…' },
     error:      { color: 'var(--accent-danger,  #ff3355)', label: 'Error'         },
 };
 
@@ -73,8 +73,8 @@ function Bubble({ msg, copiedId, onCopy }: BubbleProps): JSX.Element {
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '8px' }}>
                 <div style={{
                     maxWidth:     '78%',
-                    background:   'rgba(0,255,136,0.08)',
-                    border:       '1px solid rgba(0,255,136,0.2)',
+                    background:   'rgba(59,130,246,0.09)',
+                    border:       '1px solid rgba(59,130,246,0.22)',
                     borderRadius: '16px 16px 3px 16px',
                     padding:      '10px 14px',
                     fontFamily:   'var(--font-body)',
@@ -101,8 +101,8 @@ function Bubble({ msg, copiedId, onCopy }: BubbleProps): JSX.Element {
                 width:          '28px',
                 height:         '28px',
                 borderRadius:   'var(--radius-base)',
-                background:     'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,212,255,0.15))',
-                border:         '1px solid rgba(0,255,136,0.2)',
+                background:     'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(56,189,248,0.12))',
+                border:         '1px solid rgba(59,130,246,0.22)',
                 display:        'flex',
                 alignItems:     'center',
                 justifyContent: 'center',
@@ -133,9 +133,9 @@ function Bubble({ msg, copiedId, onCopy }: BubbleProps): JSX.Element {
                             top:           '8px',
                             right:         '8px',
                             background:    copiedId === msg.id
-                                ? 'rgba(0,255,136,0.12)'
+                                ? 'rgba(59,130,246,0.12)'
                                 : 'var(--bg-overlay)',
-                            border:        `1px solid ${copiedId === msg.id ? 'rgba(0,255,136,0.35)' : 'var(--border-default)'}`,
+                            border:        `1px solid ${copiedId === msg.id ? 'rgba(59,130,246,0.35)' : 'var(--border-default)'}`,
                             borderRadius:  'var(--radius-base)',
                             color:         copiedId === msg.id ? 'var(--accent-primary)' : 'var(--text-muted)',
                             fontFamily:    'var(--font-mono)',
@@ -428,7 +428,7 @@ export function AiFab(): JSX.Element {
             background:     'var(--bg-surface)',
             border:         '1px solid var(--border-default)',
             borderRadius:   'var(--radius-xl)',
-            boxShadow:      '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(0,255,136,0.06)',
+            boxShadow:      '0 24px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(59,130,246,0.08)',
             overflow:       'hidden',
             opacity:        isOpen ? 1 : 0,
             transform:      isOpen ? 'scale(1) translateY(0)' : 'scale(0.92) translateY(16px)',
@@ -613,7 +613,7 @@ export function AiFab(): JSX.Element {
                                             width:        '100%',
                                         }}
                                         onMouseEnter={e => {
-                                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(0,255,136,0.3)';
+                                            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.35)';
                                             (e.currentTarget as HTMLButtonElement).style.color       = 'var(--text-primary)';
                                             (e.currentTarget as HTMLButtonElement).style.background  = 'var(--bg-overlay)';
                                         }}
@@ -701,7 +701,7 @@ export function AiFab(): JSX.Element {
                             flexShrink:     0,
                             transition:     'all 160ms',
                             boxShadow:      input.trim() && !loading
-                                ? '0 0 14px rgba(0,255,136,0.28)'
+                                ? '0 0 14px rgba(59,130,246,0.30)'
                                 : 'none',
                         }}
                     >▶</button>

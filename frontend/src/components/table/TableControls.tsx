@@ -184,7 +184,7 @@ export function TableControls({
     const searchBorderColor = showSpinner
         ? 'var(--accent-cyan)'
         : searchInput.length > 0
-            ? 'rgba(0,212,255,0.55)'
+            ? 'rgba(56,189,248,0.55)'
             : 'var(--border-default)';
 
     const pageWindow = getPageWindow(page, totalPages);
@@ -201,7 +201,7 @@ export function TableControls({
                     from { transform: rotate(0deg); }
                     to   { transform: rotate(360deg); }
                 }
-                .tc-search:focus { outline: none; border-color: var(--accent-cyan) !important; box-shadow: 0 0 0 3px rgba(0,212,255,0.10); }
+                .tc-search:focus { outline: none; border-color: var(--accent-cyan) !important; box-shadow: 0 0 0 3px rgba(56,189,248,0.12); }
                 .tc-search:focus-visible { outline: 2px solid var(--accent-cyan) !important; outline-offset: 2px; }
                 .tc-page-btn:focus-visible { outline: 2px solid var(--accent-primary) !important; outline-offset: 2px; box-shadow: 0 0 0 4px var(--accent-primary-glow) !important; }
                 .tc-clear-btn:focus-visible { outline: 2px solid var(--accent-danger) !important; outline-offset: 2px; }

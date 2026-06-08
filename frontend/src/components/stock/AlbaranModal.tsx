@@ -89,9 +89,9 @@ const TIPO_LABEL: Record<TipoMovimiento, string> = {
 };
 
 const TIPO_COLOR_HEX: Record<TipoMovimiento, string> = {
-    ENTRADA: '#00cc6a',
-    SALIDA:  '#ff4466',
-    AJUSTE:  '#ffc845',
+    ENTRADA: '#3B82F6',
+    SALIDA:  '#F87171',
+    AJUSTE:  '#FBBF24',
 };
 
 const TIPO_COLOR_VAR: Record<TipoMovimiento, string> = {
@@ -100,19 +100,21 @@ const TIPO_COLOR_VAR: Record<TipoMovimiento, string> = {
     AJUSTE:  'var(--accent-gold)',
 };
 
-// ── Paleta corporativa (inline: renderizado fuera del contexto CSS de la app) ──
+// ── Paleta corporativa NEXUS (inline: renderizado fuera del contexto CSS de la app)
+// Alineada con NEXUS ERP v3 Design System — azul profundo para documentos impresos ──
 
 const C = {
-    navy:    '#1a2b4c',
-    navyMid: '#2c4070',
-    line:    '#c8d0dc',
-    bgBlock: '#f4f6f9',
-    text:    '#1a1d23',
-    muted:   '#5a6270',
-    faint:   '#e8eaee',
+    navy:    '#0C2A54',   /* azul profundo NEXUS */
+    navyMid: '#1A4080',   /* azul medio */
+    accent:  '#1D4ED8',   /* azul acento NEXUS */
+    line:    '#CBD5E1',   /* slate-300 */
+    bgBlock: '#F1F5F9',   /* slate-100 */
+    text:    '#111827',   /* near-black */
+    muted:   '#4B5563',   /* gray-600 */
+    faint:   '#E2E8F0',   /* slate-200 */
     white:   '#ffffff',
-    font:    "'Inter','Roboto','Helvetica Neue',Helvetica,Arial,sans-serif",
-    mono:    "'Courier New',Courier,monospace",
+    font:    "'Inter','Helvetica Neue',Arial,sans-serif",
+    mono:    "'JetBrains Mono','Courier New',Courier,monospace",
 } as const;
 
 // ── Documento imprimible ───────────────────────────────────────────────────────
@@ -164,7 +166,7 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                 justifyContent: 'space-between',
                 alignItems:     'flex-start',
                 paddingBottom:  '14px',
-                borderBottom:   `3px solid ${C.navy}`,
+                borderBottom:   `3px solid ${C.navy}`,   /* navy NEXUS */
                 marginBottom:   '18px',
             }}>
                 {/* Izquierda: isotipo + marca */}
@@ -186,13 +188,13 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                         <div style={{
                             fontSize:      '9px',
                             color:         C.muted,
-                            letterSpacing: '0.08em',
+                            letterSpacing: '0.10em',
                             textTransform: 'uppercase',
-                            fontWeight:    500,
+                            fontWeight:    600,
                             fontFamily:    C.font,
                             marginTop:     '2px',
                         }}>
-                            ERP · LEVELUP
+                            ERP · LEVELUP ARCADE
                         </div>
                     </div>
                 </div>
@@ -235,7 +237,7 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                     color:         C.navy,
-                    borderLeft:    `4px solid ${C.navy}`,
+                    borderLeft:    `4px solid ${C.accent}`,
                     paddingLeft:   '10px',
                     lineHeight:    1,
                 }}>

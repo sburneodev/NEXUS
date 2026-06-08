@@ -7,9 +7,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth }  from '../../hooks/useAuth';
-import { useTheme } from '../../hooks/useTheme';
-import type { Role } from '../../types/auth';
+import { useAuth }             from '../../hooks/useAuth';
+import { useTheme }            from '../../hooks/useTheme';
+import { CookiePreferences }   from '../cookies/CookiePreferences';
+import type { Role }           from '../../types/auth';
 
 const ROLE_PRIORITY: Role[] = [
     'ADMIN', 'CONTABLE', 'MARKETING_ANALYST', 'GESTOR_INVENTARIO', 'CAJERO',
@@ -32,7 +33,8 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
     const { user, logout }        = useAuth();
     const { theme, toggle }       = useTheme();
     const [time, setTime]         = useState('');
-    const [showMenu, setShowMenu] = useState(false);
+    const [showMenu,        setShowMenu]        = useState(false);
+    const [showCookiePrefs, setShowCookiePrefs] = useState(false);
 
     useEffect(() => {
         const tick = (): void => setTime(new Date().toLocaleTimeString('es-ES', {
@@ -74,6 +76,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
     }, [AVATAR_KEY]);
 
     return (
+    <>
         <header style={{
             height:              '56px',
             background:          isDark ? 'rgba(22,27,34,0.90)' : 'rgba(255,255,255,0.92)',
@@ -395,6 +398,36 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                                         style={{ display: 'none' }}
                                     />
                                 </div>
+                                {/* Privacidad / Cookies */}
+                                <button
+                                    onClick={() => { setShowMenu(false); setShowCookiePrefs(true); }}
+                                    style={{
+                                        width: '100%', textAlign: 'left',
+                                        background: 'transparent', border: 'none',
+                                        borderRadius: 'var(--radius-base)', padding: '8px 12px',
+                                        fontFamily: 'var(--font-display)', fontSize: '12px',
+                                        fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
+                                        transition: 'background 120ms ease, color 120ms ease',
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                    }}
+                                    onMouseEnter={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'var(--bg-overlay)';
+                                        b.style.color = 'var(--text-primary)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'transparent';
+                                        b.style.color = 'var(--text-secondary)';
+                                    }}
+                                >
+                                    🔒 PRIVACIDAD
+                                </button>
+
+                                {/* Separador */}
+                                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }} />
+
                                 <button
                                     onClick={() => { setShowMenu(false); logout(); }}
                                     style={{
@@ -418,5 +451,11 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                 </div>
             )}
         </header>
+
+        {/* Modal de preferencias de privacidad */}
+        {showCookiePrefs && (
+            <CookiePreferences onClose={() => setShowCookiePrefs(false)} />
+        )}
+    </>
     );
 }

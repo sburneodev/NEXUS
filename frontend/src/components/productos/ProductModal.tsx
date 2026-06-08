@@ -6,7 +6,7 @@
  * Validación básica: campos requeridos y tipos numéricos.
  */
 
-import { useState, useEffect, FormEvent } from 'react';
+import { useState, useEffect, useRef, FormEvent } from 'react';
 import type { Producto, TipoProducto, EstadoConservacion } from '../../types/models';
 import api from '../../services/api';
 
@@ -87,17 +87,27 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
     const [ubicaciones,        setUbicaciones]        = useState<UbicacionOption[]>([]);
     const [ubicacionesLoading, setUbicacionesLoading] = useState(false);
     const [ubicacionesError,   setUbicacionesError]   = useState(false);
+    const [ubicacionesRetry,   setUbicacionesRetry]   = useState(0);
 
-    // Carga las ubicaciones del almacén al abrir el modal
+    // Carga las ubicaciones del almacén al abrir el modal (o al pulsar Reintentar)
     useEffect(() => {
         if (!isOpen) return;
         setUbicacionesLoading(true);
         setUbicacionesError(false);
         api.get<UbicacionOption[]>('/almacen/ubicaciones')
-            .then(r => { setUbicaciones(r.data); })
-            .catch(() => { setUbicacionesError(true); setUbicaciones([]); })
+            .then(r => {
+                // Validar que la respuesta es un array antes de usarla
+                const data = Array.isArray(r.data) ? r.data : [];
+                setUbicaciones(data);
+            })
+            .catch((err: unknown) => {
+                const status = (err as { response?: { status?: number } })?.response?.status;
+                console.error('[ProductModal] Error cargando ubicaciones:', status, err);
+                setUbicacionesError(true);
+                setUbicaciones([]);
+            })
             .finally(() => setUbicacionesLoading(false));
-    }, [isOpen]);
+    }, [isOpen, ubicacionesRetry]);
 
     useEffect(() => {
         if (producto) {
@@ -320,79 +330,15 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                         {/* ── Selector de ubicación en almacén ───────────────── */}
                         <div style={{ gridColumn: '1 / -1' }}>
                             <label style={labelStyle}>Ubicación en Almacén</label>
-                            <select
+                            <UbicacionPicker
+                                ubicaciones={ubicaciones}
+                                loading={ubicacionesLoading}
+                                error={ubicacionesError}
                                 value={form.idUbicacion}
-                                onChange={e => setForm(prev => ({ ...prev, idUbicacion: e.target.value }))}
-                                disabled={ubicacionesLoading}
-                                style={{
-                                    ...inputStyle,
-                                    color:   form.idUbicacion ? 'var(--text-primary)' : 'var(--text-muted)',
-                                    opacity: ubicacionesLoading ? 0.6 : 1,
-                                    cursor:  ubicacionesLoading ? 'wait' : 'pointer',
-                                }}
-                                onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
-                                onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
-                            >
-                                {ubicacionesLoading ? (
-                                    <option value="">Cargando ubicaciones…</option>
-                                ) : ubicacionesError ? (
-                                    <option value="">— Error al cargar (puedes guardar igualmente) —</option>
-                                ) : (
-                                    <>
-                                        <option value="">— Sin ubicación asignada —</option>
-                                        {/* Agrupa por pasillo */}
-                                        {Array.from(new Set(ubicaciones.map(u => u.pasillo))).map(pasillo => (
-                                            <optgroup key={pasillo} label={`Pasillo ${pasillo}`}>
-                                                {ubicaciones
-                                                    .filter(u => u.pasillo === pasillo)
-                                                    .map(u => {
-                                                        const isCurrentProduct = producto && String(producto.idUbicacion) === String(u.id);
-                                                        const libre = !u.ocupada || isCurrentProduct;
-                                                        const label = `${u.pasillo} · Est. ${u.estanteria} · Nivel ${u.nivel}`;
-                                                        const suffix = libre
-                                                            ? '  ✓ libre'
-                                                            : `  ✕ ocupada${u.productoNombre ? ` (${u.productoNombre})` : ''}`;
-                                                        return (
-                                                            <option key={u.id} value={String(u.id)} disabled={!libre}>
-                                                                {label}{suffix}
-                                                            </option>
-                                                        );
-                                                    })}
-                                            </optgroup>
-                                        ))}
-                                    </>
-                                )}
-                            </select>
-                            {/* Resumen de la ubicación seleccionada */}
-                            {form.idUbicacion && (() => {
-                                const sel = ubicaciones.find(u => String(u.id) === form.idUbicacion);
-                                if (!sel) return null;
-                                return (
-                                    <div style={{
-                                        marginTop:     '6px',
-                                        display:       'flex',
-                                        alignItems:    'center',
-                                        gap:           '8px',
-                                        fontFamily:    'var(--font-mono)',
-                                        fontSize:      '10px',
-                                        color:         'var(--text-muted)',
-                                        letterSpacing: '0.04em',
-                                    }}>
-                                        <span style={{
-                                            color:         'var(--accent-cyan)',
-                                            border:        '1px solid var(--accent-cyan-glow)',
-                                            borderRadius:  '3px',
-                                            padding:       '1px 6px',
-                                            background:    'var(--accent-cyan-glow)',
-                                        }}>
-                                            {sel.pasillo} · {sel.estanteria} · Nv.{sel.nivel}
-                                        </span>
-                                        <span style={{ color: (!sel.ocupada || (producto && String(producto.idUbicacion) === String(sel.id))) ? 'var(--accent-primary)' : 'var(--accent-danger)' }}>
-                                            {(!sel.ocupada || (producto && String(producto.idUbicacion) === String(sel.id))) ? '● Disponible' : '✕ Ocupada'}
-                                        </span>
-                                    </div>
-                                );
-                            })()}
+                                productoActual={producto}
+                                onChange={id => setForm(prev => ({ ...prev, idUbicacion: id }))}
+                                onRetry={() => setUbicacionesRetry(n => n + 1)}
+                            />
                         </div>
 
                         {/* Descripción — ancho completo */}
@@ -536,3 +482,280 @@ const saveBtnStyle: React.CSSProperties = {
     transition:    'opacity 160ms ease',
     boxShadow:     '0 0 16px var(--accent-primary-glow)',
 };
+
+// ── UbicacionPicker — dropdown custom con badges de estado ───────────
+
+interface UbicacionPickerProps {
+    ubicaciones:   UbicacionOption[];
+    loading:       boolean;
+    error:         boolean;
+    value:         string;
+    productoActual: Producto | null;
+    onChange:      (id: string) => void;
+    onRetry:       () => void;
+}
+
+function UbicacionPicker({
+    ubicaciones, loading, error, value, productoActual, onChange, onRetry,
+}: UbicacionPickerProps): JSX.Element {
+    const [open, setOpen] = useState(false);
+    const ref             = useRef<HTMLDivElement>(null);
+
+    // Cierra el dropdown si se hace click fuera
+    useEffect(() => {
+        if (!open) return;
+        function handler(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, [open]);
+
+    const selected = ubicaciones.find(u => String(u.id) === value) ?? null;
+
+    // Solo mostramos ubicaciones libres (o la propia del producto en edición)
+    const visibles = ubicaciones.filter(u => isLibre(u));
+    const pasillos = Array.from(new Set(visibles.map(u => u.pasillo)));
+
+    function isLibre(u: UbicacionOption): boolean {
+        if (!u.ocupada) return true;
+        // Si la ubicación pertenece al producto que se está editando, se considera libre
+        return productoActual != null && String(productoActual.idUbicacion) === String(u.id);
+    }
+
+    // ── Estado de error ────────────────────────────────────────────────
+    if (error) {
+        return (
+            <div style={{
+                display:        'flex',
+                alignItems:     'center',
+                justifyContent: 'space-between',
+                gap:            '10px',
+                background:     'rgba(248,113,113,0.06)',
+                border:         '1px solid rgba(248,113,113,0.25)',
+                borderRadius:   '6px',
+                padding:        '9px 12px',
+            }}>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+                    ⚠ Ubicaciones no disponibles temporalmente
+                </span>
+                <button
+                    type="button"
+                    onClick={onRetry}
+                    style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '10px',
+                        fontWeight:    700,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        padding:       '4px 10px',
+                        background:    'transparent',
+                        color:         'var(--accent-cyan)',
+                        border:        '1px solid var(--accent-cyan)',
+                        borderRadius:  '4px',
+                        cursor:        'pointer',
+                        flexShrink:    0,
+                    }}
+                >
+                    ↺ Reintentar
+                </button>
+            </div>
+        );
+    }
+
+    // ── Trigger (botón que muestra la selección actual) ────────────────
+    return (
+        <div ref={ref} style={{ position: 'relative' }}>
+            <button
+                type="button"
+                disabled={loading}
+                onClick={() => setOpen(p => !p)}
+                style={{
+                    ...inputStyle,
+                    display:        'flex',
+                    alignItems:     'center',
+                    justifyContent: 'space-between',
+                    cursor:         loading ? 'wait' : 'pointer',
+                    opacity:        loading ? 0.6 : 1,
+                    textAlign:      'left',
+                    gap:            '8px',
+                }}
+            >
+                {loading ? (
+                    <span style={{ color: 'var(--text-muted)' }}>Cargando ubicaciones…</span>
+                ) : selected ? (
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+                        <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                            Pasillo {selected.pasillo} · Est. {selected.estanteria} · Nivel {selected.nivel}
+                        </span>
+                        <span style={{
+                            fontFamily:    'var(--font-display)',
+                            fontSize:      '9px',
+                            fontWeight:    700,
+                            letterSpacing: '0.08em',
+                            padding:       '2px 6px',
+                            borderRadius:  '3px',
+                            background:    isLibre(selected) ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)',
+                            color:         isLibre(selected) ? '#22C55E' : 'var(--accent-danger)',
+                            border:        `1px solid ${isLibre(selected) ? 'rgba(34,197,94,0.30)' : 'rgba(248,113,113,0.30)'}`,
+                            flexShrink:    0,
+                        }}>
+                            {isLibre(selected) ? 'LIBRE' : 'OCUPADO'}
+                        </span>
+                    </span>
+                ) : (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>— Sin ubicación asignada —</span>
+                )}
+                <span style={{ color: 'var(--text-muted)', fontSize: '10px', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
+            </button>
+
+            {/* ── Lista desplegable ──────────────────────────────────── */}
+            {open && (
+                <div style={{
+                    position:   'absolute',
+                    top:        'calc(100% + 4px)',
+                    left:       0,
+                    right:      0,
+                    zIndex:     500,
+                    background: 'var(--bg-elevated)',
+                    border:     '1px solid var(--border-default)',
+                    borderRadius: '8px',
+                    boxShadow:  'var(--shadow-lg)',
+                    maxHeight:  '260px',
+                    overflowY:  'auto',
+                    animation:  'fadeInUp 0.12s cubic-bezier(0.23,1,0.32,1) both',
+                }}>
+                    {/* Opción vacía */}
+                    <div
+                        onClick={() => { onChange(''); setOpen(false); }}
+                        style={{
+                            padding:    '9px 14px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize:   '12px',
+                            color:      'var(--text-muted)',
+                            cursor:     'pointer',
+                            borderBottom: '1px solid var(--border-subtle)',
+                            transition: 'background 120ms ease',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-overlay)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                    >
+                        — Sin ubicación asignada —
+                    </div>
+
+                    {/* Sin ubicaciones libres */}
+                    {visibles.length === 0 && !loading && (
+                        <div style={{
+                            padding:    '20px 14px',
+                            fontFamily: 'var(--font-mono)',
+                            fontSize:   '11px',
+                            color:      'var(--text-muted)',
+                            textAlign:  'center',
+                        }}>
+                            No hay ubicaciones libres disponibles
+                        </div>
+                    )}
+
+                    {/* Grupos por pasillo */}
+                    {pasillos.map(pasillo => (
+                        <div key={pasillo}>
+                            {/* Cabecera de sección */}
+                            <div style={{
+                                padding:       '6px 14px 3px',
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '9px',
+                                fontWeight:    700,
+                                letterSpacing: '0.14em',
+                                textTransform: 'uppercase',
+                                color:         'var(--text-muted)',
+                                opacity:       0.7,
+                            }}>
+                                Pasillo {pasillo}
+                            </div>
+
+                            {/* Items de este pasillo */}
+                            {visibles
+                                .filter(u => u.pasillo === pasillo)
+                                .map(u => {
+                                    const libre      = isLibre(u);
+                                    const isSelected = String(u.id) === value;
+                                    return (
+                                        <div
+                                            key={u.id}
+                                            onClick={() => {
+                                                if (!libre) return;
+                                                onChange(String(u.id));
+                                                setOpen(false);
+                                            }}
+                                            style={{
+                                                display:        'flex',
+                                                alignItems:     'center',
+                                                justifyContent: 'space-between',
+                                                gap:            '10px',
+                                                padding:        '8px 14px',
+                                                cursor:         libre ? 'pointer' : 'not-allowed',
+                                                opacity:        libre ? 1 : 0.5,
+                                                background:     isSelected ? 'rgba(56,189,248,0.08)' : 'transparent',
+                                                borderLeft:     isSelected ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                                                transition:     'background 120ms ease',
+                                            }}
+                                            onMouseEnter={e => {
+                                                if (libre) (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(56,189,248,0.10)' : 'var(--bg-overlay)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(56,189,248,0.08)' : 'transparent';
+                                            }}
+                                        >
+                                            {/* Info de la ubicación */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
+                                                <span style={{
+                                                    fontFamily: 'var(--font-mono)',
+                                                    fontSize:   '12px',
+                                                    color:      isSelected ? 'var(--accent-cyan)' : 'var(--text-primary)',
+                                                }}>
+                                                    Est. {u.estanteria} · Nivel {u.nivel}
+                                                </span>
+                                                {!libre && u.productoNombre && (
+                                                    <span style={{
+                                                        fontFamily:  'var(--font-mono)',
+                                                        fontSize:    '10px',
+                                                        color:       'var(--text-muted)',
+                                                        overflow:    'hidden',
+                                                        textOverflow:'ellipsis',
+                                                        whiteSpace:  'nowrap',
+                                                        maxWidth:    '180px',
+                                                    }}>
+                                                        {u.productoNombre}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {/* Badge de estado */}
+                                            <span style={{
+                                                fontFamily:    'var(--font-display)',
+                                                fontSize:      '9px',
+                                                fontWeight:    700,
+                                                letterSpacing: '0.08em',
+                                                padding:       '2px 7px',
+                                                borderRadius:  '3px',
+                                                flexShrink:    0,
+                                                background:    libre
+                                                    ? 'rgba(34,197,94,0.12)'
+                                                    : 'rgba(248,113,113,0.12)',
+                                                color:         libre ? '#22C55E' : 'var(--accent-danger)',
+                                                border:        `1px solid ${libre
+                                                    ? 'rgba(34,197,94,0.30)'
+                                                    : 'rgba(248,113,113,0.30)'}`,
+                                            }}>
+                                                {libre ? 'LIBRE' : 'OCUPADO'}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}

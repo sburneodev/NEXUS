@@ -27,13 +27,22 @@ public class AlmacenController {
      *
      * Respuesta: [ { id, pasillo, estanteria, nivel, ocupada, productoNombre } ]
      */
+    /**
+     * Lista plana de ubicaciones para el selector del formulario de producto.
+     * Accesible a cualquier usuario autenticado: el modal de creación/edición
+     * de producto es visible para todos los roles, por lo que la consulta de
+     * ubicaciones también debe serlo.  La seguridad de escritura se aplica en
+     * el endpoint de guardado de producto (POST/PUT /productos).
+     */
     @GetMapping("/ubicaciones")
-    @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getUbicaciones() {
         String sql = """
-            SELECT ua.id, ua.pasillo, ua.estanteria, ua.nivel,
-                   p.id   AS id_producto,
-                   p.nombre AS producto_nombre
+            SELECT ua.id,
+                   ua.pasillo,
+                   ua.estanteria,
+                   ua.nivel,
+                   p.id     AS prod_id,
+                   p.nombre AS prod_nombre
             FROM ubicaciones_almacen ua
             LEFT JOIN productos p ON ua.id = p.id_ubicacion
             ORDER BY ua.pasillo, ua.estanteria, ua.nivel
@@ -48,8 +57,8 @@ public class AlmacenController {
             u.put("pasillo",        row.get("pasillo"));
             u.put("estanteria",     row.get("estanteria"));
             u.put("nivel",          row.get("nivel"));
-            u.put("ocupada",        row.get("id_producto") != null);
-            u.put("productoNombre", row.get("producto_nombre"));
+            u.put("ocupada",        row.get("prod_id") != null);
+            u.put("productoNombre", row.get("prod_nombre"));
             result.add(u);
         }
 

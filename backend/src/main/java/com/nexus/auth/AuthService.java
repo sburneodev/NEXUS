@@ -16,6 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.nexus.auth.dto.ChangePasswordRequest;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -154,6 +157,30 @@ public class AuthService {
         );
 
         return AuthResponse.ofLogin("Login exitoso", token, resumen);
+    }
+
+    // ══════════════════════════════════════════════════════════════════
+    // POST /auth/change-password — usuario autenticado cambia su contraseña
+    // ══════════════════════════════════════════════════════════════════
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        Usuario usuario = usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(request.getOldPassword(), usuario.getPassword())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "La contraseña actual es incorrecta");
+        }
+
+        usuario.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        usuarioRepository.save(usuario);
+
+        auditService.logAuth(email, "CHANGE_PASSWORD", "Contraseña actualizada por el usuario");
+        log.info("[AUTH][CHANGE_PASSWORD] Contraseña cambiada user={}", email);
     }
 
     // ══════════════════════════════════════════════════════════════════

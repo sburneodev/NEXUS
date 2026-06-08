@@ -287,10 +287,10 @@ export function AlbaranesRangoPage(): JSX.Element {
                 {/* Cabecera */}
                 <div style={{ flexShrink: 0 }}>
                     <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(16px,2vw,22px)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                        Albarán Consolidado
+                        Albarán
                     </h1>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0', letterSpacing: '0.04em' }}>
-                        Agrupa todos los movimientos del período en un único documento · ADMIN · GESTOR_INVENTARIO · CONTABLE
+                        Agrupa todos los movimientos del período en un único documento
                     </p>
                 </div>
 

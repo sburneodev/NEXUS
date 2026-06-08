@@ -1,6 +1,7 @@
 package com.nexus.auth;
 
 import com.nexus.auth.dto.AuthResponse;
+import com.nexus.auth.dto.ChangePasswordRequest;
 import com.nexus.auth.dto.RegisterRequest;
 import com.nexus.dto.LoginRequest;
 import jakarta.validation.Valid;
@@ -46,6 +47,14 @@ public class AuthController {
         log.info("[AUTH] POST /login — email={}", request.getEmail());
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    // ── Cambiar contraseña (usuario autenticado) ──────────────────────
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request) {
+        log.info("[AUTH] POST /change-password");
+        authService.changePassword(request);
+        return ResponseEntity.noContent().build();
     }
 
     // ── SEC-08 · Verificar email ──────────────────────────────────────

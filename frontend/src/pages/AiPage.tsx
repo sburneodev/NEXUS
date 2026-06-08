@@ -110,7 +110,7 @@ export function AiPage(): JSX.Element {
                     margin:        '4px 0 0',
                     letterSpacing: '0.04em',
                 }}>
-                    Inteligencia artificial aplicada al negocio · Powered by Gemini
+                    Inteligencia artificial aplicada al negocio
                 </p>
             </div>
 

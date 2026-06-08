@@ -23,6 +23,30 @@ function getPrimaryRole(roles: Role[]): string {
 
 const TRANSITION = '300ms cubic-bezier(0.4, 0, 0.2, 1)';
 
+// ── Estilos del modal de cambiar contraseña ──────────────────────────
+const cpLabelStyle: React.CSSProperties = {
+    display: 'block', fontFamily: 'var(--font-display)', fontSize: '10px',
+    fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--text-secondary)', marginBottom: '5px',
+};
+
+const cpInputStyle: React.CSSProperties = {
+    width: '100%', boxSizing: 'border-box',
+    fontFamily: 'var(--font-mono)', fontSize: '13px',
+    color: 'var(--text-primary)', background: 'var(--bg-elevated)',
+    border: '1px solid var(--border-default)', borderRadius: '6px',
+    padding: '9px 12px', outline: 'none', caretColor: 'var(--accent-primary)',
+    transition: 'border-color 160ms ease, box-shadow 160ms ease',
+};
+
+const cpEyeStyle: React.CSSProperties = {
+    position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)',
+    background: 'transparent', border: 'none', cursor: 'pointer',
+    fontFamily: 'var(--font-mono)', fontSize: '13px',
+    color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1,
+    transition: 'color 120ms ease',
+};
+
 interface NavbarProps {
     title?:        string;
     badge?:        string;
@@ -36,6 +60,57 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
     const [time, setTime]         = useState('');
     const [showMenu,        setShowMenu]        = useState(false);
     const [showCookiePrefs, setShowCookiePrefs] = useState(false);
+
+    // ── Modal cambiar contraseña ──────────────────────────────────────
+    const [showChangePwd,    setShowChangePwd]    = useState(false);
+    const [changePwdLoading, setChangePwdLoading] = useState(false);
+    const [changePwdSuccess, setChangePwdSuccess] = useState(false);
+    const [oldPwdError,      setOldPwdError]      = useState('');
+    const [showOldPwd,       setShowOldPwd]       = useState(false);
+    const [showNewPwd,       setShowNewPwd]       = useState(false);
+    const [showConfirmPwd,   setShowConfirmPwd]   = useState(false);
+    const [changePwdForm,    setChangePwdForm]    = useState({ oldPwd: '', newPwd: '', confirmPwd: '' });
+
+    function openChangePwd(): void {
+        setShowMenu(false);
+        setChangePwdForm({ oldPwd: '', newPwd: '', confirmPwd: '' });
+        setOldPwdError('');
+        setChangePwdSuccess(false);
+        setShowOldPwd(false);
+        setShowNewPwd(false);
+        setShowConfirmPwd(false);
+        setShowChangePwd(true);
+    }
+
+    const pwdStrength = {
+        length:    changePwdForm.newPwd.length >= 8,
+        uppercase: /[A-Z]/.test(changePwdForm.newPwd),
+        number:    /[0-9]/.test(changePwdForm.newPwd),
+        special:   /[^A-Za-z0-9]/.test(changePwdForm.newPwd),
+    };
+    const pwdValid   = Object.values(pwdStrength).every(Boolean);
+    const confirmOk  = changePwdForm.newPwd === changePwdForm.confirmPwd && changePwdForm.confirmPwd !== '';
+    const canSubmit  = changePwdForm.oldPwd.length > 0 && pwdValid && confirmOk && !changePwdLoading;
+
+    async function submitChangePwd(): Promise<void> {
+        if (!canSubmit) return;
+        setChangePwdLoading(true);
+        setOldPwdError('');
+        try {
+            const { default: api } = await import('../../services/api');
+            await api.post('/auth/change-password', {
+                oldPassword: changePwdForm.oldPwd,
+                newPassword: changePwdForm.newPwd,
+            });
+            setChangePwdSuccess(true);
+            setTimeout(() => setShowChangePwd(false), 1600);
+        } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message ?? '';
+            setOldPwdError(msg || 'La contraseña actual es incorrecta');
+        } finally {
+            setChangePwdLoading(false);
+        }
+    }
 
     useEffect(() => {
         const tick = (): void => setTime(new Date().toLocaleTimeString('es-ES', {
@@ -329,7 +404,7 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                 background:   'var(--bg-elevated)',
                                 border:       '1px solid var(--border-default)',
                                 borderRadius: 'var(--radius-lg)',
-                                padding:      '6px', minWidth: '200px',
+                                padding:      '6px', minWidth: '260px',
                                 boxShadow:    'var(--shadow-lg)',
                                 zIndex:       99,
                                 animation:    'fadeInUp 0.15s ease both',
@@ -368,7 +443,7 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                                 📷
                                             </div>
                                         </div>
-                                        <div style={{ minWidth: 0 }}>
+                                        <div>
                                             <div style={{
                                                 fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600,
                                                 letterSpacing: '0.06em', color: 'var(--text-primary)',
@@ -378,7 +453,8 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                             </div>
                                             <div style={{
                                                 fontFamily: 'var(--font-mono)', fontSize: '10px',
-                                                color: 'var(--text-muted)', letterSpacing: '0.04em', wordBreak: 'break-all',
+                                                color: 'var(--text-muted)', letterSpacing: '0.04em',
+                                                whiteSpace: 'nowrap',
                                             }}>
                                                 {email}
                                             </div>
@@ -418,6 +494,33 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                         style={{ display: 'none' }}
                                     />
                                 </div>
+                                {/* Cambiar contraseña */}
+                                <button
+                                    onClick={openChangePwd}
+                                    style={{
+                                        width: '100%', textAlign: 'left',
+                                        background: 'transparent', border: 'none',
+                                        borderRadius: 'var(--radius-base)', padding: '8px 12px',
+                                        fontFamily: 'var(--font-display)', fontSize: '12px',
+                                        fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
+                                        transition: 'background 120ms ease, color 120ms ease',
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                    }}
+                                    onMouseEnter={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'var(--bg-overlay)';
+                                        b.style.color = 'var(--text-primary)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'transparent';
+                                        b.style.color = 'var(--text-secondary)';
+                                    }}
+                                >
+                                    🔑 CAMBIAR CONTRASEÑA
+                                </button>
+
                                 {/* Privacidad / Cookies */}
                                 <button
                                     onClick={() => { setShowMenu(false); setShowCookiePrefs(true); }}
@@ -475,6 +578,201 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
         {/* Modal de preferencias de privacidad */}
         {showCookiePrefs && (
             <CookiePreferences onClose={() => setShowCookiePrefs(false)} />
+        )}
+
+        {/* ── Modal Cambiar Contraseña ── */}
+        {showChangePwd && (
+            <div
+                onClick={() => { if (!changePwdLoading) setShowChangePwd(false); }}
+                style={{
+                    position: 'fixed', inset: 0, zIndex: 400,
+                    background: 'rgba(0,0,0,0.70)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    backdropFilter: 'blur(4px)', padding: '16px',
+                }}
+            >
+                <div
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        width: '100%', maxWidth: '420px',
+                        background: 'var(--bg-surface)',
+                        border: '1px solid var(--border-accent)',
+                        borderRadius: '14px',
+                        boxShadow: 'var(--shadow-lg)',
+                        overflow: 'hidden',
+                        animation: 'fadeInUp 0.18s cubic-bezier(0.23,1,0.32,1) both',
+                    }}
+                >
+                    {/* Barra superior */}
+                    <div style={{ height: '2px', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))' }} />
+
+                    {/* Cabecera */}
+                    <div style={{ padding: '22px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--accent-primary)', marginBottom: '5px' }}>
+                                Seguridad de cuenta
+                            </div>
+                            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                                Cambiar Contraseña
+                            </h2>
+                        </div>
+                        <button
+                            onClick={() => setShowChangePwd(false)}
+                            disabled={changePwdLoading}
+                            style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '4px', opacity: changePwdLoading ? 0.4 : 1 }}
+                        >✕</button>
+                    </div>
+
+                    {/* Estado de éxito */}
+                    {changePwdSuccess ? (
+                        <div style={{ padding: '32px 24px', textAlign: 'center' }}>
+                            <div style={{ fontSize: '32px', marginBottom: '12px' }}>✓</div>
+                            <div style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700, letterSpacing: '0.08em', color: '#22C55E' }}>
+                                CONTRASEÑA ACTUALIZADA
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                            {/* Contraseña actual */}
+                            <div>
+                                <label style={cpLabelStyle}>Contraseña actual *</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showOldPwd ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        value={changePwdForm.oldPwd}
+                                        onChange={e => { setChangePwdForm(f => ({ ...f, oldPwd: e.target.value })); setOldPwdError(''); }}
+                                        style={{ ...cpInputStyle, paddingRight: '64px', borderColor: oldPwdError ? 'var(--accent-danger)' : undefined }}
+                                        onFocus={e  => { if (!oldPwdError) { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; } }}
+                                        onBlur={e   => { e.currentTarget.style.borderColor = oldPwdError ? 'var(--accent-danger)' : 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    />
+                                    <button type="button" onClick={() => setShowOldPwd(v => !v)} style={cpEyeStyle}>
+                                        {showOldPwd ? '○' : '●'}
+                                    </button>
+                                </div>
+                                {oldPwdError && (
+                                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', margin: '4px 0 0', letterSpacing: '0.02em' }}>
+                                        ▲ {oldPwdError}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Nueva contraseña */}
+                            <div>
+                                <label style={cpLabelStyle}>Nueva contraseña *</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showNewPwd ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        value={changePwdForm.newPwd}
+                                        onChange={e => setChangePwdForm(f => ({ ...f, newPwd: e.target.value }))}
+                                        style={{ ...cpInputStyle, paddingRight: '64px' }}
+                                        onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                        onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    />
+                                    <button type="button" onClick={() => setShowNewPwd(v => !v)} style={cpEyeStyle}>
+                                        {showNewPwd ? '○' : '●'}
+                                    </button>
+                                </div>
+                                {/* Requisitos en vivo */}
+                                {changePwdForm.newPwd.length > 0 && (
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '7px' }}>
+                                        {([
+                                            ['length',    '8+ caracteres'],
+                                            ['uppercase', '1 mayúscula'],
+                                            ['number',    '1 número'],
+                                            ['special',   '1 especial'],
+                                        ] as [keyof typeof pwdStrength, string][]).map(([key, label]) => (
+                                            <span key={key} style={{
+                                                fontFamily:    'var(--font-mono)',
+                                                fontSize:      '10px',
+                                                letterSpacing: '0.04em',
+                                                padding:       '2px 7px',
+                                                borderRadius:  '3px',
+                                                transition:    'all 160ms ease',
+                                                background:    pwdStrength[key] ? 'rgba(34,197,94,0.10)' : 'var(--bg-elevated)',
+                                                color:         pwdStrength[key] ? '#22C55E'               : 'var(--text-muted)',
+                                                border:        `1px solid ${pwdStrength[key] ? 'rgba(34,197,94,0.30)' : 'var(--border-subtle)'}`,
+                                            }}>
+                                                {pwdStrength[key] ? '✓' : '·'} {label}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Confirmar contraseña */}
+                            <div>
+                                <label style={cpLabelStyle}>Confirmar contraseña *</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input
+                                        type={showConfirmPwd ? 'text' : 'password'}
+                                        placeholder="••••••••"
+                                        value={changePwdForm.confirmPwd}
+                                        onChange={e => setChangePwdForm(f => ({ ...f, confirmPwd: e.target.value }))}
+                                        style={{
+                                            ...cpInputStyle,
+                                            paddingRight: '64px',
+                                            borderColor: changePwdForm.confirmPwd && !confirmOk ? 'var(--accent-danger)' : undefined,
+                                        }}
+                                        onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                        onBlur={e   => { e.currentTarget.style.borderColor = (changePwdForm.confirmPwd && !confirmOk) ? 'var(--accent-danger)' : 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    />
+                                    <button type="button" onClick={() => setShowConfirmPwd(v => !v)} style={cpEyeStyle}>
+                                        {showConfirmPwd ? '○' : '●'}
+                                    </button>
+                                </div>
+                                {changePwdForm.confirmPwd && !confirmOk && (
+                                    <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', margin: '4px 0 0', letterSpacing: '0.02em' }}>
+                                        ▲ Las contraseñas no coinciden
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Botones */}
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowChangePwd(false)}
+                                    disabled={changePwdLoading}
+                                    style={{
+                                        background: 'transparent', border: '1px solid var(--border-default)',
+                                        borderRadius: '7px', padding: '9px 18px', cursor: 'pointer',
+                                        fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                                        letterSpacing: '0.10em', textTransform: 'uppercase',
+                                        color: 'var(--text-secondary)', opacity: changePwdLoading ? 0.4 : 1,
+                                        transition: 'opacity 120ms',
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { void submitChangePwd(); }}
+                                    disabled={!canSubmit}
+                                    style={{
+                                        background:    'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                                        color:         'var(--text-inverse)',
+                                        border:        'none',
+                                        borderRadius:  '7px',
+                                        padding:       '9px 20px',
+                                        cursor:        canSubmit ? 'pointer' : 'not-allowed',
+                                        fontFamily:    'var(--font-display)',
+                                        fontSize:      '11px', fontWeight: 700,
+                                        letterSpacing: '0.10em', textTransform: 'uppercase',
+                                        opacity:       canSubmit ? 1 : 0.45,
+                                        boxShadow:     'var(--fab-shadow)',
+                                        transition:    'opacity 160ms',
+                                    }}
+                                >
+                                    {changePwdLoading ? '···' : 'Guardar cambios'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         )}
     </>
     );

@@ -1,6 +1,7 @@
 package com.nexus.service;
 
 import com.nexus.audit.AuditService;
+import com.nexus.dto.InvitarUsuarioRequest;
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.model.Rol;
 import com.nexus.model.Usuario;
@@ -8,9 +9,13 @@ import com.nexus.repository.RolRepository;
 import com.nexus.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,13 +24,16 @@ public class UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository     rolRepository;
     private final AuditService      auditService;
+    private final PasswordEncoder   passwordEncoder;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
                           RolRepository rolRepository,
-                          AuditService auditService) {
+                          AuditService auditService,
+                          PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository     = rolRepository;
         this.auditService      = auditService;
+        this.passwordEncoder   = passwordEncoder;
     }
 
     private Long getUsuarioActualId() {
@@ -95,6 +103,43 @@ public class UsuarioService {
         auditService.log("USUARIO", "ROLE_REMOVE", id,
                 "Rol retirado: " + nombreRol + " → " + u.getEmail());
         return result;
+    }
+
+    /**
+     * Crea un usuario nuevo desde el panel de administración.
+     * La cuenta se marca como activa y verificada (el admin la crea directamente).
+     */
+    public UsuarioDTO invitar(InvitarUsuarioRequest req) {
+        if (usuarioRepository.existsByEmail(req.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El email ya está registrado: " + req.getEmail());
+        }
+        if (usuarioRepository.existsByUsername(req.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "El username ya está en uso: " + req.getUsername());
+        }
+
+        Usuario u = new Usuario();
+        u.setEmail(req.getEmail());
+        u.setUsername(req.getUsername());
+        u.setPassword(passwordEncoder.encode(req.getPassword()));
+        u.setActive(true);
+        u.setVerified(true);   // cuenta creada por admin → no necesita verificar email
+        u.setRoles(new HashSet<>());
+        Usuario saved = usuarioRepository.save(u);
+
+        if (req.getRol() != null && !req.getRol().isBlank()) {
+            Rol rol = rolRepository.findByNombre(req.getRol())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.BAD_REQUEST, "Rol no encontrado: " + req.getRol()));
+            saved.getRoles().add(rol);
+            saved = usuarioRepository.save(saved);
+        }
+
+        auditService.log("USUARIO", "INSERT", saved.getId(),
+                "Usuario creado por admin: " + saved.getEmail() + " — rol: " + req.getRol());
+
+        return toDTO(saved);
     }
 
     private UsuarioDTO toDTO(Usuario u) {

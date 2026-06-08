@@ -270,7 +270,7 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
                 <div style={{
                     marginTop:  'var(--space-4)',
                     padding:    '12px 14px',
-                    background: 'rgba(255,68,102,0.06)',
+                    background: 'rgba(248,113,113,0.08)',
                     border:     '1px solid var(--accent-danger)',
                     borderRadius: 'var(--radius-base)',
                     display:    'flex',
@@ -370,14 +370,14 @@ function PriceBox({ label, value, variant }: {
     const isPrimary = variant === 'primary';
     return (
         <div style={{
-            background:   isPrimary ? 'rgba(0,255,136,0.05)' : 'var(--bg-elevated)',
+            background:   isPrimary ? 'rgba(59,130,246,0.07)' : 'var(--bg-elevated)',
             border:       isPrimary
-                ? '1px solid rgba(0,255,136,0.35)'
+                ? '1px solid rgba(59,130,246,0.35)'
                 : '1px solid var(--border-subtle)',
             borderRadius: 'var(--radius-base)',
             padding:      '14px 16px',
             textAlign:    'center',
-            boxShadow:    isPrimary ? '0 0 20px rgba(0,255,136,0.10)' : 'none',
+            boxShadow:    isPrimary ? '0 0 20px rgba(59,130,246,0.12)' : 'none',
             position:     'relative',
         }}>
             {isPrimary && (
@@ -407,7 +407,7 @@ function PriceBox({ label, value, variant }: {
                 fontWeight:    700,
                 color:         isPrimary ? 'var(--accent-primary)' : 'var(--text-secondary)',
                 letterSpacing: '-0.02em',
-                textShadow:    isPrimary ? '0 0 16px rgba(0,255,136,0.35)' : 'none',
+                textShadow:    'none',
             }}>
                 €{value.toFixed(2)}
             </div>

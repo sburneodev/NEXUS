@@ -2,7 +2,7 @@
  * components/albaran/AlbaranTemplate.tsx
  *
  * Plantilla de albarán corporativo — formato A4, imprimible.
- * Estética limpia y profesional (sans-serif, navy #1a2b4c).
+ * Estética limpia y profesional (sans-serif, navy #0C2A54).
  *
  * Uso:
  *   <AlbaranTemplate data={albaranData} />
@@ -82,16 +82,16 @@ function BarcodeI25({ value, height = 40, label }: BarcodeI25Props): JSX.Element
             >
                 {widths.map((w, i) =>
                     i % 2 === 0
-                        ? <rect key={i} x={positions[i]} y={0} width={w} height={height} fill="#1a2b4c" />
+                        ? <rect key={i} x={positions[i]} y={0} width={w} height={height} fill="#0C2A54" />
                         : null
                 )}
             </svg>
             {label && (
                 <span style={{
-                    fontFamily:    "'Courier New', 'Lucida Console', monospace",
+                    fontFamily:    "'JetBrains Mono', 'Courier New', monospace",
                     fontSize:      '7px',
                     letterSpacing: '0.10em',
-                    color:         '#1a2b4c',
+                    color:         '#0C2A54',
                     textAlign:     'center',
                     whiteSpace:    'nowrap',
                 }}>
@@ -206,6 +206,8 @@ function totalUnidades(lineas: LineaAlbaran[]): number {
 }
 
 // ── Componente principal ──────────────────────────────────────────────────────
+
+// Paleta NEXUS v3 para documentos impresos: --corp-navy #0C2A54
 
 export function AlbaranTemplate({ data }: AlbaranTemplateProps): JSX.Element {
     const { empresa, entidad, lineas } = data;
@@ -390,7 +392,7 @@ export function AlbaranTemplate({ data }: AlbaranTemplateProps): JSX.Element {
                     <hr className={styles.separator} />
                     <div className={styles.dataBlock} style={{ marginBottom: '18px' }}>
                         <div className={styles.dataBlockTitle}>Notas</div>
-                        <p style={{ margin: 0, fontSize: '10.5px', lineHeight: 1.6, color: '#1a1d23' }}>
+                        <p style={{ margin: 0, fontSize: '10.5px', lineHeight: 1.6, color: '#111827' }}>
                             {data.notas}
                         </p>
                     </div>

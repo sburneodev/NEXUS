@@ -93,10 +93,10 @@ const STATUS_COLOR: Record<string, string> = {
 };
 const STATUS_BG: Record<string, string> = {
     empty:    'transparent',
-    ok:       'rgba(0,255,136,0.09)',
-    low:      'rgba(0,212,255,0.08)',
-    retro:    'rgba(255,200,69,0.10)',
-    critical: 'rgba(255,68,102,0.13)',
+    ok:       'rgba(59,130,246,0.10)',
+    low:      'rgba(56,189,248,0.09)',
+    retro:    'rgba(251,191,36,0.10)',
+    critical: 'rgba(248,113,113,0.12)',
 };
 
 // ── Celda individual ──────────────────────────────────────────────────
@@ -129,7 +129,7 @@ function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps):
                 minHeight:      0,
                 border,
                 borderRadius:   '8px',
-                background:     selected ? 'rgba(0,212,255,0.14)' : STATUS_BG[status],
+                background:     selected ? 'rgba(59,130,246,0.16)' : STATUS_BG[status],
                 display:        'flex',
                 flexDirection:  'column',
                 alignItems:     'center',
@@ -139,7 +139,7 @@ function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps):
                 padding:        '6px 4px',
                 transition:     'all 140ms ease',
                 boxShadow:      selected
-                    ? '0 0 12px rgba(0,212,255,0.30)'
+                    ? '0 0 12px rgba(59,130,246,0.35)'
                     : status !== 'empty'
                     ? `0 0 8px ${STATUS_COLOR[status]}33`
                     : 'none',

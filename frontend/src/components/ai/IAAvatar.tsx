@@ -237,7 +237,7 @@ export const IAAvatar = forwardRef<IAvatarHandle, IAvatarProps>(
                             padding:      '10px 12px',
                             fontFamily:   'var(--font-mono)',
                             fontSize:     '12px',
-                            color:        'var(--accent-success, #00ff88)',
+                            color:        'var(--accent-primary)',
                             lineHeight:   1.6,
                             wordBreak:    'break-word',
                             whiteSpace:   'pre-wrap',

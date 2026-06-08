@@ -178,7 +178,7 @@ export function UsuariosPage(): JSX.Element {
                             padding:      '28px 32px',
                             maxWidth:     '420px',
                             width:        '90%',
-                            boxShadow:    '0 0 40px rgba(255,68,102,0.15)',
+                            boxShadow:    '0 0 40px rgba(248,113,113,0.15)',
                             position:     'relative',
                             overflow:     'hidden',
                         }}

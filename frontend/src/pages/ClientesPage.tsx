@@ -225,7 +225,7 @@ export function ClientesPage(): JSX.Element {
                 <button
                     onClick={handleAdd}
                     className="btn btn-primary"
-                    style={{ letterSpacing: '0.12em', fontSize: '12px', flexShrink: 0 }}
+                    style={{ flexShrink: 0 }}
                 >
                     + NUEVO CLIENTE
                 </button>

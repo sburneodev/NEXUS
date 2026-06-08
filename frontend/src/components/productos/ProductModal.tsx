@@ -249,7 +249,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
 
                         {/* ── Banner informativo en modo creación ────────────── */}
                         {!producto && modoCreacion === 'ESTANDAR' && (
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(0,212,255,0.05)', border: '1px solid rgba(0,212,255,0.20)', borderRadius: '7px', padding: '10px 14px' }}>
+                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.20)', borderRadius: '7px', padding: '10px 14px' }}>
                                 <span style={{ color: 'var(--accent-cyan)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>ℹ</span>
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
                                     Solo se pueden crear <strong style={{ color: 'var(--text-primary)' }}>productos estándar</strong> desde este módulo.
@@ -259,7 +259,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                             </div>
                         )}
                         {!producto && modoCreacion === 'RETRO' && (
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(0,255,136,0.05)', border: '1px solid rgba(0,255,136,0.22)', borderRadius: '7px', padding: '10px 14px' }}>
+                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '7px', padding: '10px 14px' }}>
                                 <span style={{ color: 'var(--accent-primary)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>◆</span>
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
                                     Este producto se registrará como <strong style={{ color: 'var(--accent-primary)' }}>pieza retro</strong> en{' '}
@@ -282,7 +282,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                                     border:        `1px solid ${form.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--accent-cyan)'}`,
                                     borderRadius:  '6px',
                                     padding:       '9px 12px',
-                                    background:    form.tipoProducto === 'RETRO' ? 'rgba(255,200,60,0.05)' : 'rgba(0,212,255,0.05)',
+                                    background:    form.tipoProducto === 'RETRO' ? 'rgba(251,191,36,0.06)' : 'rgba(56,189,248,0.06)',
                                     userSelect:    'none',
                                 }}>
                                     {form.tipoProducto === 'RETRO' ? '◆ RETRO — La Bóveda' : '● ESTÁNDAR'}

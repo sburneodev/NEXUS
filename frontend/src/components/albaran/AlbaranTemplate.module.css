@@ -1,19 +1,23 @@
 /* ============================================================
    AlbaranTemplate.module.css
    Diseño corporativo A4 — imprimible
+   Paleta alineada con NEXUS ERP v3 Design System
    ============================================================ */
 
 /* ── Variables corporativas ────────────────────────────────── */
 .root {
-    --corp-navy:     #1a2b4c;
-    --corp-navy-mid: #2c4070;
-    --corp-line:     #c8d0dc;
-    --corp-bg-block: #f4f6f9;
-    --corp-text:     #1a1d23;
-    --corp-muted:    #5a6270;
-    --corp-faint:    #e8eaee;
+    /* Azul profundo NEXUS para documentos impresos */
+    --corp-navy:     #0C2A54;
+    --corp-navy-mid: #1A4080;
+    --corp-accent:   #1D4ED8;
+    --corp-line:     #CBD5E1;
+    --corp-bg-block: #F1F5F9;
+    --corp-text:     #111827;
+    --corp-muted:    #4B5563;
+    --corp-faint:    #E2E8F0;
     --corp-white:    #ffffff;
-    --font-sans:     'Inter', 'Roboto', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-sans:     'Inter', 'Helvetica Neue', Arial, sans-serif;
+    --font-mono:     'JetBrains Mono', 'Courier New', Courier, monospace;
 }
 
 /* ── Contenedor A4 ─────────────────────────────────────────── */
@@ -30,7 +34,7 @@
     box-sizing:       border-box;
     display:          flex;
     flex-direction:   column;
-    box-shadow:       0 2px 24px rgba(0, 0, 0, 0.12);
+    box-shadow:       0 4px 32px rgba(0, 0, 0, 0.18);
 }
 
 /* ── Cabecera ──────────────────────────────────────────────── */
@@ -54,8 +58,8 @@
     width:            auto;
     object-fit:       contain;
     object-position:  left center;
-    /* Adapta el logo (diseñado para fondo oscuro) al blanco del albarán */
-    filter: brightness(0) saturate(100%) invert(16%) sepia(40%) saturate(600%) hue-rotate(192deg) brightness(85%);
+    /* Adapta el logo (fondo oscuro) al blanco del albarán — azul NEXUS */
+    filter: brightness(0) saturate(100%) invert(12%) sepia(60%) saturate(700%) hue-rotate(200deg) brightness(82%);
 }
 
 /* Isotipo / marca: se muestra SIN filtro, en sus colores originales */
@@ -78,9 +82,9 @@
 .logoTagline {
     font-size:     9px;
     color:         var(--corp-muted);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.10em;
     text-transform: uppercase;
-    font-weight:   500;
+    font-weight:   600;
 }
 
 .companyInfo {
@@ -112,7 +116,7 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color:          var(--corp-navy);
-    border-left:    4px solid var(--corp-navy);
+    border-left:    4px solid var(--corp-accent);
     padding-left:   10px;
     line-height:    1;
 }
@@ -135,16 +139,18 @@
     border:         1.5px solid;
 }
 
+/* Badge ENTRADA — azul NEXUS */
 .docBadgeEntrada {
-    color:            #1a6632;
-    border-color:     #1a6632;
-    background-color: #eaf5ee;
+    color:            #1D4ED8;
+    border-color:     #1D4ED8;
+    background-color: #EFF6FF;
 }
 
+/* Badge SALIDA — rojo NEXUS */
 .docBadgeSalida {
-    color:            #7a2020;
-    border-color:     #7a2020;
-    background-color: #faeaea;
+    color:            #9F1239;
+    border-color:     #9F1239;
+    background-color: #FFF1F2;
 }
 
 /* ── Bloque de datos (albarán + entidad) ───────────────────── */
@@ -213,6 +219,7 @@
     font-size:       10.5px;
 }
 
+/* Cabecera de tabla — azul NEXUS */
 .thead {
     background: var(--corp-navy);
 }
@@ -242,7 +249,7 @@
 }
 
 .tbody tr:nth-child(even) {
-    background: #f9fafb;
+    background: #F8FAFC;
 }
 
 .tbody td {
@@ -252,6 +259,7 @@
 }
 
 .cellCodigo {
+    font-family:    var(--font-mono);
     font-weight:    600;
     color:          var(--corp-navy-mid);
     font-size:      10px;

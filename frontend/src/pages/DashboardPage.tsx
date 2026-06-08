@@ -37,8 +37,8 @@ export function DashboardPage(): JSX.Element {
     const [showNl2Sql, setShowNl2Sql] = useState(false);
 
     const glow = isDark
-        ? { green: 'rgba(0,255,136,0.40)', cyan: 'rgba(0,212,255,0.40)', gold: 'rgba(255,200,69,0.40)', danger: 'rgba(255,68,102,0.40)' }
-        : { green: 'rgba(0,255,136,0.32)', cyan: 'rgba(0,212,255,0.32)', gold: 'rgba(255,200,69,0.35)', danger: 'rgba(255,68,102,0.35)' };
+        ? { green: 'rgba(59,130,246,0.30)', cyan: 'rgba(56,189,248,0.28)', gold: 'rgba(251,191,36,0.28)', danger: 'rgba(248,113,113,0.28)' }
+        : { green: 'rgba(37,99,235,0.22)',  cyan: 'rgba(8,145,178,0.22)',  gold: 'rgba(217,119,6,0.22)',  danger: 'rgba(220,38,38,0.22)'  };
 
     useEffect(() => {
         let cancelled = false;
@@ -215,10 +215,10 @@ export function DashboardPage(): JSX.Element {
                                 height:       '8px',
                                 borderRadius: '50%',
                                 background:   'var(--accent-primary)',
-                                boxShadow:    '0 0 8px var(--accent-primary)',
+                                boxShadow:    'none',
                                 display:      'inline-block',
                                 flexShrink:   0,
-                                animation:    'pulse-green 2s infinite',
+                                animation:    'pulse-blue 2s infinite',
                             }} />
                             <div style={{ textAlign: 'left' }}>
                                 <div style={{

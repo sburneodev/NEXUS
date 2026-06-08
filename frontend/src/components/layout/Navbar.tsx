@@ -6,7 +6,7 @@
  *   bruscamente. El hamburger hace lo propio.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth }  from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import type { Role } from '../../types/auth';
@@ -45,25 +45,53 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
 
     useEffect(() => { setShowMenu(false); }, [user]);
 
+    const isDark      = theme === 'dark';
     const email       = user?.email ?? '';
     const initials    = email ? email.slice(0, 2).toUpperCase() : '';
     const username    = email ? email.split('@')[0].toUpperCase() : '';
     const primaryRole = user ? getPrimaryRole(user.roles) : '—';
 
+    // ── Avatar de perfil ─────────────────────────────────────────────
+    const AVATAR_KEY              = email ? `nexus_avatar_${email}` : null;
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(() =>
+        AVATAR_KEY ? localStorage.getItem(AVATAR_KEY) : null
+    );
+    const [avatarHover, setAvatarHover] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleAvatarChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !AVATAR_KEY) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const result = reader.result as string;
+            localStorage.setItem(AVATAR_KEY, result);
+            setAvatarUrl(result);
+        };
+        reader.readAsDataURL(file);
+        // Resetea el input para permitir seleccionar el mismo archivo otra vez
+        e.target.value = '';
+    }, [AVATAR_KEY]);
+
     return (
         <header style={{
-            height:       '56px',
-            background:   'var(--bg-surface)',
-            borderBottom: '1px solid var(--border-subtle)',
-            display:      'flex',
-            alignItems:   'center',
-            padding:      '0 16px',
-            gap:          '10px',
-            flexShrink:   0,
-            position:     'sticky',
-            top:          0,
-            zIndex:       10,
-            transition:   `padding ${TRANSITION}`,
+            height:              '56px',
+            background:          isDark ? 'rgba(22,27,34,0.90)' : 'rgba(255,255,255,0.92)',
+            backdropFilter:      'blur(16px)',
+            WebkitBackdropFilter:'blur(16px)',
+            borderBottom:        `1px solid ${isDark ? 'rgba(240,246,252,0.16)' : 'rgba(15,23,42,0.12)'}`,
+            display:             'flex',
+            alignItems:          'center',
+            padding:             '0 16px',
+            gap:                 '10px',
+            flexShrink:          0,
+            position:            'sticky',
+            top:                 0,
+            zIndex:              10,
+            transition:          `padding ${TRANSITION}, background 260ms ease, border-color 260ms ease`,
+            boxShadow:           isDark
+                ? '0 1px 0 rgba(59,130,246,0.12), 0 6px 32px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.35)'
+                : '0 1px 0 rgba(15,23,42,0.06), 0 2px 8px rgba(0,0,0,0.04)',
         }}>
 
             {/* ── Hamburger — fade in/out suave ── */}
@@ -141,7 +169,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                 <div style={{
                     width: '6px', height: '6px', borderRadius: '50%',
                     background: 'var(--accent-primary)',
-                    boxShadow: '0 0 6px var(--accent-primary)',
+                    boxShadow: 'none',
                     flexShrink: 0,
                 }} />
                 <span style={{
@@ -226,12 +254,16 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                     >
                         <div style={{
                             width: '26px', height: '26px', borderRadius: '50%',
-                            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                            background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             fontFamily: 'var(--font-display)', fontSize: '11px',
                             fontWeight: 700, color: 'var(--text-inverse)', flexShrink: 0,
+                            overflow: 'hidden',
                         }}>
-                            {initials}
+                            {avatarUrl
+                                ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                : initials
+                            }
                         </div>
 
                         {/* Nombre y rol: se desvanecen en mobile */}
@@ -279,20 +311,89 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                                 zIndex:       99,
                                 animation:    'fadeInUp 0.15s ease both',
                             }}>
-                                <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
-                                    <div style={{
-                                        fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600,
-                                        letterSpacing: '0.06em', color: 'var(--text-primary)',
-                                        textTransform: 'uppercase', marginBottom: '3px',
-                                    }}>
-                                        {username}
+                                {/* Cabecera del dropdown con avatar */}
+                                <div style={{ padding: '12px 12px 10px', borderBottom: '1px solid var(--border-subtle)', marginBottom: '4px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                        {/* Avatar clicable */}
+                                        <div
+                                            onClick={() => fileInputRef.current?.click()}
+                                            onMouseEnter={() => setAvatarHover(true)}
+                                            onMouseLeave={() => setAvatarHover(false)}
+                                            style={{
+                                                width: '40px', height: '40px', borderRadius: '50%',
+                                                background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                overflow: 'hidden', flexShrink: 0,
+                                                cursor: 'pointer', position: 'relative',
+                                                border: `2px solid ${avatarHover ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                                                transition: 'border-color 160ms ease',
+                                            }}
+                                        >
+                                            {avatarUrl
+                                                ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                : <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--text-inverse)' }}>{initials}</span>
+                                            }
+                                            {/* Overlay de cámara al hover */}
+                                            <div style={{
+                                                position: 'absolute', inset: 0,
+                                                background: 'rgba(0,0,0,0.45)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                opacity: avatarHover ? 1 : 0,
+                                                transition: 'opacity 160ms ease',
+                                                fontSize: '14px',
+                                            }}>
+                                                📷
+                                            </div>
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{
+                                                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600,
+                                                letterSpacing: '0.06em', color: 'var(--text-primary)',
+                                                textTransform: 'uppercase', marginBottom: '2px',
+                                            }}>
+                                                {username}
+                                            </div>
+                                            <div style={{
+                                                fontFamily: 'var(--font-mono)', fontSize: '10px',
+                                                color: 'var(--text-muted)', letterSpacing: '0.04em', wordBreak: 'break-all',
+                                            }}>
+                                                {email}
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div style={{
-                                        fontFamily: 'var(--font-mono)', fontSize: '10px',
-                                        color: 'var(--text-muted)', letterSpacing: '0.04em', wordBreak: 'break-all',
-                                    }}>
-                                        {email}
-                                    </div>
+                                    {/* Botón cambiar foto */}
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        style={{
+                                            width: '100%', textAlign: 'center',
+                                            background: 'var(--bg-overlay)', border: '1px solid var(--border-subtle)',
+                                            borderRadius: 'var(--radius-base)', padding: '5px 10px',
+                                            fontFamily: 'var(--font-display)', fontSize: '10px',
+                                            fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                            color: 'var(--text-muted)', cursor: 'pointer',
+                                            transition: 'all 160ms ease',
+                                        }}
+                                        onMouseEnter={e => {
+                                            const b = e.currentTarget;
+                                            b.style.borderColor = 'var(--accent-primary)';
+                                            b.style.color = 'var(--accent-primary)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            const b = e.currentTarget;
+                                            b.style.borderColor = 'var(--border-subtle)';
+                                            b.style.color = 'var(--text-muted)';
+                                        }}
+                                    >
+                                        📷 CAMBIAR FOTO
+                                    </button>
+                                    {/* Input oculto */}
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleAvatarChange}
+                                        style={{ display: 'none' }}
+                                    />
                                 </div>
                                 <button
                                     onClick={() => { setShowMenu(false); logout(); }}

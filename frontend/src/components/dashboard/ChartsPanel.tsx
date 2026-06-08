@@ -25,34 +25,27 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
 
     // ── Paleta de colores según tema ─────────────────────────────────
     const pal = isLight ? {
-        // ── Línea — trazo Emerald-600 sólido, bien visible sobre blanco ─
-        line:       '#059669',
-        lineGrad0:  'rgba(5,150,105,0.30)',
-        lineGrad1:  'rgba(5,150,105,0.01)',
-        // ── Barras — misma paleta que el botón btn-primary ─────────────
-        // Emerald-600 (#059669) → Sky-600 (#0891B2): idéntico al degradado
-        // del botón de acción. Sólidos y vivos sin llegar al neón del FAB.
-        barTop:     'rgba(5,150,105,0.80)',   /* Emerald-600 — inicio del btn-primary */
-        barBot:     'rgba(8,145,178,0.65)',   /* Sky-600 — fin del btn-primary        */
-        // ── Doughnut — rellenos saturados + bordes vivos ────────────────
-        // Segmentos más opacos para que destaquen en canvas blanco.
-        dBg:    ['rgba(5,150,105,0.28)', 'rgba(0,212,255,0.28)', 'rgba(220,38,38,0.28)', 'rgba(180,83,9,0.28)'],
-        dBorder:['#059669',              '#0891B2',              '#DC2626',              '#B45309'            ],
-        dHover: ['rgba(5,150,105,0.48)', 'rgba(0,212,255,0.48)', 'rgba(220,38,38,0.48)', 'rgba(180,83,9,0.48)'],
-        // Etiquetas — texto con contraste máximo
-        titleColor: '#020617',
-        labelColor: '#475569',
+        line:       '#2563EB',
+        lineGrad0:  'rgba(37,99,235,0.18)',
+        lineGrad1:  'rgba(37,99,235,0.00)',
+        barTop:     'rgba(37,99,235,0.78)',
+        barBot:     'rgba(8,145,178,0.52)',
+        dBg:    ['rgba(37,99,235,0.18)', 'rgba(8,145,178,0.18)', 'rgba(220,38,38,0.18)', 'rgba(217,119,6,0.18)'],
+        dBorder:['#2563EB',              '#0891B2',              '#DC2626',              '#D97706'            ],
+        dHover: ['rgba(37,99,235,0.36)', 'rgba(8,145,178,0.36)', 'rgba(220,38,38,0.36)', 'rgba(217,119,6,0.36)'],
+        titleColor: '#111827',
+        labelColor: '#6B7280',
     } : {
         line:       CHART_COLORS.green,
-        lineGrad0:  'rgba(0,255,136,0.30)',
-        lineGrad1:  'rgba(0,255,136,0.01)',
-        barTop:     'rgba(0,212,255,0.85)',
-        barBot:     'rgba(0,255,136,0.55)',
-        dBg:    ['rgba(0,255,136,0.20)', 'rgba(0,212,255,0.20)', 'rgba(255,68,102,0.20)', 'rgba(255,200,69,0.20)'],
-        dBorder:[CHART_COLORS.green,     CHART_COLORS.cyan,      CHART_COLORS.danger,     CHART_COLORS.gold    ],
-        dHover: ['rgba(0,255,136,0.35)', 'rgba(0,212,255,0.35)', 'rgba(255,68,102,0.35)', 'rgba(255,200,69,0.35)'],
-        titleColor: '#aaaacc',
-        labelColor: '#8888aa',
+        lineGrad0:  'rgba(59,130,246,0.25)',
+        lineGrad1:  'rgba(59,130,246,0.01)',
+        barTop:     'rgba(59,130,246,0.85)',
+        barBot:     'rgba(56,189,248,0.55)',
+        dBg:    ['rgba(59,130,246,0.20)', 'rgba(56,189,248,0.20)', 'rgba(248,113,113,0.20)', 'rgba(251,191,36,0.20)'],
+        dBorder:[CHART_COLORS.green,      CHART_COLORS.cyan,      CHART_COLORS.danger,      CHART_COLORS.gold    ],
+        dHover: ['rgba(59,130,246,0.35)', 'rgba(56,189,248,0.35)', 'rgba(248,113,113,0.35)', 'rgba(251,191,36,0.35)'],
+        titleColor: '#C9D1D9',
+        labelColor: '#8B949E',
     };
 
     const baseOpts = getBaseChartOptions(isLight);
@@ -92,7 +85,7 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
                 display: true,
                 text:    'TENDENCIA DE VENTAS — 30 DÍAS',
                 color:   pal.titleColor,
-                font:    { family: "'Rajdhani', sans-serif", size: 15, weight: 700 },
+                font:    { family: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", size: 15, weight: 700 },
                 padding: { bottom: 20 },
             },
         },
@@ -135,7 +128,7 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
                 display: true,
                 text:    'UNIDADES VENDIDAS — MUESTRA',
                 color:   pal.titleColor,
-                font:    { family: "'Rajdhani', sans-serif", size: 14, weight: 700 },
+                font:    { family: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", size: 14, weight: 700 },
                 padding: { bottom: 16 },
             },
         },
@@ -175,19 +168,35 @@ export function ChartsPanel({ kpiData }: ChartsPanelProps): JSX.Element {
                 display: true,
                 text:    'DISTRIBUCIÓN DE INVENTARIO',
                 color:   pal.titleColor,
-                font:    { family: "'Rajdhani', sans-serif", size: 14, weight: 700 },
+                font:    { family: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", size: 14, weight: 700 },
                 padding: { bottom: 16 },
             },
         },
     };
 
-    // Card usa var CSS para que la sombra cambie automáticamente con el tema
-    const card: React.CSSProperties = {
+    const card: React.CSSProperties = isDark ? {
         background:   'var(--bg-surface)',
-        border:       '1px solid var(--border-subtle)',
         borderRadius: '12px',
         padding:      '20px 24px',
-        boxShadow:    'var(--shadow-base)',
+        /* Bordes asimétricos: más luz arriba, se atenúa hacia abajo */
+        borderTop:    '1px solid rgba(255,255,255,0.38)',
+        borderLeft:   '1px solid rgba(255,255,255,0.22)',
+        borderRight:  '1px solid rgba(255,255,255,0.14)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        /* Sombra exterior + anillo blanco tenue */
+        boxShadow:    [
+            '0 4px 28px rgba(0,0,0,0.60)',
+            '0 1px 0 rgba(255,255,255,0.10) inset',
+            '0 0 0 1px rgba(255,255,255,0.07)',
+        ].join(', '),
+    } : {
+        background:   'var(--bg-surface)',
+        border:       '1px solid rgba(15,23,42,0.10)',
+        borderTop:    '1px solid rgba(15,23,42,0.14)',
+        borderRadius: '12px',
+        padding:      '20px 24px',
+        /* Sombra ligeramente más suave que antes */
+        boxShadow:    '0 2px 10px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04)',
     };
 
     return (

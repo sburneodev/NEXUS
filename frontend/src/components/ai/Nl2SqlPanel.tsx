@@ -182,8 +182,8 @@ export function Nl2SqlPanel(): JSX.Element {
                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                             <div style={{
                                 maxWidth:     '85%',
-                                background:   'rgba(0,255,136,0.07)',
-                                border:       '1px solid rgba(0,255,136,0.18)',
+                                background:   'rgba(59,130,246,0.08)',
+                                border:       '1px solid rgba(59,130,246,0.20)',
                                 borderRadius: '16px 16px 4px 16px',
                                 padding:      '11px 15px',
                                 fontFamily:   'var(--font-body)',
@@ -226,7 +226,7 @@ export function Nl2SqlPanel(): JSX.Element {
                                             height:     '6px',
                                             borderRadius: '50%',
                                             background: 'var(--accent-primary)',
-                                            animation:  'pulse-green 1s infinite',
+                                            animation:  'pulse-blue 1s infinite',
                                         }} />
                                         GENERANDO CONSULTA
                                     </div>

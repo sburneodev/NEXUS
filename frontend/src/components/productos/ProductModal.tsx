@@ -38,6 +38,9 @@ export interface ProductForm {
     idProveedor:        string;   // string para el input, convertido a number|null al guardar
     idCategoria:        string;
     idUbicacion:        string;
+    // ── Atributos retro (almacenados en atributosEspecificos) ─────────
+    plataforma:         string;
+    anio:               string;
 }
 
 export interface ProductModalProps {
@@ -76,6 +79,8 @@ const EMPTY_FORM: ProductForm = {
     idProveedor:        '',
     idCategoria:        '',
     idUbicacion:        '',
+    plataforma:         '',
+    anio:               '',
 };
 
 // ── Componente ────────────────────────────────────────────────────────
@@ -111,6 +116,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
 
     useEffect(() => {
         if (producto) {
+            const attrs = producto.atributosEspecificos as Record<string, unknown> | null;
             setForm({
                 sku:                producto.sku,
                 nombre:             producto.nombre,
@@ -126,6 +132,8 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                 idProveedor:        producto.idProveedor != null ? String(producto.idProveedor) : '',
                 idCategoria:        producto.idCategoria != null ? String(producto.idCategoria) : '',
                 idUbicacion:        producto.idUbicacion != null ? String(producto.idUbicacion) : '',
+                plataforma:         (attrs?.['plataforma'] as string | undefined) ?? '',
+                anio:               attrs?.['anio'] != null ? String(attrs['anio']) : '',
             });
         } else if (initialValues) {
             setForm({ ...EMPTY_FORM, ...initialValues });
@@ -154,6 +162,14 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
     function handleSubmit(e: FormEvent): void {
         e.preventDefault();
         if (!validate()) return;
+        const esRetro = (modoCreacion ?? form.tipoProducto) === 'RETRO';
+        const atributosRetro = esRetro
+            ? {
+                ...(form.plataforma.trim() ? { plataforma: form.plataforma.trim() } : {}),
+                ...(form.anio.trim()       ? { anio: Number(form.anio) }            : {}),
+              }
+            : null;
+
         onSave({
             sku:                  form.sku.trim().toUpperCase(),
             nombre:               form.nombre.trim(),
@@ -170,7 +186,7 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
             estadoConservacion:   form.estadoConservacion || null,
             activo:               form.activo,
             categoriaNombre:      null,   // solo lectura — lo rellena el backend en GET
-            atributosEspecificos: null,
+            atributosEspecificos: atributosRetro,
         });
     }
 
@@ -303,24 +319,54 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                             </div>
                         )}
 
-                        {/* ── Estado conservación: solo para RETRO ─────────────── */}
+                        {/* ── Campos exclusivos RETRO ──────────────────────────── */}
                         {(modoCreacion === 'RETRO' || (producto && form.tipoProducto === 'RETRO')) && (
-                            <div>
-                                <label style={labelStyle}>Estado Conservación</label>
-                                <select
-                                    value={form.estadoConservacion}
-                                    onChange={e => setForm(prev => ({ ...prev, estadoConservacion: e.target.value as EstadoConservacion | '' }))}
-                                    style={inputStyle}
-                                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
-                                    onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
-                                >
-                                    <option value="">— Sin especificar —</option>
-                                    <option value="MINT">MINT — Precintado</option>
-                                    <option value="CIB">CIB — Caja + Manual</option>
-                                    <option value="LOOSE">LOOSE — Solo cartucho</option>
-                                    <option value="LOOSE_D">LOOSE-D — Con daños</option>
-                                </select>
-                            </div>
+                            <>
+                                <div>
+                                    <label style={labelStyle}>Estado Conservación</label>
+                                    <select
+                                        value={form.estadoConservacion}
+                                        onChange={e => setForm(prev => ({ ...prev, estadoConservacion: e.target.value as EstadoConservacion | '' }))}
+                                        style={inputStyle}
+                                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
+                                        onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    >
+                                        <option value="">— Sin especificar —</option>
+                                        <option value="MINT">MINT — Precintado</option>
+                                        <option value="CIB">CIB — Caja + Manual</option>
+                                        <option value="LOOSE">LOOSE — Solo cartucho</option>
+                                        <option value="LOOSE_D">LOOSE-D — Con daños</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={labelStyle}>Plataforma</label>
+                                    <input
+                                        type="text"
+                                        placeholder="SNES, N64, PS1, Game Boy…"
+                                        value={form.plataforma}
+                                        onChange={e => setForm(prev => ({ ...prev, plataforma: e.target.value }))}
+                                        style={inputStyle}
+                                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
+                                        onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={labelStyle}>Año de lanzamiento</label>
+                                    <input
+                                        type="number"
+                                        placeholder="1996"
+                                        min={1970}
+                                        max={2010}
+                                        value={form.anio}
+                                        onChange={e => setForm(prev => ({ ...prev, anio: e.target.value }))}
+                                        style={inputStyle}
+                                        onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
+                                        onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                    />
+                                </div>
+                            </>
                         )}
 
                         {/* IDs de relaciones FK */}
@@ -513,9 +559,9 @@ function UbicacionPicker({
     const selected = ubicaciones.find(u => String(u.id) === value) ?? null;
     const pasillos = Array.from(new Set(ubicaciones.map(u => u.pasillo)));
 
-    /** Badge de ocupación: verde si vacía, ámbar con conteo si tiene productos */
+    /** Badge de disponibilidad: siempre verde LIBRE (modelo 1:N — todas las zonas aceptan más productos).
+     *  Si ya tiene productos, muestra el conteo como dato informativo pero sigue siendo LIBRE. */
     function BadgeZona({ n, small = false }: { n: number; small?: boolean }) {
-        const libre = n === 0;
         return (
             <span style={{
                 fontFamily:    'var(--font-display)',
@@ -525,11 +571,11 @@ function UbicacionPicker({
                 padding:       small ? '2px 6px' : '2px 8px',
                 borderRadius:  '3px',
                 flexShrink:    0,
-                background:    libre ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
-                color:         libre ? '#22C55E'               : '#F59E0B',
-                border:        `1px solid ${libre ? 'rgba(34,197,94,0.30)' : 'rgba(245,158,11,0.30)'}`,
+                background:    'rgba(34,197,94,0.12)',
+                color:         '#22C55E',
+                border:        '1px solid rgba(34,197,94,0.30)',
             }}>
-                {libre ? 'LIBRE' : `${n} PROD`}
+                {n > 0 ? `LIBRE · ${n}` : 'LIBRE'}
             </span>
         );
     }

@@ -8,7 +8,7 @@
  * DELETE /api/usuarios/{id}/roles — quitar rol
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTheme }                    from '../hooks/useTheme';
 import type { PaginatedResponse }      from '../types/models';
 import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
@@ -33,6 +33,28 @@ interface Toast {
     type: 'ok' | 'err';
 }
 
+interface InviteForm {
+    email:    string;
+    username: string;
+    rol:      string;
+    password: string;
+}
+
+const ROLES_INVITAR = [
+    { value: 'GESTOR_INVENTARIO', label: 'Gestor de Inventario' },
+    { value: 'CAJERO',            label: 'Cajero'               },
+    { value: 'MARKETING_ANALYST', label: 'Marketing Analyst'    },
+    { value: 'CONTABLE',          label: 'Contable'             },
+    { value: 'ADMIN',             label: '★ Administrador'      },
+] as const;
+
+function generateTempPassword(): string {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let pwd = 'Nx';
+    for (let i = 0; i < 7; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+    return pwd + '!';
+}
+
 // ── Página ────────────────────────────────────────────────────────────────────
 
 export function UsuariosPage(): JSX.Element {
@@ -51,6 +73,44 @@ export function UsuariosPage(): JSX.Element {
     const [loadingRows,  setLoadingRows]  = useState<Set<number>>(new Set());
     const [confirmModal, setConfirmModal] = useState<UsuarioAdmin | null>(null);
     const [refreshKey,   setRefreshKey]   = useState(0);
+
+    // ── Modal Invitar ─────────────────────────────────────────────────────────
+    const [inviteOpen,    setInviteOpen]    = useState(false);
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [pwdCopied,     setPwdCopied]     = useState(false);
+    const [inviteForm,    setInviteForm]    = useState<InviteForm>({
+        email: '', username: '', rol: 'CAJERO', password: '',
+    });
+    const emailRef = useRef<HTMLInputElement>(null);
+
+    function openInviteModal(): void {
+        setInviteForm({ email: '', username: '', rol: 'CAJERO', password: generateTempPassword() });
+        setPwdCopied(false);
+        setInviteOpen(true);
+        setTimeout(() => emailRef.current?.focus(), 60);
+    }
+
+    function handleInviteEmail(value: string): void {
+        const derived = value.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+        setInviteForm(f => ({ ...f, email: value, username: derived }));
+    }
+
+    async function submitInvite(): Promise<void> {
+        if (!inviteForm.email.trim() || !inviteForm.username.trim()) return;
+        setInviteLoading(true);
+        try {
+            await api.post('/usuarios/invitar', inviteForm);
+            setInviteOpen(false);
+            showToast('Invitación enviada correctamente');
+            setRefreshKey(k => k + 1);
+        } catch (err: unknown) {
+            const status = (err as { response?: { status?: number } })?.response?.status;
+            if (status === 409) showToast('El email o username ya está en uso', 'err');
+            else                showToast('Error al crear el usuario', 'err');
+        } finally {
+            setInviteLoading(false);
+        }
+    }
 
     function showToast(msg: string, type: 'ok' | 'err' = 'ok'): void {
         setToast({ msg, type });
@@ -286,7 +346,243 @@ export function UsuariosPage(): JSX.Element {
                         </span>
                     </div>
                 </div>
+
+                {/* Botón Añadir Usuario */}
+                <button
+                    onClick={openInviteModal}
+                    style={{
+                        display:       'flex',
+                        alignItems:    'center',
+                        gap:           '7px',
+                        background:    'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                        color:         'var(--text-inverse)',
+                        border:        'none',
+                        borderRadius:  '8px',
+                        padding:       '9px 18px',
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '11px',
+                        fontWeight:    700,
+                        letterSpacing: '0.10em',
+                        textTransform: 'uppercase',
+                        cursor:        'pointer',
+                        boxShadow:     'var(--fab-shadow)',
+                        transition:    'transform 160ms ease, box-shadow 160ms ease',
+                        flexShrink:    0,
+                    }}
+                    onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = 'var(--fab-shadow-active)';
+                    }}
+                    onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'var(--fab-shadow)';
+                    }}
+                    onMouseDown={e => { e.currentTarget.style.transform = 'translateY(0) scale(0.97)'; }}
+                    onMouseUp={e   => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                >
+                    <span style={{ fontSize: '14px', lineHeight: 1 }}>+</span>
+                    Añadir Usuario
+                </button>
             </div>
+
+            {/* ── Modal Invitar Usuario ── */}
+            {inviteOpen && (
+                <div
+                    onClick={() => { if (!inviteLoading) setInviteOpen(false); }}
+                    style={{
+                        position:       'fixed',
+                        inset:          0,
+                        zIndex:         400,
+                        background:     'rgba(0,0,0,0.70)',
+                        display:        'flex',
+                        alignItems:     'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(4px)',
+                        padding:        '16px',
+                    }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            width:        '100%',
+                            maxWidth:     '440px',
+                            background:   'var(--bg-surface)',
+                            border:       '1px solid var(--border-accent)',
+                            borderRadius: '14px',
+                            boxShadow:    'var(--shadow-lg)',
+                            overflow:     'hidden',
+                            animation:    'fadeInUp 0.18s cubic-bezier(0.23,1,0.32,1) both',
+                            position:     'relative',
+                        }}
+                    >
+                        {/* Barra superior */}
+                        <div style={{ height: '2px', background: 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))' }} />
+
+                        {/* Cabecera del modal */}
+                        <div style={{ padding: '22px 24px 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', letterSpacing: '0.16em', textTransform: 'uppercase', color: 'var(--accent-primary)', marginBottom: '5px' }}>
+                                    Panel de administración
+                                </div>
+                                <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                                    Añadir Usuario
+                                </h2>
+                            </div>
+                            <button
+                                onClick={() => setInviteOpen(false)}
+                                disabled={inviteLoading}
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px', lineHeight: 1, padding: '4px', opacity: inviteLoading ? 0.4 : 1 }}
+                            >✕</button>
+                        </div>
+
+                        {/* Formulario */}
+                        <div style={{ padding: '20px 24px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                            {/* Email */}
+                            <div>
+                                <label style={invLabelStyle}>Email *</label>
+                                <input
+                                    ref={emailRef}
+                                    type="email"
+                                    placeholder="usuario@empresa.com"
+                                    value={inviteForm.email}
+                                    onChange={e => handleInviteEmail(e.target.value)}
+                                    style={invInputStyle}
+                                    onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                    onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                />
+                            </div>
+
+                            {/* Username */}
+                            <div>
+                                <label style={invLabelStyle}>Username *</label>
+                                <input
+                                    type="text"
+                                    placeholder="nombre_usuario"
+                                    value={inviteForm.username}
+                                    onChange={e => setInviteForm(f => ({ ...f, username: e.target.value }))}
+                                    style={invInputStyle}
+                                    onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                    onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                />
+                            </div>
+
+                            {/* Rol */}
+                            <div>
+                                <label style={invLabelStyle}>Rol inicial *</label>
+                                <select
+                                    value={inviteForm.rol}
+                                    onChange={e => setInviteForm(f => ({ ...f, rol: e.target.value }))}
+                                    style={invInputStyle}
+                                    onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                    onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                >
+                                    {ROLES_INVITAR.map(r => (
+                                        <option key={r.value} value={r.value}>{r.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Contraseña temporal */}
+                            <div>
+                                <label style={invLabelStyle}>Contraseña temporal</label>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                    <input
+                                        type="text"
+                                        readOnly
+                                        value={inviteForm.password}
+                                        style={{ ...invInputStyle, flex: 1, color: 'var(--text-muted)', cursor: 'default', letterSpacing: '0.05em' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            void navigator.clipboard.writeText(inviteForm.password);
+                                            setPwdCopied(true);
+                                            setTimeout(() => setPwdCopied(false), 2000);
+                                        }}
+                                        style={{
+                                            background:    pwdCopied ? 'rgba(34,197,94,0.12)' : 'var(--bg-elevated)',
+                                            border:        `1px solid ${pwdCopied ? 'rgba(34,197,94,0.35)' : 'var(--border-default)'}`,
+                                            borderRadius:  '6px',
+                                            padding:       '0 12px',
+                                            cursor:        'pointer',
+                                            fontFamily:    'var(--font-mono)',
+                                            fontSize:      '10px',
+                                            color:         pwdCopied ? '#22C55E' : 'var(--text-muted)',
+                                            letterSpacing: '0.04em',
+                                            flexShrink:    0,
+                                            transition:    'all 160ms ease',
+                                            whiteSpace:    'nowrap',
+                                        }}
+                                    >
+                                        {pwdCopied ? '✓ Copiado' : 'Copiar'}
+                                    </button>
+                                </div>
+                                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', margin: '5px 0 0', letterSpacing: '0.02em', lineHeight: 1.4 }}>
+                                    Comparte esta contraseña con el usuario. Podrá cambiarla tras iniciar sesión.
+                                </p>
+                            </div>
+
+                            {/* Botones */}
+                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '4px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setInviteOpen(false)}
+                                    disabled={inviteLoading}
+                                    style={{
+                                        background:    'transparent',
+                                        border:        '1px solid var(--border-default)',
+                                        borderRadius:  '7px',
+                                        padding:       '9px 18px',
+                                        cursor:        'pointer',
+                                        fontFamily:    'var(--font-display)',
+                                        fontSize:      '11px',
+                                        fontWeight:    700,
+                                        letterSpacing: '0.10em',
+                                        textTransform: 'uppercase',
+                                        color:         'var(--text-secondary)',
+                                        opacity:       inviteLoading ? 0.4 : 1,
+                                        transition:    'opacity 120ms',
+                                    }}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { void submitInvite(); }}
+                                    disabled={inviteLoading || !inviteForm.email.trim() || !inviteForm.username.trim()}
+                                    style={{
+                                        display:       'flex',
+                                        alignItems:    'center',
+                                        gap:           '6px',
+                                        background:    'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
+                                        color:         'var(--text-inverse)',
+                                        border:        'none',
+                                        borderRadius:  '7px',
+                                        padding:       '9px 20px',
+                                        cursor:        (inviteLoading || !inviteForm.email.trim() || !inviteForm.username.trim()) ? 'not-allowed' : 'pointer',
+                                        fontFamily:    'var(--font-display)',
+                                        fontSize:      '11px',
+                                        fontWeight:    700,
+                                        letterSpacing: '0.10em',
+                                        textTransform: 'uppercase',
+                                        opacity:       (inviteLoading || !inviteForm.email.trim() || !inviteForm.username.trim()) ? 0.5 : 1,
+                                        boxShadow:     'var(--fab-shadow)',
+                                        transition:    'opacity 160ms, box-shadow 160ms',
+                                    }}
+                                >
+                                    {inviteLoading ? '···' : (
+                                        <>
+                                            <span style={{ fontSize: '13px' }}>✉</span>
+                                            Enviar Invitación
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ── TableControls ── */}
             <div style={{ marginBottom: '16px' }}>
@@ -432,3 +728,31 @@ export function UsuariosPage(): JSX.Element {
         </div>
     );
 }
+
+// ── Estilos del modal de invitación ──────────────────────────────────────────
+
+const invLabelStyle: React.CSSProperties = {
+    display:       'block',
+    fontFamily:    'var(--font-display)',
+    fontSize:      '10px',
+    fontWeight:    700,
+    letterSpacing: '0.12em',
+    textTransform: 'uppercase',
+    color:         'var(--text-secondary)',
+    marginBottom:  '5px',
+};
+
+const invInputStyle: React.CSSProperties = {
+    width:         '100%',
+    boxSizing:     'border-box',
+    fontFamily:    'var(--font-mono)',
+    fontSize:      '13px',
+    color:         'var(--text-primary)',
+    background:    'var(--bg-elevated)',
+    border:        '1px solid var(--border-default)',
+    borderRadius:  '6px',
+    padding:       '9px 12px',
+    outline:       'none',
+    caretColor:    'var(--accent-primary)',
+    transition:    'border-color 160ms ease, box-shadow 160ms ease',
+};

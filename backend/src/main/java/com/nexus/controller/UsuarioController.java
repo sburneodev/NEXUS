@@ -1,10 +1,12 @@
 package com.nexus.controller;
 
 import com.nexus.dto.AsignarRolRequest;
+import com.nexus.dto.InvitarUsuarioRequest;
 import com.nexus.dto.UsuarioDTO;
 import com.nexus.service.UsuarioService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -60,6 +62,12 @@ public class UsuarioController {
     public ResponseEntity<UsuarioDTO> cambiarRol(@PathVariable Long id,
                                                   @RequestBody AsignarRolRequest request) {
         return ResponseEntity.ok(usuarioService.asignarRol(id, request.getRol()));
+    }
+
+    /** Crea un nuevo usuario desde el panel de admin con rol inicial. */
+    @PostMapping("/invitar")
+    public ResponseEntity<UsuarioDTO> invitar(@RequestBody InvitarUsuarioRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.invitar(request));
     }
 
 }

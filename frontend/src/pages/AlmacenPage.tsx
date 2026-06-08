@@ -27,25 +27,6 @@ const RIGHT_SIDE  = ['P8', 'P7', 'P6', 'P5'] as const;
 // Capacidad física real: 8 pasillos × 6 estanterías = 48 racks
 const MAX_RACKS = 48;
 
-// ── Mock data ─────────────────────────────────────────────────────────
-const MOCK: MapaResponse = {
-    total_racks: 96, racks_ocupados: 11,
-    mapa: {
-        P1: {
-            A: { 1: { nivel:1, id_producto:1, sku:'RET-SNES-001', nombre:'Super Mario World — SNES CIB', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'CIB', bajo_minimo:false } },
-            B: { 1: { nivel:1, id_producto:2, sku:'RET-SNES-002', nombre:'Donkey Kong Country — SNES MINT', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'MINT', bajo_minimo:false } },
-            C: { 1: { nivel:1, id_producto:3, sku:'STD-PS5-001', nombre:'God of War Ragnarök — PS5', stock_actual:42, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } },
-            D: {}, E: {}, F: {},
-        },
-        P2: { A: {}, B: {}, C: { 1: { nivel:1, id_producto:4, sku:'RET-N64-001', nombre:'Zelda: OoT — N64 CIB', stock_actual:1, stock_minimo:1, tipo_producto:'RETRO', estado_conservacion:'CIB', bajo_minimo:false } }, D: {}, E: {}, F: {} },
-        P3: { A: { 1: { nivel:1, id_producto:5, sku:'STD-PS5-002', nombre:'Elden Ring — PS5', stock_actual:28, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, B: {}, C: {}, D: {}, E: {}, F: {} },
-        P4: { A: { 1: { nivel:1, id_producto:7, sku:'STD-ACC-001', nombre:'DualSense PS5 Blanco', stock_actual:3, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:true } }, B: {}, C: {}, D: {}, E: {}, F: {} },
-        P5: { A: { 1: { nivel:1, id_producto:8, sku:'RET-N64-002', nombre:'Zelda Majora\'s Mask — N64', stock_actual:2, stock_minimo:5, tipo_producto:'RETRO', estado_conservacion:'LOOSE', bajo_minimo:true } }, B: {}, C: {}, D: {}, E: {}, F: {} },
-        P6: { A: { 1: { nivel:1, id_producto:9, sku:'STD-NSW-001', nombre:'Zelda: TOTK — Switch', stock_actual:55, stock_minimo:10, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, B: {}, C: {}, D: {}, E: {}, F: {} },
-        P7: { A: {}, B: {}, C: { 1: { nivel:1, id_producto:10, sku:'STD-FNK-001', nombre:'Funko Pop! Link #856', stock_actual:35, stock_minimo:5, tipo_producto:'ESTANDAR', estado_conservacion:null, bajo_minimo:false } }, D: {}, E: {}, F: {} },
-        P8: { A: {}, B: {}, C: {}, D: {}, E: {}, F: {} },
-    },
-};
 
 // ── Helpers ───────────────────────────────────────────────────────────
 function racksDeEstanteria(m: NivelMap): RackData[] { return Object.values(m); }
@@ -423,9 +404,12 @@ function InfoPanel({ sel, skuResaltado, onClose }: InfoPanelProps): JSX.Element 
     );
 }
 
+// ── Mapa vacío para el estado inicial (antes de que cargue la API) ───
+const EMPTY_MAPA: MapaResponse = { mapa: {}, total_racks: 0, racks_ocupados: 0 };
+
 // ── Página principal ──────────────────────────────────────────────────
 export function AlmacenPage(): JSX.Element {
-    const [mapaData, setMapaData]           = useState<MapaResponse>(MOCK);
+    const [mapaData, setMapaData]           = useState<MapaResponse>(EMPTY_MAPA);
     const [loading, setLoading]             = useState(true);
     const [seleccionado, setSeleccionado]   = useState<RackSeleccionado | null>(null);
     const [busqueda, setBusqueda]           = useState('');

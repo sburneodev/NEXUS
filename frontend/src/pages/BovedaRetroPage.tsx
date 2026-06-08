@@ -243,6 +243,7 @@ export function BovedaRetroPage(): JSX.Element {
     }, [filters.querySignal, filterEstado, filterActivo, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
     function handleRegistrar(data: Partial<ProductForm>): void { setPrefill(data); setEditProduct(null); setModalOpen(true); }
+    function handleOpenNew(): void { setEditProduct(null); setPrefill(undefined); setModalOpen(true); }
     function handleOpenEdit(p: Producto): void { setEditProduct(p); setPrefill(undefined); setModalOpen(true); }
     function handleCloseModal(): void { setModalOpen(false); setPrefill(undefined); setEditProduct(null); }
 
@@ -251,7 +252,6 @@ export function BovedaRetroPage(): JSX.Element {
             // Modo edición — PUT al backend
             api.put(`/productos/${editProduct.id}`, data)
                 .then(() => {
-                    // Actualiza la fila localmente sin recargar toda la tabla
                     setRows(prev => prev.map(r =>
                         r.id === editProduct.id
                             ? { ...r, ...data, id: editProduct.id }
@@ -260,8 +260,18 @@ export function BovedaRetroPage(): JSX.Element {
                     setExpandedId(null);
                 })
                 .catch(() => {
-                    // Si la API falla, recarga para mantener consistencia
                     filters.setPage(filters.page);
+                });
+        } else {
+            // Modo creación — POST al backend
+            api.post<Producto>('/productos', data)
+                .then(({ data: nuevo }) => {
+                    // Añade la nueva pieza al principio de la tabla sin recargar
+                    setRows(prev => [nuevo, ...prev]);
+                })
+                .catch(() => {
+                    // Si falla, recarga la página actual para reflejar el estado real
+                    filters.setPage(0);
                 });
         }
         handleCloseModal();
@@ -271,32 +281,66 @@ export function BovedaRetroPage(): JSX.Element {
     return (
         <div>
             {/* ── Cabecera ── */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                    <h1 style={{
-                        fontFamily:    'var(--font-display)',
-                        fontSize:      'var(--text-3xl)',
-                        fontWeight:    700,
-                        letterSpacing: '-0.02em',
-                        textTransform: 'uppercase',
-                        color:         'var(--text-primary)',
-                        lineHeight:    1.1,
-                        margin:        0,
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                <h1 style={{
+                    fontFamily:    'var(--font-display)',
+                    fontSize:      'var(--text-3xl)',
+                    fontWeight:    700,
+                    letterSpacing: '-0.02em',
+                    textTransform: 'uppercase',
+                    color:         'var(--text-primary)',
+                    lineHeight:    1.1,
+                    margin:        0,
+                }}>
+                    LA{' '}
+                    <span style={{
+                        background:           'linear-gradient(125deg, #D4920A 0%, #B97310 50%, #9A5C08 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor:  'transparent',
+                        backgroundClip:       'text',
+                        filter:               'drop-shadow(0 0 8px rgba(180,110,8,0.22))',
+                        display:              'inline-block',
                     }}>
-                        LA{' '}
-                        <span style={{
-                            background:              'linear-gradient(125deg, #D4920A 0%, #B97310 50%, #9A5C08 100%)',
-                            WebkitBackgroundClip:    'text',
-                            WebkitTextFillColor:     'transparent',
-                            backgroundClip:          'text',
-                            filter:                  'drop-shadow(0 0 8px rgba(180,110,8,0.22))',
-                            display:                 'inline-block',
-                        }}>
-                            BÓVEDA
-                        </span>{' '}
-                        RETRO
-                    </h1>
-                </div>
+                        BÓVEDA
+                    </span>{' '}
+                    RETRO
+                </h1>
+
+                <button
+                    onClick={handleOpenNew}
+                    style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '12px',
+                        fontWeight:    700,
+                        letterSpacing: '0.10em',
+                        textTransform: 'uppercase',
+                        padding:       '9px 20px',
+                        background:    'linear-gradient(135deg, #B97310, #D4920A)',
+                        color:         '#0A0A0F',
+                        border:        'none',
+                        borderRadius:  'var(--radius-base)',
+                        cursor:        'pointer',
+                        display:       'flex',
+                        alignItems:    'center',
+                        gap:           '7px',
+                        boxShadow:     '0 0 18px rgba(180,110,8,0.30)',
+                        transition:    'opacity 150ms ease, box-shadow 150ms ease',
+                        flexShrink:    0,
+                    }}
+                    onMouseEnter={e => {
+                        const b = e.currentTarget as HTMLButtonElement;
+                        b.style.opacity = '0.88';
+                        b.style.boxShadow = '0 0 26px rgba(180,110,8,0.50)';
+                    }}
+                    onMouseLeave={e => {
+                        const b = e.currentTarget as HTMLButtonElement;
+                        b.style.opacity = '1';
+                        b.style.boxShadow = '0 0 18px rgba(180,110,8,0.30)';
+                    }}
+                >
+                    <span style={{ fontSize: '14px', lineHeight: 1 }}>◆</span>
+                    AÑADIR PIEZA RETRO
+                </button>
             </div>
 
             {/* ── Tasador IA ── */}

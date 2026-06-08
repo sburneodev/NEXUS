@@ -9,6 +9,7 @@ import { ClientesPage }           from './pages/ClientesPage';
 import { ProveedoresPage }        from './pages/ProveedoresPage';
 import { UsuariosPage }           from './pages/UsuariosPage';
 import { AuditoriaPage }          from './pages/AuditoriaPage';
+import { SystemPage }            from './pages/SystemPage';
 import { AlbaranPreviewPage }     from './pages/AlbaranPreviewPage';
 import { AlbaranesRangoPage }     from './pages/AlbaranesRangoPage';
 import { Layout }                 from './components/layout/Layout';
@@ -60,6 +61,7 @@ function App(): JSX.Element {
                     <Route element={<Layout />}>
                         <Route path="/usuarios"  element={<UsuariosPage />} />
                         <Route path="/auditoria" element={<AuditoriaPage />} />
+                        <Route path="/system"    element={<SystemPage />} />
                     </Route>
                 </Route>
 

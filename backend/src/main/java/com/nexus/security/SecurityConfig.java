@@ -66,7 +66,7 @@ public class SecurityConfig {
                 .requestMatchers("/error").permitAll()
                 // Rutas exclusivas de administración — primera capa de defensa
                 // (segunda capa: @PreAuthorize a nivel de clase/método en cada Controller)
-                .requestMatchers("/admin/**", "/usuarios/**", "/audit/**").hasAuthority("ADMIN")
+                .requestMatchers("/admin/**", "/usuarios/**", "/audit/**", "/system/**").hasAuthority("ADMIN")
                 // Todo lo demás: usuario autenticado (rol se valida en cada @PreAuthorize)
                 .anyRequest().authenticated()
             )

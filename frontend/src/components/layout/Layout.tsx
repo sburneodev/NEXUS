@@ -28,6 +28,7 @@ const ROUTE_TITLES: Record<string, string> = {
     '/usuarios':        'Gestión de Usuarios',
     '/auditoria':       'Auditoría',
     '/albaranes-rango': 'Albaranes',
+    '/system':          'Sistema',
 };
 
 /** Badge opcional que aparece junto al título en la barra superior */

@@ -51,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
     { path: '/ai',             label: 'IA & Analytics', icon: '◇', section: 'INTELIGENCIA' },
     { path: '/usuarios',       label: 'Usuarios',       icon: '◈', section: 'ADMINISTRACIÓN', roles: ['ADMIN'] },
     { path: '/auditoria',      label: 'Auditoría',      icon: '▷', roles: ['ADMIN'] },
+    { path: '/system',         label: 'Sistema',         icon: '◉', roles: ['ADMIN'] },
 ];
 
 /* Emil: cubic-bezier(0.32, 0.72, 0, 1) es la curva iOS para drawers — mucho más natural */

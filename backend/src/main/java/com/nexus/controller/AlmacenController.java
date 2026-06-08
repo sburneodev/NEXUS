@@ -22,17 +22,14 @@ public class AlmacenController {
 
     // ── GET /api/almacen/ubicaciones ─────────────────────────────────────
     /**
-     * Lista plana de todas las ubicaciones del almacén con su estado de ocupación.
-     * Usada por el selector de ubicación en los formularios de producto.
+     * Lista plana de todas las zonas del almacén con el número de productos
+     * que contiene cada una. Modelo zona compartida (1:N): una ubicación puede
+     * albergar múltiples productos/títulos.
      *
-     * Respuesta: [ { id, pasillo, estanteria, nivel, ocupada, productoNombre } ]
-     */
-    /**
-     * Lista plana de ubicaciones para el selector del formulario de producto.
-     * Accesible a cualquier usuario autenticado: el modal de creación/edición
-     * de producto es visible para todos los roles, por lo que la consulta de
-     * ubicaciones también debe serlo.  La seguridad de escritura se aplica en
-     * el endpoint de guardado de producto (POST/PUT /productos).
+     * Respuesta: [ { id, pasillo, estanteria, nivel, numProductos } ]
+     *
+     * Accesible a cualquier usuario autenticado: el modal de alta/edición
+     * de producto es visible para todos los roles.
      */
     @GetMapping("/ubicaciones")
     public ResponseEntity<List<Map<String, Object>>> getUbicaciones() {
@@ -41,10 +38,10 @@ public class AlmacenController {
                    ua.pasillo,
                    ua.estanteria,
                    ua.nivel,
-                   p.id     AS prod_id,
-                   p.nombre AS prod_nombre
+                   COUNT(p.id) AS num_productos
             FROM ubicaciones_almacen ua
             LEFT JOIN productos p ON ua.id = p.id_ubicacion
+            GROUP BY ua.id, ua.pasillo, ua.estanteria, ua.nivel
             ORDER BY ua.pasillo, ua.estanteria, ua.nivel
             """;
 
@@ -53,12 +50,13 @@ public class AlmacenController {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map<String, Object> row : rows) {
             Map<String, Object> u = new LinkedHashMap<>();
-            u.put("id",             row.get("id"));
-            u.put("pasillo",        row.get("pasillo"));
-            u.put("estanteria",     row.get("estanteria"));
-            u.put("nivel",          row.get("nivel"));
-            u.put("ocupada",        row.get("prod_id") != null);
-            u.put("productoNombre", row.get("prod_nombre"));
+            u.put("id",           row.get("id"));
+            u.put("pasillo",      row.get("pasillo"));
+            u.put("estanteria",   row.get("estanteria"));
+            u.put("nivel",        row.get("nivel"));
+            u.put("numProductos", row.get("num_productos") != null
+                                    ? ((Number) row.get("num_productos")).intValue()
+                                    : 0);
             result.add(u);
         }
 
@@ -66,26 +64,40 @@ public class AlmacenController {
     }
 
     // ── AI-09 — GET /api/almacen/mapa ─────────────────────────────────
+    // Modelo zona compartida: cada slot puede tener varios productos.
+    // Devuelve conteo y alerta de stock bajo por zona.
     @GetMapping("/mapa")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<Map<String, Object>> getMapa() {
         String sql = """
-            SELECT ua.pasillo, ua.estanteria, ua.nivel,
-                   p.id as id_producto, p.sku, p.nombre,
-                   p.stock_actual, p.stock_minimo, p.tipo_producto,
-                   p.estado_conservacion, p.activo
+            SELECT ua.pasillo,
+                   ua.estanteria,
+                   ua.nivel,
+                   COUNT(p.id)                                         AS num_productos,
+                   COALESCE(BOOL_OR(
+                       p.activo = TRUE
+                       AND p.stock_actual IS NOT NULL
+                       AND p.stock_minimo IS NOT NULL
+                       AND p.stock_actual <= p.stock_minimo
+                   ), FALSE)                                           AS bajo_minimo,
+                   STRING_AGG(p.nombre, ' · ' ORDER BY p.nombre)      AS nombres
             FROM ubicaciones_almacen ua
-            LEFT JOIN productos p ON ua.id = p.id_ubicacion
+            LEFT JOIN productos p ON ua.id = p.id_ubicacion AND p.activo = TRUE
+            GROUP BY ua.pasillo, ua.estanteria, ua.nivel
             ORDER BY ua.pasillo, ua.estanteria, ua.nivel
             """;
 
         List<Map<String, Object>> filas = jdbcTemplate.queryForList(sql);
 
         Map<String, Object> mapa = new LinkedHashMap<>();
+        int totalRacks = 0, racksOcupados = 0;
+
         for (Map<String, Object> fila : filas) {
             String pasillo    = (String) fila.get("pasillo");
             String estanteria = (String) fila.get("estanteria");
             int    nivel      = ((Number) fila.get("nivel")).intValue();
+            int    numProds   = fila.get("num_productos") != null
+                                    ? ((Number) fila.get("num_productos")).intValue() : 0;
 
             mapa.computeIfAbsent(pasillo, k -> new LinkedHashMap<>());
             @SuppressWarnings("unchecked")
@@ -96,26 +108,20 @@ public class AlmacenController {
             Map<String, Object> estanteriaMap = (Map<String, Object>) pasilloMap.get(estanteria);
 
             Map<String, Object> rack = new LinkedHashMap<>();
-            rack.put("nivel",               nivel);
-            rack.put("id_producto",         fila.get("id_producto"));
-            rack.put("sku",                 fila.get("sku"));
-            rack.put("nombre",              fila.get("nombre"));
-            rack.put("stock_actual",        fila.get("stock_actual"));
-            rack.put("stock_minimo",        fila.get("stock_minimo"));
-            rack.put("tipo_producto",       fila.get("tipo_producto"));
-            rack.put("estado_conservacion", fila.get("estado_conservacion"));
-            rack.put("bajo_minimo",
-                fila.get("stock_actual") != null && fila.get("stock_minimo") != null &&
-                ((Number) fila.get("stock_actual")).intValue() <=
-                ((Number) fila.get("stock_minimo")).intValue());
-
+            rack.put("nivel",          nivel);
+            rack.put("numProductos",   numProds);
+            rack.put("nombres",        fila.get("nombres"));
+            rack.put("bajoMinimo",     fila.get("bajo_minimo"));
             estanteriaMap.put(String.valueOf(nivel), rack);
+
+            totalRacks++;
+            if (numProds > 0) racksOcupados++;
         }
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("mapa",           mapa);
-        response.put("total_racks",    filas.size());
-        response.put("racks_ocupados", filas.stream().filter(f -> f.get("id_producto") != null).count());
+        response.put("total_racks",    totalRacks);
+        response.put("racks_ocupados", racksOcupados);
 
         return ResponseEntity.ok(response);
     }

@@ -11,13 +11,13 @@ import type { Producto, TipoProducto, EstadoConservacion } from '../../types/mod
 import api from '../../services/api';
 
 // ── Tipo de ubicación devuelta por GET /almacen/ubicaciones ───────────
+// Modelo zona compartida: una ubicación puede tener varios productos.
 interface UbicacionOption {
-    id:             number;
-    pasillo:        string;
-    estanteria:     string;
-    nivel:          number;
-    ocupada:        boolean;
-    productoNombre: string | null;
+    id:           number;
+    pasillo:      string;
+    estanteria:   string;
+    nivel:        number;
+    numProductos: number;
 }
 
 // ── Tipos ─────────────────────────────────────────────────────────────
@@ -329,13 +329,12 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
 
                         {/* ── Selector de ubicación en almacén ───────────────── */}
                         <div style={{ gridColumn: '1 / -1' }}>
-                            <label style={labelStyle}>Ubicación en Almacén</label>
+                            <label style={labelStyle}>Zona de Almacén</label>
                             <UbicacionPicker
                                 ubicaciones={ubicaciones}
                                 loading={ubicacionesLoading}
                                 error={ubicacionesError}
                                 value={form.idUbicacion}
-                                productoActual={producto}
                                 onChange={id => setForm(prev => ({ ...prev, idUbicacion: id }))}
                                 onRetry={() => setUbicacionesRetry(n => n + 1)}
                             />
@@ -483,25 +482,25 @@ const saveBtnStyle: React.CSSProperties = {
     boxShadow:     '0 0 16px var(--accent-primary-glow)',
 };
 
-// ── UbicacionPicker — dropdown custom con badges de estado ───────────
+// ── UbicacionPicker — selector de zona de almacén (modelo 1:N) ────────
+// Una zona puede albergar varios productos. Se muestra el conteo actual
+// como referencia, pero no bloquea la selección.
 
 interface UbicacionPickerProps {
-    ubicaciones:   UbicacionOption[];
-    loading:       boolean;
-    error:         boolean;
-    value:         string;
-    productoActual: Producto | null;
-    onChange:      (id: string) => void;
-    onRetry:       () => void;
+    ubicaciones: UbicacionOption[];
+    loading:     boolean;
+    error:       boolean;
+    value:       string;
+    onChange:    (id: string) => void;
+    onRetry:     () => void;
 }
 
 function UbicacionPicker({
-    ubicaciones, loading, error, value, productoActual, onChange, onRetry,
+    ubicaciones, loading, error, value, onChange, onRetry,
 }: UbicacionPickerProps): JSX.Element {
     const [open, setOpen] = useState(false);
     const ref             = useRef<HTMLDivElement>(null);
 
-    // Cierra el dropdown si se hace click fuera
     useEffect(() => {
         if (!open) return;
         function handler(e: MouseEvent) {
@@ -512,15 +511,27 @@ function UbicacionPicker({
     }, [open]);
 
     const selected = ubicaciones.find(u => String(u.id) === value) ?? null;
+    const pasillos = Array.from(new Set(ubicaciones.map(u => u.pasillo)));
 
-    // Solo mostramos ubicaciones libres (o la propia del producto en edición)
-    const visibles = ubicaciones.filter(u => isLibre(u));
-    const pasillos = Array.from(new Set(visibles.map(u => u.pasillo)));
-
-    function isLibre(u: UbicacionOption): boolean {
-        if (!u.ocupada) return true;
-        // Si la ubicación pertenece al producto que se está editando, se considera libre
-        return productoActual != null && String(productoActual.idUbicacion) === String(u.id);
+    /** Badge de ocupación: verde si vacía, ámbar con conteo si tiene productos */
+    function BadgeZona({ n, small = false }: { n: number; small?: boolean }) {
+        const libre = n === 0;
+        return (
+            <span style={{
+                fontFamily:    'var(--font-display)',
+                fontSize:      small ? '9px' : '10px',
+                fontWeight:    700,
+                letterSpacing: '0.08em',
+                padding:       small ? '2px 6px' : '2px 8px',
+                borderRadius:  '3px',
+                flexShrink:    0,
+                background:    libre ? 'rgba(34,197,94,0.12)' : 'rgba(245,158,11,0.12)',
+                color:         libre ? '#22C55E'               : '#F59E0B',
+                border:        `1px solid ${libre ? 'rgba(34,197,94,0.30)' : 'rgba(245,158,11,0.30)'}`,
+            }}>
+                {libre ? 'LIBRE' : `${n} PROD`}
+            </span>
+        );
     }
 
     // ── Estado de error ────────────────────────────────────────────────
@@ -537,7 +548,7 @@ function UbicacionPicker({
                 padding:        '9px 12px',
             }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
-                    ⚠ Ubicaciones no disponibles temporalmente
+                    ⚠ Zonas de almacén no disponibles temporalmente
                 </span>
                 <button
                     type="button"
@@ -563,7 +574,7 @@ function UbicacionPicker({
         );
     }
 
-    // ── Trigger (botón que muestra la selección actual) ────────────────
+    // ── Trigger ────────────────────────────────────────────────────────
     return (
         <div ref={ref} style={{ position: 'relative' }}>
             <button
@@ -582,29 +593,16 @@ function UbicacionPicker({
                 }}
             >
                 {loading ? (
-                    <span style={{ color: 'var(--text-muted)' }}>Cargando ubicaciones…</span>
+                    <span style={{ color: 'var(--text-muted)' }}>Cargando zonas…</span>
                 ) : selected ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
                         <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
                             Pasillo {selected.pasillo} · Est. {selected.estanteria} · Nivel {selected.nivel}
                         </span>
-                        <span style={{
-                            fontFamily:    'var(--font-display)',
-                            fontSize:      '9px',
-                            fontWeight:    700,
-                            letterSpacing: '0.08em',
-                            padding:       '2px 6px',
-                            borderRadius:  '3px',
-                            background:    isLibre(selected) ? 'rgba(34,197,94,0.12)' : 'rgba(248,113,113,0.12)',
-                            color:         isLibre(selected) ? '#22C55E' : 'var(--accent-danger)',
-                            border:        `1px solid ${isLibre(selected) ? 'rgba(34,197,94,0.30)' : 'rgba(248,113,113,0.30)'}`,
-                            flexShrink:    0,
-                        }}>
-                            {isLibre(selected) ? 'LIBRE' : 'OCUPADO'}
-                        </span>
+                        <BadgeZona n={selected.numProductos} small />
                     </span>
                 ) : (
-                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>— Sin ubicación asignada —</span>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>— Sin zona asignada —</span>
                 )}
                 <span style={{ color: 'var(--text-muted)', fontSize: '10px', flexShrink: 0 }}>{open ? '▲' : '▼'}</span>
             </button>
@@ -612,54 +610,40 @@ function UbicacionPicker({
             {/* ── Lista desplegable ──────────────────────────────────── */}
             {open && (
                 <div style={{
-                    position:   'absolute',
-                    top:        'calc(100% + 4px)',
-                    left:       0,
-                    right:      0,
-                    zIndex:     500,
-                    background: 'var(--bg-elevated)',
-                    border:     '1px solid var(--border-default)',
+                    position:     'absolute',
+                    top:          'calc(100% + 4px)',
+                    left:         0,
+                    right:        0,
+                    zIndex:       500,
+                    background:   'var(--bg-elevated)',
+                    border:       '1px solid var(--border-default)',
                     borderRadius: '8px',
-                    boxShadow:  'var(--shadow-lg)',
-                    maxHeight:  '260px',
-                    overflowY:  'auto',
-                    animation:  'fadeInUp 0.12s cubic-bezier(0.23,1,0.32,1) both',
+                    boxShadow:    'var(--shadow-lg)',
+                    maxHeight:    '260px',
+                    overflowY:    'auto',
+                    animation:    'fadeInUp 0.12s cubic-bezier(0.23,1,0.32,1) both',
                 }}>
                     {/* Opción vacía */}
                     <div
                         onClick={() => { onChange(''); setOpen(false); }}
                         style={{
-                            padding:    '9px 14px',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize:   '12px',
-                            color:      'var(--text-muted)',
-                            cursor:     'pointer',
+                            padding:      '9px 14px',
+                            fontFamily:   'var(--font-mono)',
+                            fontSize:     '12px',
+                            color:        'var(--text-muted)',
+                            cursor:       'pointer',
                             borderBottom: '1px solid var(--border-subtle)',
-                            transition: 'background 120ms ease',
+                            transition:   'background 120ms ease',
                         }}
                         onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg-overlay)'; }}
                         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
                     >
-                        — Sin ubicación asignada —
+                        — Sin zona asignada —
                     </div>
-
-                    {/* Sin ubicaciones libres */}
-                    {visibles.length === 0 && !loading && (
-                        <div style={{
-                            padding:    '20px 14px',
-                            fontFamily: 'var(--font-mono)',
-                            fontSize:   '11px',
-                            color:      'var(--text-muted)',
-                            textAlign:  'center',
-                        }}>
-                            No hay ubicaciones libres disponibles
-                        </div>
-                    )}
 
                     {/* Grupos por pasillo */}
                     {pasillos.map(pasillo => (
                         <div key={pasillo}>
-                            {/* Cabecera de sección */}
                             <div style={{
                                 padding:       '6px 14px 3px',
                                 fontFamily:    'var(--font-display)',
@@ -673,82 +657,42 @@ function UbicacionPicker({
                                 Pasillo {pasillo}
                             </div>
 
-                            {/* Items de este pasillo */}
-                            {visibles
+                            {ubicaciones
                                 .filter(u => u.pasillo === pasillo)
                                 .map(u => {
-                                    const libre      = isLibre(u);
                                     const isSelected = String(u.id) === value;
                                     return (
                                         <div
                                             key={u.id}
-                                            onClick={() => {
-                                                if (!libre) return;
-                                                onChange(String(u.id));
-                                                setOpen(false);
-                                            }}
+                                            onClick={() => { onChange(String(u.id)); setOpen(false); }}
                                             style={{
                                                 display:        'flex',
                                                 alignItems:     'center',
                                                 justifyContent: 'space-between',
                                                 gap:            '10px',
                                                 padding:        '8px 14px',
-                                                cursor:         libre ? 'pointer' : 'not-allowed',
-                                                opacity:        libre ? 1 : 0.5,
+                                                cursor:         'pointer',
                                                 background:     isSelected ? 'rgba(56,189,248,0.08)' : 'transparent',
                                                 borderLeft:     isSelected ? '2px solid var(--accent-cyan)' : '2px solid transparent',
                                                 transition:     'background 120ms ease',
                                             }}
                                             onMouseEnter={e => {
-                                                if (libre) (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(56,189,248,0.10)' : 'var(--bg-overlay)';
+                                                (e.currentTarget as HTMLDivElement).style.background =
+                                                    isSelected ? 'rgba(56,189,248,0.10)' : 'var(--bg-overlay)';
                                             }}
                                             onMouseLeave={e => {
-                                                (e.currentTarget as HTMLDivElement).style.background = isSelected ? 'rgba(56,189,248,0.08)' : 'transparent';
+                                                (e.currentTarget as HTMLDivElement).style.background =
+                                                    isSelected ? 'rgba(56,189,248,0.08)' : 'transparent';
                                             }}
                                         >
-                                            {/* Info de la ubicación */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
-                                                <span style={{
-                                                    fontFamily: 'var(--font-mono)',
-                                                    fontSize:   '12px',
-                                                    color:      isSelected ? 'var(--accent-cyan)' : 'var(--text-primary)',
-                                                }}>
-                                                    Est. {u.estanteria} · Nivel {u.nivel}
-                                                </span>
-                                                {!libre && u.productoNombre && (
-                                                    <span style={{
-                                                        fontFamily:  'var(--font-mono)',
-                                                        fontSize:    '10px',
-                                                        color:       'var(--text-muted)',
-                                                        overflow:    'hidden',
-                                                        textOverflow:'ellipsis',
-                                                        whiteSpace:  'nowrap',
-                                                        maxWidth:    '180px',
-                                                    }}>
-                                                        {u.productoNombre}
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {/* Badge de estado */}
                                             <span style={{
-                                                fontFamily:    'var(--font-display)',
-                                                fontSize:      '9px',
-                                                fontWeight:    700,
-                                                letterSpacing: '0.08em',
-                                                padding:       '2px 7px',
-                                                borderRadius:  '3px',
-                                                flexShrink:    0,
-                                                background:    libre
-                                                    ? 'rgba(34,197,94,0.12)'
-                                                    : 'rgba(248,113,113,0.12)',
-                                                color:         libre ? '#22C55E' : 'var(--accent-danger)',
-                                                border:        `1px solid ${libre
-                                                    ? 'rgba(34,197,94,0.30)'
-                                                    : 'rgba(248,113,113,0.30)'}`,
+                                                fontFamily: 'var(--font-mono)',
+                                                fontSize:   '12px',
+                                                color:      isSelected ? 'var(--accent-cyan)' : 'var(--text-primary)',
                                             }}>
-                                                {libre ? 'LIBRE' : 'OCUPADO'}
+                                                Est. {u.estanteria} · Nivel {u.nivel}
                                             </span>
+                                            <BadgeZona n={u.numProductos} small />
                                         </div>
                                     );
                                 })}

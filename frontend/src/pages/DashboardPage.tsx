@@ -44,13 +44,38 @@ const glow = isDark
             productoService.listar(0, 200, 'RETRO'),
             productoService.listar(0, 200, 'ESTANDAR'),
             clienteService.listar('', 0, 1),
-        ]).then(([analyticsRes, retroRes, estandarRes, clientesRes]) => {
+            // Ocupación del almacén físico — ligero, solo necesitamos total_racks + racks_ocupados
+            api.get<{ mapa: Record<string, Record<string, Record<string, unknown>>>; total_racks: number; racks_ocupados: number }>('/almacen/mapa'),
+        ]).then(([analyticsRes, retroRes, estandarRes, clientesRes, mapaRes]) => {
             if (cancelled) return;
 
             let merged: KpiData = { ...BASE_KPI };
 
             if (analyticsRes.status === 'fulfilled') {
-                merged = { ...merged, ...analyticsRes.value.data };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const data = analyticsRes.value.data as any;
+
+                // ventas30Dias: [{dia, total}] → ventasUltimos30Dias: [{fecha, total, unidades}]
+                if (Array.isArray(data.ventas30Dias) && data.ventas30Dias.length) {
+                    merged.ventasUltimos30Dias = data.ventas30Dias.map((v: any) => ({
+                        fecha:    String(v.dia ?? v.fecha ?? ''),
+                        total:    Number(v.total   ?? 0),
+                        unidades: Number(v.unidades ?? 0),
+                    }));
+                }
+
+                // ventasPorTipo: [{tipo_producto, ventas, ingresos}] — gráfica de barras horizontales
+                if (Array.isArray(data.ventasPorTipo)) {
+                    merged.ventasPorTipo = data.ventasPorTipo;
+                }
+
+                // KPIs centralizados del backend (complementan los obtenidos directamente)
+                if (data.kpis) {
+                    const k = data.kpis;
+                    if (!merged.clientesActivos && k.total_clientes)
+                        merged.clientesActivos = Number(k.total_clientes);
+                }
+
                 setLoadState('ok');
             } else {
                 setLoadState('error');
@@ -63,10 +88,32 @@ const glow = isDark
                 const estandar = estandarRes.value.content;
                 merged.productosStockCritico = estandar.filter(p => p.stockActual <= p.stockMinimo).length;
                 merged.productosStockBajo    = estandar.filter(p => p.stockActual > p.stockMinimo && p.stockActual <= p.stockMinimo * 2).length;
+                merged.productosStockOk      = estandar.filter(p => p.stockActual > p.stockMinimo * 2).length;
             }
 
             if (clientesRes.status === 'fulfilled')
                 merged.clientesActivos = clientesRes.value.totalElements;
+
+            // Ocupación del almacén físico
+            if (mapaRes.status === 'fulfilled') {
+                const { mapa } = mapaRes.value.data;
+                // Capacidad física real: 8 pasillos × 6 estanterías = 48 slots
+                // (igual que MAX_RACKS en AlmacenPage — no usar total_racks de la API
+                //  porque ese campo cuenta niveles individuales de rack, no slots físicos)
+                const MAX = 48;
+                // Recalcular igual que AlmacenPage: slots únicos (pasillo+estantería) con stock > 0
+                const ocupadosSet = new Set<string>();
+                for (const [pasillo, em] of Object.entries(mapa)) {
+                    for (const [estanteria, nm] of Object.entries(em)) {
+                        const racks = Object.values(nm as Record<string, { id_producto: unknown; stock_actual: unknown }>);
+                        const conStock = racks.filter(r => r.id_producto !== null && Number(r.stock_actual ?? 0) > 0);
+                        if (conStock.length > 0) ocupadosSet.add(`${pasillo}:${estanteria}`);
+                    }
+                }
+                const ocupados = ocupadosSet.size;
+                merged.almacenPctOcupado = Math.round((ocupados / MAX) * 100);
+                merged.almacenLibres     = MAX - ocupados;
+            }
 
             if (!merged.ventasUltimos30Dias?.length)
                 merged.ventasUltimos30Dias = VENTAS_DEMO;

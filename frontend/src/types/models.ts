@@ -93,17 +93,31 @@ export interface KpiData {
     piezasRetroDisponibles: number;
     productosStockBajo: number;
     productosStockCritico: number;
+    /** Productos con stock por encima del doble del mínimo — calculado en cliente */
+    productosStockOk?: number;
     /**
      * Datos para el gráfico de línea del dashboard.
      * Cada entrada representa un día con el total de ventas.
      */
     ventasUltimos30Dias: VentaDiaria[];
+    /** Ingresos y volumen agrupados por tipo de producto (RETRO, ESTANDAR…) */
+    ventasPorTipo?: VentaTipo[];
+    /** Ocupación del almacén físico (0-100) */
+    almacenPctOcupado?: number;
+    /** Slots de rack libres en el almacén */
+    almacenLibres?: number;
 }
 
 export interface VentaDiaria {
     fecha: string; // "YYYY-MM-DD"
     total: number; // importe total en euros
     unidades: number;
+}
+
+export interface VentaTipo {
+    tipo_producto: string;
+    ventas: number;    // nº transacciones
+    ingresos: number;  // importe total en euros
 }
 
 // ── Tipos de respuesta paginada del backend ──────────────────────────

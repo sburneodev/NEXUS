@@ -94,8 +94,10 @@ function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps):
     const first   = occ[0] ?? null;
     const isEmpty = status === 'empty';
 
+    // Al seleccionar: borde más grueso del MISMO color semántico + glow intensificado
+    // Nunca se sobreescribe el color — una celda retro (amarilla) sigue siendo amarilla
     const border = selected
-        ? '2px solid var(--accent-cyan)'
+        ? `2px solid ${STATUS_COLOR[status]}`
         : highlighted
         ? '2px dashed var(--accent-gold)'
         : `1.5px solid ${STATUS_COLOR[status]}`;
@@ -110,7 +112,7 @@ function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps):
                 minHeight:      0,
                 border,
                 borderRadius:   '8px',
-                background:     selected ? 'rgba(59,130,246,0.16)' : STATUS_BG[status],
+                background:     STATUS_BG[status],
                 display:        'flex',
                 flexDirection:  'column',
                 alignItems:     'center',
@@ -119,8 +121,9 @@ function Cell({ racks, estanteria, selected, highlighted, onClick }: CellProps):
                 gap:            '4px',
                 padding:        '6px 4px',
                 transition:     'all 140ms ease',
+                // Seleccionado: glow intenso del propio color semántico
                 boxShadow:      selected
-                    ? '0 0 12px rgba(59,130,246,0.35)'
+                    ? `0 0 18px ${STATUS_COLOR[status]}99, 0 0 8px ${STATUS_COLOR[status]}55, inset 0 0 10px ${STATUS_COLOR[status]}18`
                     : status !== 'empty'
                     ? `0 0 8px ${STATUS_COLOR[status]}33`
                     : 'none',
@@ -470,13 +473,37 @@ export function AlmacenPage(): JSX.Element {
         <>
             <style>{`
                 @keyframes terminalBlink { 0%,100%{opacity:1} 50%{opacity:0} }
-                /* Responsive: tablet/móvil → columna única, mapa arriba info abajo */
+
+                /* ── Responsive ────────────────────────────────────────────── */
+
+                /* Portátiles medianos (< 1200px): status bar se envuelve y
+                   la leyenda pierde las etiquetas de texto (solo puntos de color) */
+                @media (max-width: 1200px) {
+                    .almacen-statusbar {
+                        height: auto !important;
+                        min-height: 48px !important;
+                        flex-wrap: wrap !important;
+                        padding: 8px 14px !important;
+                        gap: 8px !important;
+                        row-gap: 6px !important;
+                    }
+                    .almacen-legend-label { display: none !important; }
+                }
+
+                /* Tablet / móvil (< 900px): columna única, contenido scrollable */
                 @media (max-width: 900px) {
-                    .almacen-grid { grid-template-columns: 1fr !important; }
+                    .almacen-grid {
+                        grid-template-columns: 1fr !important;
+                        overflow-y: auto !important;
+                    }
+                    .almacen-outer {
+                        height: auto !important;
+                        overflow: visible !important;
+                    }
                 }
             `}</style>
 
-            <div style={{
+            <div className="almacen-outer" style={{
                 height:        'calc(100dvh - 104px)',
                 display:       'flex',
                 flexDirection: 'column',
@@ -485,7 +512,7 @@ export function AlmacenPage(): JSX.Element {
             }}>
 
                 {/* ── Status bar ─────────────────────────────────────────── */}
-                <div style={{
+                <div className="almacen-statusbar" style={{
                     flexShrink:     0,
                     height:         '48px',
                     display:        'flex',
@@ -497,48 +524,51 @@ export function AlmacenPage(): JSX.Element {
                     padding:        '0 18px',
                     gap:            '16px',
                 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'20px' }}>
-                        <span style={{ fontFamily:'var(--font-display)', fontSize:'13px', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-primary)' }}>
+                    {/* Lado izquierdo: título + métricas */}
+                    <div style={{ display:'flex', alignItems:'center', gap:'16px', flexWrap:'wrap', rowGap:'4px' }}>
+                        <span style={{ fontFamily:'var(--font-display)', fontSize:'13px', fontWeight:700, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-primary)', whiteSpace:'nowrap' }}>
                             ▦ PLANO DEL ALMACÉN
                         </span>
-                        {/* Ocupación — todo en una línea */}
-                        <div style={{ display:'flex', alignItems:'baseline', gap:'10px', lineHeight:1 }}>
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'13px', fontWeight:700, color: pctOcupado > 85 ? 'var(--accent-danger)' : pctOcupado > 60 ? 'var(--accent-gold)' : 'var(--accent-primary)', letterSpacing:'0.04em' }}>
+                        <div style={{ display:'flex', alignItems:'baseline', gap:'8px', lineHeight:1 }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'13px', fontWeight:700, color: pctOcupado > 85 ? 'var(--accent-danger)' : pctOcupado > 60 ? 'var(--accent-gold)' : 'var(--accent-primary)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
                                 {pctOcupado}% ocupado
                             </span>
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.04em' }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'10px', color:'var(--text-muted)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
                                 {ocupados} en uso · {libres} libres de {MAX_RACKS}
                             </span>
                         </div>
                         {criticos > 0 && (
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-danger)', letterSpacing:'0.04em' }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-danger)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>
                                 ⚠ {criticos} bajo mínimo
                             </span>
                         )}
                         {loading && (
-                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-cyan)' }}>
+                            <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--accent-cyan)', whiteSpace:'nowrap' }}>
                                 CARGANDO<span style={{ animation:'terminalBlink 0.8s step-end infinite' }}>█</span>
                             </span>
                         )}
                     </div>
 
-                    <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+                    {/* Lado derecho: leyenda + buscador */}
+                    <div style={{ display:'flex', alignItems:'center', gap:'12px', flexWrap:'wrap', rowGap:'4px', flexShrink:0 }}>
+                        {/* Leyenda — las etiquetas se ocultan en pantallas pequeñas vía CSS */}
                         {([ ['Stock OK','var(--accent-primary)'], ['Stock bajo','var(--accent-cyan)'], ['Retro','var(--accent-gold)'], ['Crítico','var(--accent-danger)'] ] as [string,string][]).map(([lbl, col]) => (
-                            <div key={lbl} style={{ display:'flex', alignItems:'center', gap:'6px' }}>
-                                <div style={{ width:'11px', height:'11px', borderRadius:'3px', background:col, flexShrink:0 }} />
-                                <span style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-secondary)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>{lbl}</span>
+                            <div key={lbl} style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+                                <div style={{ width:'10px', height:'10px', borderRadius:'3px', background:col, flexShrink:0 }} />
+                                <span className="almacen-legend-label" style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-secondary)', letterSpacing:'0.04em', whiteSpace:'nowrap' }}>{lbl}</span>
                             </div>
                         ))}
-                        <div style={{ display:'flex', gap:'6px' }}>
+                        {/* Buscador SKU */}
+                        <div style={{ display:'flex', gap:'6px', flexShrink:0 }}>
                             <input
                                 type="text" placeholder="SKU..." value={busqueda}
                                 onChange={e => setBusqueda(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && handleBuscar()}
-                                style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:'5px', padding:'4px 10px', outline:'none', width:'120px', caretColor:'var(--accent-cyan)' }}
+                                style={{ fontFamily:'var(--font-mono)', fontSize:'11px', color:'var(--text-primary)', background:'var(--bg-elevated)', border:'1px solid var(--border-default)', borderRadius:'5px', padding:'4px 10px', outline:'none', width:'110px', caretColor:'var(--accent-cyan)' }}
                                 onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; }}
                                 onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-default)'; }}
                             />
-                            <button onClick={handleBuscar} style={{ fontFamily:'var(--font-display)', fontSize:'10px', fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase', padding:'4px 10px', background:'transparent', color:'var(--accent-cyan)', border:'1px solid var(--accent-cyan)', borderRadius:'5px', cursor:'pointer' }}>
+                            <button onClick={handleBuscar} style={{ fontFamily:'var(--font-display)', fontSize:'10px', fontWeight:700, letterSpacing:'0.10em', textTransform:'uppercase', padding:'4px 10px', background:'transparent', color:'var(--accent-cyan)', border:'1px solid var(--accent-cyan)', borderRadius:'5px', cursor:'pointer', whiteSpace:'nowrap' }}>
                                 BUSCAR
                             </button>
                             {skuResaltado && (
@@ -548,8 +578,8 @@ export function AlmacenPage(): JSX.Element {
                     </div>
                 </div>
 
-                {/* ── Cuerpo principal: Mapa 70% (izq) + Panel Info 30% (dcha) ── */}
-                <div className="almacen-grid" style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'80% 20%', gap:'8px' }}>
+                {/* ── Cuerpo principal: Mapa (flex) + Panel Info (mín 220px) ── */}
+                <div className="almacen-grid" style={{ flex:1, minHeight:0, display:'grid', gridTemplateColumns:'1fr minmax(220px, 22%)', gap:'8px' }}>
 
                     {/* Mapa del almacén — columna izquierda 70% */}
                     <div style={{ minWidth:0, minHeight:0, display:'flex', flexDirection:'column', gap:'8px', overflow:'hidden' }}>

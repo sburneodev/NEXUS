@@ -25,11 +25,12 @@ const TRANSITION = '300ms cubic-bezier(0.4, 0, 0.2, 1)';
 
 interface NavbarProps {
     title?:        string;
+    badge?:        string;
     onMenuToggle?: () => void;
     isMobile?:     boolean;
 }
 
-export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: NavbarProps): JSX.Element {
+export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = false }: NavbarProps): JSX.Element {
     const { user, logout }        = useAuth();
     const { theme, toggle }       = useTheme();
     const [time, setTime]         = useState('');
@@ -137,20 +138,39 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
 
             {/* ── Título ── */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{
-                    fontFamily:    'var(--font-display)',
-                    fontSize:      '14px',
-                    fontWeight:    700,
-                    letterSpacing: '0.16em',
-                    color:         'var(--text-primary)',
-                    textTransform: 'uppercase',
-                    margin:        0,
-                    overflow:      'hidden',
-                    textOverflow:  'ellipsis',
-                    whiteSpace:    'nowrap',
-                }}>
-                    {title}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <h2 style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '14px',
+                        fontWeight:    700,
+                        letterSpacing: '0.16em',
+                        color:         'var(--text-primary)',
+                        textTransform: 'uppercase',
+                        margin:        0,
+                        overflow:      'hidden',
+                        textOverflow:  'ellipsis',
+                        whiteSpace:    'nowrap',
+                    }}>
+                        {title}
+                    </h2>
+                    {badge && (
+                        <span style={{
+                            fontFamily:    'var(--font-mono)',
+                            fontSize:      '9px',
+                            fontWeight:    700,
+                            letterSpacing: '0.10em',
+                            color:         'var(--accent-gold)',
+                            border:        '1px solid rgba(251,191,36,0.40)',
+                            borderRadius:  '3px',
+                            padding:       '1px 7px',
+                            background:    'rgba(251,191,36,0.07)',
+                            whiteSpace:    'nowrap',
+                            flexShrink:    0,
+                        }}>
+                            {badge}
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* ── ONLINE — se desvanece en mobile ── */}

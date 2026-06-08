@@ -20,6 +20,42 @@ public class AlmacenController {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    // ── GET /api/almacen/ubicaciones ─────────────────────────────────────
+    /**
+     * Lista plana de todas las ubicaciones del almacén con su estado de ocupación.
+     * Usada por el selector de ubicación en los formularios de producto.
+     *
+     * Respuesta: [ { id, pasillo, estanteria, nivel, ocupada, productoNombre } ]
+     */
+    @GetMapping("/ubicaciones")
+    @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
+    public ResponseEntity<List<Map<String, Object>>> getUbicaciones() {
+        String sql = """
+            SELECT ua.id, ua.pasillo, ua.estanteria, ua.nivel,
+                   p.id   AS id_producto,
+                   p.nombre AS producto_nombre
+            FROM ubicaciones_almacen ua
+            LEFT JOIN productos p ON ua.id = p.id_ubicacion
+            ORDER BY ua.pasillo, ua.estanteria, ua.nivel
+            """;
+
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> u = new LinkedHashMap<>();
+            u.put("id",             row.get("id"));
+            u.put("pasillo",        row.get("pasillo"));
+            u.put("estanteria",     row.get("estanteria"));
+            u.put("nivel",          row.get("nivel"));
+            u.put("ocupada",        row.get("id_producto") != null);
+            u.put("productoNombre", row.get("producto_nombre"));
+            result.add(u);
+        }
+
+        return ResponseEntity.ok(result);
+    }
+
     // ── AI-09 — GET /api/almacen/mapa ─────────────────────────────────
     @GetMapping("/mapa")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")

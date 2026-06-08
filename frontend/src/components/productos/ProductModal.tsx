@@ -8,6 +8,17 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import type { Producto, TipoProducto, EstadoConservacion } from '../../types/models';
+import api from '../../services/api';
+
+// ── Tipo de ubicación devuelta por GET /almacen/ubicaciones ───────────
+interface UbicacionOption {
+    id:             number;
+    pasillo:        string;
+    estanteria:     string;
+    nivel:          number;
+    ocupada:        boolean;
+    productoNombre: string | null;
+}
 
 // ── Tipos ─────────────────────────────────────────────────────────────
 
@@ -71,8 +82,22 @@ const EMPTY_FORM: ProductForm = {
 
 export function ProductModal({ producto, isOpen, onClose, onSave, initialValues, modoCreacion }: ProductModalProps): JSX.Element | null {
 
-    const [form, setForm]     = useState<ProductForm>(EMPTY_FORM);
-    const [errors, setErrors] = useState<Partial<Record<keyof ProductForm, string>>>({});
+    const [form, setForm]         = useState<ProductForm>(EMPTY_FORM);
+    const [errors, setErrors]     = useState<Partial<Record<keyof ProductForm, string>>>({});
+    const [ubicaciones,        setUbicaciones]        = useState<UbicacionOption[]>([]);
+    const [ubicacionesLoading, setUbicacionesLoading] = useState(false);
+    const [ubicacionesError,   setUbicacionesError]   = useState(false);
+
+    // Carga las ubicaciones del almacén al abrir el modal
+    useEffect(() => {
+        if (!isOpen) return;
+        setUbicacionesLoading(true);
+        setUbicacionesError(false);
+        api.get<UbicacionOption[]>('/almacen/ubicaciones')
+            .then(r => { setUbicaciones(r.data); })
+            .catch(() => { setUbicacionesError(true); setUbicaciones([]); })
+            .finally(() => setUbicacionesLoading(false));
+    }, [isOpen]);
 
     useEffect(() => {
         if (producto) {
@@ -247,28 +272,6 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                         {field('Stock Actual *', 'stockActual', 'number', '0')}
                         {field('Stock Mínimo', 'stockMinimo', 'number', '5')}
 
-                        {/* ── Banner informativo en modo creación ────────────── */}
-                        {!producto && modoCreacion === 'ESTANDAR' && (
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.20)', borderRadius: '7px', padding: '10px 14px' }}>
-                                <span style={{ color: 'var(--accent-cyan)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>ℹ</span>
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
-                                    Solo se pueden crear <strong style={{ color: 'var(--text-primary)' }}>productos estándar</strong> desde este módulo.
-                                    Los productos retro se registran a través del módulo{' '}
-                                    <strong style={{ color: 'var(--accent-primary)' }}>Bóveda</strong>.
-                                </span>
-                            </div>
-                        )}
-                        {!producto && modoCreacion === 'RETRO' && (
-                            <div style={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '7px', padding: '10px 14px' }}>
-                                <span style={{ color: 'var(--accent-primary)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>◆</span>
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
-                                    Este producto se registrará como <strong style={{ color: 'var(--accent-primary)' }}>pieza retro</strong> en{' '}
-                                    <strong style={{ color: 'var(--text-primary)' }}>La Bóveda</strong>.
-                                    El tipo se asigna automáticamente.
-                                </span>
-                            </div>
-                        )}
-
                         {/* ── Tipo: badge read-only en edición ────────────────── */}
                         {producto && (
                             <div>
@@ -313,8 +316,83 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                         {/* IDs de relaciones FK */}
                         {field('ID Proveedor', 'idProveedor', 'number', '1')}
                         {field('ID Categoría', 'idCategoria', 'number', '1')}
+
+                        {/* ── Selector de ubicación en almacén ───────────────── */}
                         <div style={{ gridColumn: '1 / -1' }}>
-                            {field('ID Ubicación en Almacén', 'idUbicacion', 'number', '1')}
+                            <label style={labelStyle}>Ubicación en Almacén</label>
+                            <select
+                                value={form.idUbicacion}
+                                onChange={e => setForm(prev => ({ ...prev, idUbicacion: e.target.value }))}
+                                disabled={ubicacionesLoading}
+                                style={{
+                                    ...inputStyle,
+                                    color:   form.idUbicacion ? 'var(--text-primary)' : 'var(--text-muted)',
+                                    opacity: ubicacionesLoading ? 0.6 : 1,
+                                    cursor:  ubicacionesLoading ? 'wait' : 'pointer',
+                                }}
+                                onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-cyan-glow)'; }}
+                                onBlur={e  => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                            >
+                                {ubicacionesLoading ? (
+                                    <option value="">Cargando ubicaciones…</option>
+                                ) : ubicacionesError ? (
+                                    <option value="">— Error al cargar (puedes guardar igualmente) —</option>
+                                ) : (
+                                    <>
+                                        <option value="">— Sin ubicación asignada —</option>
+                                        {/* Agrupa por pasillo */}
+                                        {Array.from(new Set(ubicaciones.map(u => u.pasillo))).map(pasillo => (
+                                            <optgroup key={pasillo} label={`Pasillo ${pasillo}`}>
+                                                {ubicaciones
+                                                    .filter(u => u.pasillo === pasillo)
+                                                    .map(u => {
+                                                        const isCurrentProduct = producto && String(producto.idUbicacion) === String(u.id);
+                                                        const libre = !u.ocupada || isCurrentProduct;
+                                                        const label = `${u.pasillo} · Est. ${u.estanteria} · Nivel ${u.nivel}`;
+                                                        const suffix = libre
+                                                            ? '  ✓ libre'
+                                                            : `  ✕ ocupada${u.productoNombre ? ` (${u.productoNombre})` : ''}`;
+                                                        return (
+                                                            <option key={u.id} value={String(u.id)} disabled={!libre}>
+                                                                {label}{suffix}
+                                                            </option>
+                                                        );
+                                                    })}
+                                            </optgroup>
+                                        ))}
+                                    </>
+                                )}
+                            </select>
+                            {/* Resumen de la ubicación seleccionada */}
+                            {form.idUbicacion && (() => {
+                                const sel = ubicaciones.find(u => String(u.id) === form.idUbicacion);
+                                if (!sel) return null;
+                                return (
+                                    <div style={{
+                                        marginTop:     '6px',
+                                        display:       'flex',
+                                        alignItems:    'center',
+                                        gap:           '8px',
+                                        fontFamily:    'var(--font-mono)',
+                                        fontSize:      '10px',
+                                        color:         'var(--text-muted)',
+                                        letterSpacing: '0.04em',
+                                    }}>
+                                        <span style={{
+                                            color:         'var(--accent-cyan)',
+                                            border:        '1px solid var(--accent-cyan-glow)',
+                                            borderRadius:  '3px',
+                                            padding:       '1px 6px',
+                                            background:    'var(--accent-cyan-glow)',
+                                        }}>
+                                            {sel.pasillo} · {sel.estanteria} · Nv.{sel.nivel}
+                                        </span>
+                                        <span style={{ color: (!sel.ocupada || (producto && String(producto.idUbicacion) === String(sel.id))) ? 'var(--accent-primary)' : 'var(--accent-danger)' }}>
+                                            {(!sel.ocupada || (producto && String(producto.idUbicacion) === String(sel.id))) ? '● Disponible' : '✕ Ocupada'}
+                                        </span>
+                                    </div>
+                                );
+                            })()}
                         </div>
 
                         {/* Descripción — ancho completo */}
@@ -342,6 +420,28 @@ export function ProductModal({ producto, isOpen, onClose, onSave, initialValues,
                             </label>
                         </div>
                     </div>
+
+                    {/* ── Banner informativo — al final, fuera del grid ── */}
+                    {!producto && modoCreacion === 'ESTANDAR' && (
+                        <div style={{ margin: '0 24px 16px', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.20)', borderRadius: '7px', padding: '10px 14px' }}>
+                            <span style={{ color: 'var(--accent-cyan)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>ℹ</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
+                                Solo se pueden crear <strong style={{ color: 'var(--text-primary)' }}>productos estándar</strong> desde este módulo.
+                                Los productos retro se registran a través del módulo{' '}
+                                <strong style={{ color: 'var(--accent-primary)' }}>Bóveda</strong>.
+                            </span>
+                        </div>
+                    )}
+                    {!producto && modoCreacion === 'RETRO' && (
+                        <div style={{ margin: '0 24px 16px', display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: '7px', padding: '10px 14px' }}>
+                            <span style={{ color: 'var(--accent-primary)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>◆</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.02em', lineHeight: 1.55 }}>
+                                Este producto se registrará como <strong style={{ color: 'var(--accent-primary)' }}>pieza retro</strong> en{' '}
+                                <strong style={{ color: 'var(--text-primary)' }}>La Bóveda</strong>.
+                                El tipo se asigna automáticamente.
+                            </span>
+                        </div>
+                    )}
 
                     {/* Footer */}
                     <div style={{

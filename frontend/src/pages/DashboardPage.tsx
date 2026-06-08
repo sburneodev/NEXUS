@@ -5,7 +5,6 @@ import api                  from '../services/api';
 import type { KpiData }     from '../types/models';
 import { KpiCard }          from '../components/dashboard/KpiCard';
 import { ChartsPanel }      from '../components/dashboard/ChartsPanel';
-import { Nl2SqlPanel }      from '../components/ai/Nl2SqlPanel';
 import { productoService }  from '../services/productoService';
 import { clienteService }   from '../services/entidadService';
 
@@ -33,10 +32,7 @@ export function DashboardPage(): JSX.Element {
     const [kpiData,   setKpiData]   = useState<KpiData>(BASE_KPI);
     const [loadState, setLoadState] = useState<'loading'|'ok'|'error'>('loading');
 
-    // UI-04 — estado para mostrar/ocultar el panel NL2SQL
-    const [showNl2Sql, setShowNl2Sql] = useState(false);
-
-    const glow = isDark
+const glow = isDark
         ? { green: 'rgba(59,130,246,0.30)', cyan: 'rgba(56,189,248,0.28)', gold: 'rgba(251,191,36,0.28)', danger: 'rgba(248,113,113,0.28)' }
         : { green: 'rgba(37,99,235,0.22)',  cyan: 'rgba(8,145,178,0.22)',  gold: 'rgba(217,119,6,0.22)',  danger: 'rgba(220,38,38,0.22)'  };
 
@@ -184,87 +180,7 @@ export function DashboardPage(): JSX.Element {
                 {/* Gráficas */}
                 <ChartsPanel kpiData={kpiData} />
 
-                {/* UI-04 — Panel NL2SQL ──────────────────────────────── */}
-                <div style={{
-                    background:   'var(--bg-surface)',
-                    border:       '1px solid var(--border-default)',
-                    borderRadius: 'var(--radius-xl)',
-                    overflow:     'hidden',
-                    flexShrink:    0,
-                }}>
-                    {/* Cabecera del panel — siempre visible, hace toggle */}
-                    <button
-                        onClick={() => setShowNl2Sql(v => !v)}
-                        style={{
-                            width:          '100%',
-                            display:        'flex',
-                            alignItems:     'center',
-                            justifyContent: 'space-between',
-                            padding:        '14px 20px',
-                            background:     'transparent',
-                            border:         'none',
-                            cursor:         'pointer',
-                            borderBottom:   showNl2Sql ? '1px solid var(--border-subtle)' : 'none',
-                            transition:     'border-color 160ms',
-                        }}
-                    >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            {/* Indicador animado */}
-                            <span style={{
-                                width:        '8px',
-                                height:       '8px',
-                                borderRadius: '50%',
-                                background:   'var(--accent-primary)',
-                                boxShadow:    'none',
-                                display:      'inline-block',
-                                flexShrink:   0,
-                                animation:    'pulse-blue 2s infinite',
-                            }} />
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{
-                                    fontFamily:    'var(--font-display)',
-                                    fontSize:      '13px',
-                                    fontWeight:    700,
-                                    letterSpacing: '0.12em',
-                                    textTransform: 'uppercase',
-                                    color:         'var(--text-primary)',
-                                }}>
-                                    Motor NL2SQL — Consulta en Español
-                                </div>
-                                <div style={{
-                                    fontFamily:    'var(--font-mono)',
-                                    fontSize:      '10px',
-                                    color:         'var(--text-muted)',
-                                    letterSpacing: '0.04em',
-                                    marginTop:     '2px',
-                                }}>
-                                    Pregunta sobre el negocio en lenguaje natural · Gemini traduce a SQL y ejecuta
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Chevron toggle */}
-                        <span style={{
-                            fontFamily:  'var(--font-mono)',
-                            fontSize:    '12px',
-                            color:       'var(--text-muted)',
-                            transform:   showNl2Sql ? 'rotate(180deg)' : 'rotate(0deg)',
-                            transition:  'transform 220ms var(--ease-smooth)',
-                            flexShrink:  0,
-                        }}>
-                            ▼
-                        </span>
-                    </button>
-
-                    {/* Panel expandible */}
-                    {showNl2Sql && (
-                        <div style={{ padding: '20px 24px 24px' }}>
-                            <Nl2SqlPanel />
-                        </div>
-                    )}
-                </div>
-
-                {/* Espaciado final para que el scroll no quede pegado al FAB */}
+{/* Espaciado final para que el scroll no quede pegado al FAB */}
                 <div style={{ height: '80px', flexShrink: 0 }} />
             </div>
         </div>

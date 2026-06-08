@@ -28,6 +28,12 @@ const ROUTE_TITLES: Record<string, string> = {
     '/usuarios':        'Gestión de Usuarios',
     '/auditoria':       'Auditoría',
     '/albaranes-rango': 'Albaranes',
+    '/system':          'Sistema',
+};
+
+/** Badge opcional que aparece junto al título en la barra superior */
+const ROUTE_BADGES: Record<string, string> = {
+    '/boveda': '◆ COLECCIONISMO',
 };
 
 const IDLE_TIMEOUT   = 30 * 60 * 1000;
@@ -83,6 +89,10 @@ export function Layout(): JSX.Element {
         location.pathname.startsWith(path)
     )?.[1] ?? 'NEXUS ERP';
 
+    const badge = Object.entries(ROUTE_BADGES).find(([path]) =>
+        location.pathname.startsWith(path)
+    )?.[1];
+
     useIdleTimer({ timeout: IDLE_TIMEOUT, onIdle: logout, enabled: isAuthenticated });
 
     return (
@@ -120,6 +130,7 @@ export function Layout(): JSX.Element {
             }}>
                 <Navbar
                     title={title}
+                    badge={badge}
                     onMenuToggle={isMobile ? toggleMobile : undefined}
                     isMobile={isMobile}
                 />

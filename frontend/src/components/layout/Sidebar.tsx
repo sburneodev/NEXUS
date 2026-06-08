@@ -51,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
     { path: '/ai',             label: 'IA & Analytics', icon: '◇', section: 'INTELIGENCIA' },
     { path: '/usuarios',       label: 'Usuarios',       icon: '◈', section: 'ADMINISTRACIÓN', roles: ['ADMIN'] },
     { path: '/auditoria',      label: 'Auditoría',      icon: '▷', roles: ['ADMIN'] },
+    { path: '/system',         label: 'Sistema',         icon: '◉', roles: ['ADMIN'] },
 ];
 
 /* Emil: cubic-bezier(0.32, 0.72, 0, 1) es la curva iOS para drawers — mucho más natural */
@@ -112,8 +113,8 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
             background:    'var(--sidebar-bg)',
             borderRight:   '1px solid var(--sidebar-border)',
             boxShadow:     isMobile
-                ? '4px 0 32px rgba(0,0,0,0.55), 2px 0 0 rgba(255,255,255,0.06)'
-                : '4px 0 24px rgba(0,0,0,0.40), 1px 0 0 rgba(255,255,255,0.05)',
+                ? 'var(--sidebar-shadow-mobile)'
+                : 'var(--sidebar-shadow)',
             display:       'flex',
             flexDirection: 'column',
             overflow:      'hidden',

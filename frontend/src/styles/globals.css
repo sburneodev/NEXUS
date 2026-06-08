@@ -45,10 +45,10 @@
     --text-inverse:   #0D1117;
 
     /* ── Bordes ────────────────────────────────────────────────── */
-    --border-subtle:  rgba(240, 246, 252, 0.14);
-    --border-default: rgba(240, 246, 252, 0.25);
-    --border-strong:  rgba(240, 246, 252, 0.38);
-    --border-accent:  rgba(59, 130, 246, 0.45);
+    --border-subtle:  rgba(240, 246, 252, 0.26);
+    --border-default: rgba(240, 246, 252, 0.42);
+    --border-strong:  rgba(240, 246, 252, 0.62);
+    --border-accent:  rgba(59, 130, 246, 0.55);
 
     /* ── Tipografía — pila Apple-first ────────────────────────── */
     --font-display: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -288,10 +288,10 @@ code, pre, .mono {
 .card {
     background:    var(--bg-surface);
     /* Bordes asimétricos: más brillante arriba (luz cenital) */
-    border-top:    1px solid rgba(255, 255, 255, 0.38);
-    border-left:   1px solid rgba(255, 255, 255, 0.22);
-    border-right:  1px solid rgba(255, 255, 255, 0.14);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-top:    1px solid rgba(255, 255, 255, 0.55);
+    border-left:   1px solid rgba(255, 255, 255, 0.36);
+    border-right:  1px solid rgba(255, 255, 255, 0.24);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: var(--radius-lg);
     padding:       var(--space-6);
     position:      relative;

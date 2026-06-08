@@ -138,7 +138,9 @@ function renderDetalles(e: AuditEntry): JSX.Element | string {
         const sepIdx    = e.detalles.indexOf('| roles:');
         const status    = e.detalles.slice(0, sepIdx).trim();
         const rolesPart = e.detalles.slice(sepIdx + 8).trim(); // skip "| roles:"
-        const roles     = rolesPart.split(',').map(r => r.trim()).filter(Boolean);
+        const allRoles  = rolesPart.split(',').map(r => r.trim()).filter(Boolean);
+        // Si el usuario tiene ADMIN, solo mostramos ADMIN (oculta roles secundarios)
+        const roles     = allRoles.includes('ADMIN') ? ['ADMIN'] : allRoles;
         return (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: 'var(--font-body)', fontSize: '12px', color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
@@ -277,9 +279,6 @@ export function AuditoriaPage(): JSX.Element {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', border: '1px solid var(--accent-danger)', borderRadius: '3px', padding: '1px 6px', letterSpacing: '0.08em' }}>
                         🔒 SOLO ADMIN
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                        Registro completo de actividad · LOGIN · CRUD · Roles · Stock
                     </span>
                 </div>
             </div>

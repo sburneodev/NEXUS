@@ -90,7 +90,7 @@ function FilterChip({
 }
 
 // ── Fila expandida con detalle completo ───────────────────────────────────────
-function DetailRow({ p }: { p: Producto }) {
+function DetailRow({ p, onEdit }: { p: Producto; onEdit: () => void }) {
     const attrs     = p.atributosEspecificos as Record<string, unknown> | null;
     const anio      = attrs?.['anio']            as number | undefined;
     const tasacion  = attrs?.['tasacion_ia_eur'] as number | undefined;
@@ -143,6 +143,42 @@ function DetailRow({ p }: { p: Producto }) {
                         <div style={{ fontFamily: 'var(--font-display)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '4px' }}>Stock</div>
                         <div style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-primary)' }}>{p.stockActual} ud.</div>
                     </div>
+
+                    {/* Botón editar — esquina derecha del panel */}
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
+                        <button
+                            onClick={e => { e.stopPropagation(); onEdit(); }}
+                            style={{
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '10px',
+                                fontWeight:    700,
+                                letterSpacing: '0.10em',
+                                textTransform: 'uppercase',
+                                padding:       '6px 16px',
+                                background:    'transparent',
+                                color:         'var(--accent-gold)',
+                                border:        '1px solid rgba(251,191,36,0.45)',
+                                borderRadius:  'var(--radius-base)',
+                                cursor:        'pointer',
+                                transition:    'all 150ms var(--ease-out)',
+                                display:       'flex',
+                                alignItems:    'center',
+                                gap:           '6px',
+                            }}
+                            onMouseEnter={e => {
+                                const b = e.currentTarget as HTMLButtonElement;
+                                b.style.background = 'rgba(251,191,36,0.10)';
+                                b.style.borderColor = 'rgba(251,191,36,0.75)';
+                            }}
+                            onMouseLeave={e => {
+                                const b = e.currentTarget as HTMLButtonElement;
+                                b.style.background = 'transparent';
+                                b.style.borderColor = 'rgba(251,191,36,0.45)';
+                            }}
+                        >
+                            ✎ EDITAR PIEZA
+                        </button>
+                    </div>
                 </div>
             </td>
         </tr>
@@ -163,6 +199,7 @@ export function BovedaRetroPage(): JSX.Element {
     const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
     const [modalOpen,    setModalOpen]    = useState(false);
     const [prefill,      setPrefill]      = useState<Partial<ProductForm> | undefined>(undefined);
+    const [editProduct,  setEditProduct]  = useState<Producto | null>(null);
     const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
     useEffect(() => {
@@ -205,10 +242,31 @@ export function BovedaRetroPage(): JSX.Element {
         return () => { cancelled = true; };
     }, [filters.querySignal, filterEstado, filterActivo, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
-    function handleRegistrar(data: Partial<ProductForm>): void { setPrefill(data); setModalOpen(true); }
+    function handleRegistrar(data: Partial<ProductForm>): void { setPrefill(data); setEditProduct(null); setModalOpen(true); }
+    function handleOpenEdit(p: Producto): void { setEditProduct(p); setPrefill(undefined); setModalOpen(true); }
+    function handleCloseModal(): void { setModalOpen(false); setPrefill(undefined); setEditProduct(null); }
+
     const handleSave = useCallback((data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>): void => {
-        void data; setModalOpen(false); setPrefill(undefined);
-    }, []);
+        if (editProduct) {
+            // Modo edición — PUT al backend
+            api.put(`/productos/${editProduct.id}`, data)
+                .then(() => {
+                    // Actualiza la fila localmente sin recargar toda la tabla
+                    setRows(prev => prev.map(r =>
+                        r.id === editProduct.id
+                            ? { ...r, ...data, id: editProduct.id }
+                            : r
+                    ));
+                    setExpandedId(null);
+                })
+                .catch(() => {
+                    // Si la API falla, recarga para mantener consistencia
+                    filters.setPage(filters.page);
+                });
+        }
+        handleCloseModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [editProduct]);
 
     return (
         <div>
@@ -238,20 +296,6 @@ export function BovedaRetroPage(): JSX.Element {
                         </span>{' '}
                         RETRO
                     </h1>
-                    <span style={{
-                        fontFamily:    'var(--font-mono)',
-                        fontSize:      '10px',
-                        color:         'var(--accent-gold)',
-                        border:        '1px solid rgba(251,191,36,0.45)',
-                        borderRadius:  '3px',
-                        padding:       '2px 8px',
-                        letterSpacing: '0.10em',
-                        background:    'rgba(251,191,36,0.07)',
-                        flexShrink:    0,
-                        alignSelf:     'center',
-                    }}>
-                        ◆ COLECCIONISMO
-                    </span>
                 </div>
             </div>
 
@@ -428,7 +472,7 @@ export function BovedaRetroPage(): JSX.Element {
                                             </td>
                                         </tr>
 
-                                        {isExpanded && <DetailRow key={`${p.id}-detail`} p={p} />}
+                                        {isExpanded && <DetailRow key={`${p.id}-detail`} p={p} onEdit={() => handleOpenEdit(p)} />}
                                     </>
                                 );
                             })}
@@ -438,11 +482,12 @@ export function BovedaRetroPage(): JSX.Element {
             </div>
 
             <ProductModal
-                producto={null}
+                producto={editProduct}
                 isOpen={modalOpen}
-                onClose={() => { setModalOpen(false); setPrefill(undefined); }}
+                onClose={handleCloseModal}
                 onSave={handleSave}
                 initialValues={prefill}
+                modoCreacion={editProduct ? undefined : 'RETRO'}
             />
         </div>
     );

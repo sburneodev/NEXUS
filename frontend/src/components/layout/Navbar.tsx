@@ -7,9 +7,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useAuth }  from '../../hooks/useAuth';
-import { useTheme } from '../../hooks/useTheme';
-import type { Role } from '../../types/auth';
+import { useAuth }             from '../../hooks/useAuth';
+import { useTheme }            from '../../hooks/useTheme';
+import { CookiePreferences }   from '../cookies/CookiePreferences';
+import type { Role }           from '../../types/auth';
 
 const ROLE_PRIORITY: Role[] = [
     'ADMIN', 'CONTABLE', 'MARKETING_ANALYST', 'GESTOR_INVENTARIO', 'CAJERO',
@@ -24,15 +25,17 @@ const TRANSITION = '300ms cubic-bezier(0.4, 0, 0.2, 1)';
 
 interface NavbarProps {
     title?:        string;
+    badge?:        string;
     onMenuToggle?: () => void;
     isMobile?:     boolean;
 }
 
-export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: NavbarProps): JSX.Element {
+export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = false }: NavbarProps): JSX.Element {
     const { user, logout }        = useAuth();
     const { theme, toggle }       = useTheme();
     const [time, setTime]         = useState('');
-    const [showMenu, setShowMenu] = useState(false);
+    const [showMenu,        setShowMenu]        = useState(false);
+    const [showCookiePrefs, setShowCookiePrefs] = useState(false);
 
     useEffect(() => {
         const tick = (): void => setTime(new Date().toLocaleTimeString('es-ES', {
@@ -74,6 +77,7 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
     }, [AVATAR_KEY]);
 
     return (
+    <>
         <header style={{
             height:              '56px',
             background:          isDark ? 'rgba(22,27,34,0.90)' : 'rgba(255,255,255,0.92)',
@@ -134,20 +138,39 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
 
             {/* ── Título ── */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 style={{
-                    fontFamily:    'var(--font-display)',
-                    fontSize:      '14px',
-                    fontWeight:    700,
-                    letterSpacing: '0.16em',
-                    color:         'var(--text-primary)',
-                    textTransform: 'uppercase',
-                    margin:        0,
-                    overflow:      'hidden',
-                    textOverflow:  'ellipsis',
-                    whiteSpace:    'nowrap',
-                }}>
-                    {title}
-                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    <h2 style={{
+                        fontFamily:    'var(--font-display)',
+                        fontSize:      '14px',
+                        fontWeight:    700,
+                        letterSpacing: '0.16em',
+                        color:         'var(--text-primary)',
+                        textTransform: 'uppercase',
+                        margin:        0,
+                        overflow:      'hidden',
+                        textOverflow:  'ellipsis',
+                        whiteSpace:    'nowrap',
+                    }}>
+                        {title}
+                    </h2>
+                    {badge && (
+                        <span style={{
+                            fontFamily:    'var(--font-mono)',
+                            fontSize:      '9px',
+                            fontWeight:    700,
+                            letterSpacing: '0.10em',
+                            color:         'var(--accent-gold)',
+                            border:        '1px solid rgba(251,191,36,0.40)',
+                            borderRadius:  '3px',
+                            padding:       '1px 7px',
+                            background:    'rgba(251,191,36,0.07)',
+                            whiteSpace:    'nowrap',
+                            flexShrink:    0,
+                        }}>
+                            {badge}
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* ── ONLINE — se desvanece en mobile ── */}
@@ -395,6 +418,36 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                                         style={{ display: 'none' }}
                                     />
                                 </div>
+                                {/* Privacidad / Cookies */}
+                                <button
+                                    onClick={() => { setShowMenu(false); setShowCookiePrefs(true); }}
+                                    style={{
+                                        width: '100%', textAlign: 'left',
+                                        background: 'transparent', border: 'none',
+                                        borderRadius: 'var(--radius-base)', padding: '8px 12px',
+                                        fontFamily: 'var(--font-display)', fontSize: '12px',
+                                        fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+                                        color: 'var(--text-secondary)', cursor: 'pointer',
+                                        transition: 'background 120ms ease, color 120ms ease',
+                                        display: 'flex', alignItems: 'center', gap: '8px',
+                                    }}
+                                    onMouseEnter={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'var(--bg-overlay)';
+                                        b.style.color = 'var(--text-primary)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        const b = e.currentTarget as HTMLButtonElement;
+                                        b.style.background = 'transparent';
+                                        b.style.color = 'var(--text-secondary)';
+                                    }}
+                                >
+                                    🔒 PRIVACIDAD
+                                </button>
+
+                                {/* Separador */}
+                                <div style={{ height: '1px', background: 'var(--border-subtle)', margin: '4px 0' }} />
+
                                 <button
                                     onClick={() => { setShowMenu(false); logout(); }}
                                     style={{
@@ -418,5 +471,11 @@ export function Navbar({ title = 'DASHBOARD', onMenuToggle, isMobile = false }: 
                 </div>
             )}
         </header>
+
+        {/* Modal de preferencias de privacidad */}
+        {showCookiePrefs && (
+            <CookiePreferences onClose={() => setShowCookiePrefs(false)} />
+        )}
+    </>
     );
 }

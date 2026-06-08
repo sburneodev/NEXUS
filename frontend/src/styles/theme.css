@@ -45,10 +45,10 @@
     --bg-panel:  var(--bg-surface);
     --border:    var(--border-default);
 
-    --border-subtle:  rgba(240, 246, 252, 0.14);
-    --border-default: rgba(240, 246, 252, 0.25);
-    --border-strong:  rgba(240, 246, 252, 0.38);
-    --border-accent:  rgba(59, 130, 246, 0.45);
+    --border-subtle:  rgba(240, 246, 252, 0.26);
+    --border-default: rgba(240, 246, 252, 0.42);
+    --border-strong:  rgba(240, 246, 252, 0.62);
+    --border-accent:  rgba(59, 130, 246, 0.55);
 
     --shadow-sm:     0 1px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
     --shadow-base:   0 4px 20px rgba(0, 0, 0, 0.60), 0 1px 0 rgba(255,255,255,0.05) inset;
@@ -59,7 +59,9 @@
 
     /* ── Variables de Sidebar (dark mode) ───────────────────────────── */
     --sidebar-bg:          #13171F;
-    --sidebar-border:      rgba(240, 246, 252, 0.12);
+    --sidebar-border:      rgba(240, 246, 252, 0.24);
+    --sidebar-shadow:      4px 0 24px rgba(0,0,0,0.40), 1px 0 0 rgba(255,255,255,0.05);
+    --sidebar-shadow-mobile: 4px 0 32px rgba(0,0,0,0.55), 2px 0 0 rgba(255,255,255,0.06);
     --sidebar-text:        rgba(255, 255, 255, 0.80);
     --sidebar-text-muted:  rgba(255, 255, 255, 0.42);
     --sidebar-text-active: #F0F6FC;
@@ -129,6 +131,8 @@ html.theme-light {
     /* Sidebar claro en modo claro */
     --sidebar-bg:          #FFFFFF;
     --sidebar-border:      rgba(15, 23, 42, 0.10);
+    --sidebar-shadow:      2px 0 10px rgba(15,23,42,0.06), 1px 0 0 rgba(15,23,42,0.05);
+    --sidebar-shadow-mobile: 4px 0 24px rgba(15,23,42,0.14), 1px 0 0 rgba(15,23,42,0.06);
     --sidebar-text:        #374151;
     --sidebar-text-muted:  #9CA3AF;
     --sidebar-text-active: #111827;

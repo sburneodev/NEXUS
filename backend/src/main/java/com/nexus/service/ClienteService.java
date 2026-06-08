@@ -89,7 +89,11 @@ public class ClienteService {
                     HttpStatus.BAD_REQUEST, "Los puntos no pueden quedar en negativo.");
         }
         cliente.setPuntosFidelidad(nuevoPuntos);
-        return toDTO(clienteRepository.save(cliente));
+        ClienteDTO result = toDTO(clienteRepository.save(cliente));
+        auditService.log("CLIENTE", "UPDATE", id,
+            "Puntos de fidelidad: " + (nuevoPuntos - puntos) + " → " + nuevoPuntos
+            + " (delta: " + (puntos >= 0 ? "+" : "") + puntos + ")");
+        return result;
     }
 
     @Transactional

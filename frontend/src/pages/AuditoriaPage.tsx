@@ -42,6 +42,8 @@ const GRUPOS_ACCION: FiltroGrupo[] = [
     { label: 'USUARIOS', value: 'ACTIVATE',       field: 'operacion' },
     { label: 'ROLES',    value: 'ROLE_ASSIGN',    field: 'operacion' },
     { label: 'STOCK',    value: 'STOCK_MOVEMENT', field: 'operacion' },
+    { label: 'IA',       value: 'AI_QUERY',       field: 'operacion' },
+    { label: 'SISTEMA',  value: 'BACKUP_EXPORT',  field: 'operacion' },
 ];
 
 // ── Colores y etiquetas de acción ─────────────────────────────────────────────
@@ -60,6 +62,10 @@ const ACCION_COLOR: Record<string, string> = {
     ROLE_ASSIGN:    'var(--accent-gold)',
     ROLE_REMOVE:    'var(--accent-danger)',
     STOCK_MOVEMENT: 'var(--accent-cyan)',
+    AI_QUERY:       '#A78BFA',
+    BACKUP_EXPORT:  '#8B5CF6',
+    BACKUP_RESTORE: 'var(--accent-danger)',
+    CHANGE_PASSWORD:'var(--accent-gold)',
 };
 
 const ACCION_LABEL: Record<string, string> = {
@@ -75,7 +81,11 @@ const ACCION_LABEL: Record<string, string> = {
     DEACTIVATE:     'DESACTIVAR',
     ROLE_ASSIGN:    'ROL+',
     ROLE_REMOVE:    'ROL−',
-    STOCK_MOVEMENT: 'STOCK',
+    STOCK_MOVEMENT:  'STOCK',
+    AI_QUERY:        'IA QUERY',
+    BACKUP_EXPORT:   'BACKUP',
+    BACKUP_RESTORE:  'RESTAURAR',
+    CHANGE_PASSWORD: 'CONTRASEÑA',
 };
 
 // ── Helpers de renderizado ────────────────────────────────────────────────────

@@ -284,9 +284,9 @@ export function BovedaRetroPage(): JSX.Element {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <h1 style={{
                     fontFamily:    'var(--font-display)',
-                    fontSize:      'var(--text-3xl)',
+                    fontSize:      'clamp(16px, 2vw, 22px)',
                     fontWeight:    700,
-                    letterSpacing: '-0.02em',
+                    letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     color:         'var(--text-primary)',
                     lineHeight:    1.1,

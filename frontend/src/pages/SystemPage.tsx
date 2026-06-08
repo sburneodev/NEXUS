@@ -127,16 +127,23 @@ export function SystemPage(): JSX.Element {
             <div style={{ marginBottom: '28px' }}>
                 <h1 style={{
                     fontFamily:    'var(--font-display)',
-                    fontSize:      'var(--text-3xl)',
+                    fontSize:      'clamp(16px, 2vw, 22px)',
                     fontWeight:    700,
-                    letterSpacing: '-0.02em',
+                    letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     color:         'var(--text-primary)',
                     margin:        0,
                     lineHeight:    1.1,
                 }}>
-                    Sistema{' '}
-                    <span style={{ color: PURPLE }}>& Backup</span>
+                    SISTEMA{' '}
+                    <span style={{
+                        background:           'linear-gradient(125deg, #A78BFA 0%, #8B5CF6 50%, #7C3AED 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor:  'transparent',
+                        backgroundClip:       'text',
+                        filter:               'drop-shadow(0 0 8px rgba(139,92,246,0.22))',
+                        display:              'inline-block',
+                    }}>&amp; BACKUP</span>
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                     <span style={{

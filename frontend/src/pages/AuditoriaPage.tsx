@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { useTheme }                    from '../hooks/useTheme';
 import type { PaginatedResponse }      from '../types/models';
 import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
@@ -182,6 +183,8 @@ function renderDetalles(e: AuditEntry): JSX.Element | string {
 
 export function AuditoriaPage(): JSX.Element {
 
+    const { isDark } = useTheme();
+
     const filters = useTableFilters({ key: 'auditoria', initialLimit: calculateAutoLimit() });
     const { buildParams, setPagination } = filters;
 
@@ -273,8 +276,16 @@ export function AuditoriaPage(): JSX.Element {
 
             {/* Cabecera */}
             <div style={{ marginBottom: '20px' }}>
-                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                    Log de <span style={{ color: 'var(--accent-gold)' }}>Auditoría</span>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(16px, 2vw, 22px)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                    Log de{' '}
+                    <span style={{
+                        background:           isDark
+                            ? 'linear-gradient(110deg, #FCD34D 0%, #F59E0B 100%)'
+                            : 'linear-gradient(110deg, #B45309 0%, #78350F 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor:  'transparent',
+                        backgroundClip:       'text',
+                    }}>Auditoría</span>
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', border: '1px solid var(--accent-danger)', borderRadius: '3px', padding: '1px 6px', letterSpacing: '0.08em' }}>

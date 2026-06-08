@@ -410,7 +410,7 @@ export function StockPage(): JSX.Element {
                         Control de Stock
                     </h1>
                     <p style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0', letterSpacing: '0.04em' }}>
-                        Transacciones ACID via Stored Procedure · Selecciona un producto para operar
+                        Selecciona un producto para operar
                     </p>
                 </div>
 
@@ -540,9 +540,6 @@ export function StockPage(): JSX.Element {
                             <div style={{ fontSize: '40px', opacity: 0.12 }}>◈</div>
                             <div style={{ fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', lineHeight: 1.6 }}>
                                 Selecciona un producto de la tabla para registrar una entrada, salida o ajuste
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--border-default)', letterSpacing: '0.06em' }}>
-                                Las transacciones son ACID via Stored Procedure
                             </div>
                         </div>
                     ) : (

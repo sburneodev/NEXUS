@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTheme }                    from '../hooks/useTheme';
 import type { PaginatedResponse }      from '../types/models';
 import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
@@ -36,6 +37,7 @@ interface Toast {
 
 export function UsuariosPage(): JSX.Element {
 
+    const { isDark } = useTheme();
     const { user } = useAuth();
 
     // ── SUFP ──────────────────────────────────────────────────────────────────
@@ -267,8 +269,16 @@ export function UsuariosPage(): JSX.Element {
             {/* ── Cabecera ── */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--text-3xl)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
-                        Gestión de <span style={{ color: 'var(--accent-cyan)' }}>Usuarios</span>
+                    <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(16px, 2vw, 22px)', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)', margin: 0 }}>
+                        Gestión de{' '}
+                        <span style={{
+                            background:           isDark
+                                ? 'linear-gradient(110deg, #7DD3FC 0%, #38BDF8 100%)'
+                                : 'linear-gradient(110deg, #0284C7 0%, #075985 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor:  'transparent',
+                            backgroundClip:       'text',
+                        }}>Usuarios</span>
                     </h1>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', border: '1px solid var(--accent-danger)', borderRadius: '3px', padding: '1px 6px', letterSpacing: '0.08em' }}>

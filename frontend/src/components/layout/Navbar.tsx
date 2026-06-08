@@ -329,7 +329,7 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                 background:   'var(--bg-elevated)',
                                 border:       '1px solid var(--border-default)',
                                 borderRadius: 'var(--radius-lg)',
-                                padding:      '6px', minWidth: '200px',
+                                padding:      '6px', minWidth: '260px',
                                 boxShadow:    'var(--shadow-lg)',
                                 zIndex:       99,
                                 animation:    'fadeInUp 0.15s ease both',
@@ -368,7 +368,7 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                                 📷
                                             </div>
                                         </div>
-                                        <div style={{ minWidth: 0 }}>
+                                        <div>
                                             <div style={{
                                                 fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 600,
                                                 letterSpacing: '0.06em', color: 'var(--text-primary)',
@@ -378,7 +378,8 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                             </div>
                                             <div style={{
                                                 fontFamily: 'var(--font-mono)', fontSize: '10px',
-                                                color: 'var(--text-muted)', letterSpacing: '0.04em', wordBreak: 'break-all',
+                                                color: 'var(--text-muted)', letterSpacing: '0.04em',
+                                                whiteSpace: 'nowrap',
                                             }}>
                                                 {email}
                                             </div>

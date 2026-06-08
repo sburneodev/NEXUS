@@ -1,53 +1,34 @@
 /**
  * components/cookies/CookiePreferences.tsx
  *
- * Modal de reconfiguración de cookies accesible desde el perfil de usuario.
- * Permite cambiar la decisión en cualquier momento sin tener que esperar
- * a que expire el consentimiento (12 meses).
+ * Panel informativo de privacidad — compacto y discreto.
+ * No es un formulario de consentimiento: NEXUS es una app interna
+ * sin cookies de seguimiento ni analíticas de terceros.
  */
 
-import { useState }             from 'react';
-import { createPortal }          from 'react-dom';
-import { useCookieConsent }      from '../../hooks/useCookieConsent';
-import { COOKIE_POLICY_VERSION } from '../../services/cookieService';
+import { createPortal } from 'react-dom';
 
 interface CookiePreferencesProps {
     onClose: () => void;
 }
 
 export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Element {
-    const { status, record, accept, reject } = useCookieConsent();
-    const [saved, setSaved] = useState(false);
-
-    const analyticsOn = status === 'granted';
-
-    const handleSave = (newStatus: 'granted' | 'denied'): void => {
-        if (newStatus === 'granted') accept();
-        else                         reject();
-        setSaved(true);
-        setTimeout(() => { setSaved(false); onClose(); }, 1200);
-    };
-
-    const formatDate = (iso: string): string =>
-        new Date(iso).toLocaleDateString('es-ES', {
-            day: '2-digit', month: 'long', year: 'numeric',
-        });
-
     return createPortal(
         <>
-            {/* Backdrop — cierra al hacer clic fuera */}
+            {/* Backdrop */}
             <div
                 onClick={onClose}
                 style={{
-                    position: 'fixed', inset: 0, zIndex: 9998,
-                    background: 'rgba(0,0,0,0.50)',
-                    backdropFilter: 'blur(3px)',
+                    position:             'fixed',
+                    inset:                0,
+                    zIndex:               9998,
+                    background:           'rgba(0,0,0,0.45)',
+                    backdropFilter:       'blur(3px)',
                     WebkitBackdropFilter: 'blur(3px)',
-                    animation: 'fadeInUp 0.15s ease both',
                 }}
             />
 
-            {/* Contenedor centrador — flexbox, sin transform, animación libre */}
+            {/* Panel */}
             <div style={{
                 position:       'fixed',
                 inset:          0,
@@ -56,183 +37,138 @@ export function CookiePreferences({ onClose }: CookiePreferencesProps): JSX.Elem
                 alignItems:     'center',
                 justifyContent: 'center',
                 padding:        '16px',
-                pointerEvents:  'none', // el backdrop intercepta los clicks fuera
+                pointerEvents:  'none',
             }}>
-            <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Preferencias de privacidad"
-                style={{
-                    pointerEvents: 'auto',
-                    width:         'min(500px, 100%)',
-                    background:    'var(--bg-surface)',
-                    borderTop:     '2px solid var(--accent-primary)',
-                    border:        '1px solid var(--border-default)',
-                    borderRadius:  '14px',
-                    boxShadow:     'var(--shadow-xl)',
-                    padding:       '24px',
-                    animation:     'fadeInUp 0.25s cubic-bezier(0.23, 1, 0.32, 1) both',
-                }}
-            >
-                {/* Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '18px' }}>🔒</span>
-                        <div>
-                            <div style={{
-                                fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 700,
-                                letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-primary)',
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Privacidad y cookies"
+                    onClick={e => e.stopPropagation()}
+                    style={{
+                        pointerEvents: 'auto',
+                        width:         'min(400px, 100%)',
+                        background:    'var(--bg-surface)',
+                        borderTop:     '2px solid var(--accent-primary)',
+                        border:        '1px solid var(--border-default)',
+                        borderRadius:  '12px',
+                        boxShadow:     'var(--shadow-xl)',
+                        padding:       '20px',
+                        animation:     'fadeInUp 0.22s cubic-bezier(0.23, 1, 0.32, 1) both',
+                    }}
+                >
+                    {/* Header */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '15px' }}>🔒</span>
+                            <span style={{
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '12px',
+                                fontWeight:    700,
+                                letterSpacing: '0.10em',
+                                textTransform: 'uppercase',
+                                color:         'var(--text-primary)',
                             }}>
-                                Preferencias de Privacidad
-                            </div>
-                            <div style={{
-                                fontFamily: 'var(--font-mono)', fontSize: '10px',
-                                color: 'var(--text-muted)', letterSpacing: '0.04em', marginTop: '2px',
-                            }}>
-                                Modifica tu consentimiento en cualquier momento
-                            </div>
+                                Privacidad y Cookies
+                            </span>
                         </div>
+                        <button
+                            onClick={onClose}
+                            aria-label="Cerrar"
+                            style={{
+                                background: 'transparent', border: '1px solid var(--border-subtle)',
+                                borderRadius: '5px', color: 'var(--text-muted)',
+                                cursor: 'pointer', padding: '3px 8px', fontSize: '13px',
+                                transition: 'all 160ms ease',
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)'; }}
+                        >
+                            ✕
+                        </button>
                     </div>
+
+                    {/* Texto breve */}
+                    <p style={{
+                        fontFamily:   'var(--font-mono)',
+                        fontSize:     '11px',
+                        color:        'var(--text-secondary)',
+                        lineHeight:   1.6,
+                        margin:       '0 0 14px',
+                    }}>
+                        NEXUS es una aplicación interna. Solo usamos almacenamiento técnico imprescindible — sin rastreo, publicidad ni analíticas externas.
+                    </p>
+
+                    {/* Lista compacta */}
+                    <div style={{
+                        background:   'var(--bg-elevated)',
+                        border:       '1px solid var(--border-subtle)',
+                        borderRadius: '8px',
+                        overflow:     'hidden',
+                        marginBottom: '16px',
+                    }}>
+                        {([
+                            { key: 'nexus_token',          where: 'localStorage', desc: 'Sesión JWT' },
+                            { key: 'nexus_theme',          where: 'localStorage', desc: 'Tema UI' },
+                            { key: 'nexus_avatar_*',       where: 'localStorage', desc: 'Foto de perfil' },
+                            { key: 'nexus_cookie_consent', where: 'Cookie · SameSite=Strict · Secure', desc: 'Aviso visto' },
+                        ] as const).map((item, i, arr) => (
+                            <div
+                                key={item.key}
+                                style={{
+                                    display:       'grid',
+                                    gridTemplateColumns: '1fr auto',
+                                    alignItems:    'center',
+                                    gap:           '10px',
+                                    padding:       '8px 12px',
+                                    borderBottom:  i < arr.length - 1 ? '1px solid var(--border-subtle)' : 'none',
+                                }}
+                            >
+                                <div>
+                                    <code style={{
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize:   '10px',
+                                        fontWeight: 700,
+                                        color:      'var(--accent-primary)',
+                                        display:    'block',
+                                        marginBottom: '1px',
+                                    }}>
+                                        {item.key}
+                                    </code>
+                                    <span style={{
+                                        fontFamily: 'var(--font-mono)',
+                                        fontSize:   '9px',
+                                        color:      'var(--text-muted)',
+                                    }}>
+                                        {item.desc} · <span style={{ color: 'var(--accent-cyan)', opacity: 0.8 }}>{item.where}</span>
+                                    </span>
+                                </div>
+                                <span style={{
+                                    fontFamily:    'var(--font-mono)',
+                                    fontSize:      '8px',
+                                    color:         'var(--accent-primary)',
+                                    border:        '1px solid var(--border-accent)',
+                                    borderRadius:  '3px',
+                                    padding:       '1px 5px',
+                                    background:    'var(--accent-primary-glow)',
+                                    whiteSpace:    'nowrap',
+                                    letterSpacing: '0.05em',
+                                    flexShrink:    0,
+                                }}>
+                                    NECESARIA
+                                </span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Botón */}
                     <button
+                        className="btn btn-primary"
+                        style={{ width: '100%' }}
                         onClick={onClose}
-                        style={{
-                            background: 'transparent', border: '1px solid var(--border-subtle)',
-                            borderRadius: '6px', color: 'var(--text-muted)',
-                            cursor: 'pointer', padding: '4px 8px', fontSize: '14px',
-                            transition: 'all 160ms ease', flexShrink: 0,
-                        }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)'; }}
                     >
-                        ✕
+                        Entendido
                     </button>
                 </div>
-
-                {/* Estado actual */}
-                {record && (
-                    <div style={{
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                        borderRadius: '8px', padding: '10px 14px', marginBottom: '20px',
-                    }}>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                            Última decisión:{' '}
-                            <strong style={{ color: status === 'granted' ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
-                                {status === 'granted' ? 'Todo aceptado' : 'Solo necesarias'}
-                            </strong>
-                            {' '}· {formatDate(record.timestamp)}
-                        </div>
-                    </div>
-                )}
-
-                {/* Categorías con toggle */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
-
-                    {/* Técnicas — siempre activas, no modificable */}
-                    <div style={{
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                        borderRadius: '10px', padding: '14px 16px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-                    }}>
-                        <div style={{ minWidth: 0 }}>
-                            <div style={{
-                                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-                                letterSpacing: '0.10em', textTransform: 'uppercase',
-                                color: 'var(--text-primary)', marginBottom: '3px',
-                            }}>
-                                Cookies Técnicas
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                                Sesión · Tema · Preferencias de UI — siempre necesarias
-                            </div>
-                        </div>
-                        {/* Toggle desactivado — siempre ON */}
-                        <div style={{
-                            width: '40px', height: '22px', borderRadius: '11px',
-                            background: 'var(--accent-primary)',
-                            display: 'flex', alignItems: 'center',
-                            padding: '2px', flexShrink: 0,
-                            cursor: 'not-allowed', opacity: 0.7,
-                        }}>
-                            <div style={{
-                                width: '18px', height: '18px', borderRadius: '50%',
-                                background: '#fff', marginLeft: 'auto',
-                                transition: 'margin 200ms ease',
-                            }} />
-                        </div>
-                    </div>
-
-                    {/* Analíticas — modificable */}
-                    <div style={{
-                        background: 'var(--bg-elevated)',
-                        border: `1px solid ${analyticsOn ? 'var(--border-accent)' : 'var(--border-subtle)'}`,
-                        borderRadius: '10px', padding: '14px 16px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px',
-                        transition: 'border-color 200ms ease',
-                    }}>
-                        <div style={{ minWidth: 0 }}>
-                            <div style={{
-                                fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-                                letterSpacing: '0.10em', textTransform: 'uppercase',
-                                color: 'var(--text-primary)', marginBottom: '3px',
-                            }}>
-                                Cookies Analíticas
-                            </div>
-                            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)' }}>
-                                Métricas de uso · Navegación · Rendimiento
-                            </div>
-                        </div>
-                        {/* Toggle interactivo */}
-                        <button
-                            onClick={() => handleSave(analyticsOn ? 'denied' : 'granted')}
-                            aria-label={analyticsOn ? 'Desactivar analíticas' : 'Activar analíticas'}
-                            aria-checked={analyticsOn}
-                            role="switch"
-                            style={{
-                                width: '40px', height: '22px', borderRadius: '11px',
-                                background: analyticsOn ? 'var(--accent-primary)' : 'var(--bg-overlay)',
-                                border: `1px solid ${analyticsOn ? 'var(--accent-primary)' : 'var(--border-default)'}`,
-                                display: 'flex', alignItems: 'center',
-                                padding: '2px', flexShrink: 0,
-                                cursor: 'pointer',
-                                transition: 'background 200ms ease, border-color 200ms ease',
-                            }}
-                        >
-                            <div style={{
-                                width: '16px', height: '16px', borderRadius: '50%',
-                                background: '#fff',
-                                marginLeft: analyticsOn ? 'auto' : '0',
-                                transition: 'margin 200ms ease',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.30)',
-                            }} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Feedback guardado */}
-                {saved && (
-                    <div style={{
-                        background: 'var(--accent-primary-glow)', border: '1px solid var(--border-accent)',
-                        borderRadius: '8px', padding: '10px 14px', marginBottom: '16px',
-                        fontFamily: 'var(--font-mono)', fontSize: '11px',
-                        color: 'var(--accent-primary)', letterSpacing: '0.06em', textAlign: 'center',
-                        animation: 'fadeInUp 0.2s ease both',
-                    }}>
-                        ✓ Preferencias guardadas
-                    </div>
-                )}
-
-                {/* Botones */}
-                {!saved && (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onClose}>
-                            Cancelar
-                        </button>
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => handleSave(analyticsOn ? 'granted' : 'denied')}>
-                            Guardar preferencias
-                        </button>
-                    </div>
-                )}
-            </div>
             </div>
         </>,
         document.body

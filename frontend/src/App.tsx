@@ -18,7 +18,6 @@ import { AiPanelProvider }        from './context/AiPanelContext';
 import { AiPage }                 from './pages/AiPage';
 import './styles/ia-avatar.css';
 import { AuthProvider }           from './context/AuthContext';
-import { CookieBanner }          from './components/cookies/CookieBanner';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
@@ -35,7 +34,6 @@ function ComingSoon({ name }: { name: string }): JSX.Element {
 function App(): JSX.Element {
     return (
         <AiPanelProvider>
-        <CookieBanner />
         <BrowserRouter>
             <AuthProvider>
             <Routes>

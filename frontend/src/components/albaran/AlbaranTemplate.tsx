@@ -9,7 +9,9 @@
  *   window.print()  ← activa @media print automáticamente
  */
 
+import type { ReactNode } from 'react';
 import styles from './AlbaranTemplate.module.css';
+import { Logo } from '../brand/Logo';
 
 // ── Generador de código de barras I2of5 ───────────────────────────────────────
 //
@@ -82,7 +84,7 @@ function BarcodeI25({ value, height = 40, label }: BarcodeI25Props): JSX.Element
             >
                 {widths.map((w, i) =>
                     i % 2 === 0
-                        ? <rect key={i} x={positions[i]} y={0} width={w} height={height} fill="#0C2A54" />
+                        ? <rect key={i} x={positions[i]} y={0} width={w} height={height} fill="#1E3A8A" />
                         : null
                 )}
             </svg>
@@ -91,7 +93,7 @@ function BarcodeI25({ value, height = 40, label }: BarcodeI25Props): JSX.Element
                     fontFamily:    "'JetBrains Mono', 'Courier New', monospace",
                     fontSize:      '7px',
                     letterSpacing: '0.10em',
-                    color:         '#0C2A54',
+                    color:         '#1E3A8A',
                     textAlign:     'center',
                     whiteSpace:    'nowrap',
                 }}>
@@ -124,6 +126,11 @@ export interface EmpresaInfo {
      * Tiene precedencia sobre logoUrl.
      */
     markUrl?:   string;
+    /**
+     * Componente React alternativo al markUrl (ej: <Logo variant="mark">).
+     * Tiene precedencia sobre markUrl y logoUrl.
+     */
+    markComponent?: ReactNode;
     /**
      * Nombre de marca corto para mostrar en el bloque del logo (junto al isotipo).
      * Si no se provee, se usa `nombre`.
@@ -229,7 +236,18 @@ export function AlbaranTemplate({ data }: AlbaranTemplateProps): JSX.Element {
 
                 {/* Bloque izquierdo: isotipo / logo / nombre */}
                 <div className={styles.logoBlock}>
-                    {empresa.markUrl ? (
+                    {empresa.markComponent ? (
+                        /* Componente React del isotipo (ej: <Logo>) — colores exactos de la app */
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {empresa.markComponent}
+                            <div>
+                                <div className={styles.logoFallback}>{empresa.brandName ?? empresa.nombre}</div>
+                                {empresa.tagline && (
+                                    <span className={styles.logoTagline}>{empresa.tagline}</span>
+                                )}
+                            </div>
+                        </div>
+                    ) : empresa.markUrl ? (
                         /* Isotipo en colores originales + nombre/brand como texto */
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <img

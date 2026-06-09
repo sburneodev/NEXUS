@@ -34,7 +34,7 @@ type ActivoKey = 'TODOS' | 'ACTIVOS' | 'INACTIVOS';
 
 function ActivoChips({ value, onChange }: { value: ActivoKey; onChange: (v: ActivoKey) => void }): JSX.Element {
     const OPTIONS: { key: ActivoKey; label: string; color: string }[] = [
-        { key: 'TODOS',     label: 'Todos',       color: 'var(--text-muted)' },
+        { key: 'TODOS',     label: 'Todos',       color: 'var(--accent-primary)' },
         { key: 'ACTIVOS',   label: '● Activos',   color: '#44cc88' },
         { key: 'INACTIVOS', label: '○ Inactivos', color: 'var(--text-muted)' },
     ];

@@ -6,10 +6,10 @@
 
 /* ── Variables corporativas ────────────────────────────────── */
 .root {
-    /* Azul profundo NEXUS para documentos impresos */
-    --corp-navy:     #0C2A54;
-    --corp-navy-mid: #1A4080;
-    --corp-accent:   #1D4ED8;
+    /* Azul corporativo NEXUS v3 para documentos impresos */
+    --corp-navy:     #1E3A8A;   /* azul corporativo profundo — cabeceras, bordes */
+    --corp-navy-mid: #1D4ED8;   /* azul medio — títulos de bloque, SKU */
+    --corp-accent:   #2563EB;   /* azul acento — badge entrada, línea separadora */
     --corp-line:     #CBD5E1;
     --corp-bg-block: #F1F5F9;
     --corp-text:     #111827;
@@ -62,11 +62,12 @@
     filter: brightness(0) saturate(100%) invert(12%) sepia(60%) saturate(700%) hue-rotate(200deg) brightness(82%);
 }
 
-/* Isotipo / marca: se muestra SIN filtro, en sus colores originales */
+/* Isotipo / marca: sin filtro — el SVG lleva su propio fondo hexagonal oscuro,
+   la N y los detalles arcade son visibles sobre cualquier fondo */
 .markImg {
-    height:     44px;
-    width:      auto;
-    object-fit: contain;
+    height:      44px;
+    width:       auto;
+    object-fit:  contain;
     flex-shrink: 0;
 }
 

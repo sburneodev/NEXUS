@@ -296,8 +296,22 @@ export function ClientesPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={tdStyle}>
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--accent-gold)' }}>
-                                            {c.puntosFidelidad ?? 0}
+                                        <span
+                                            title="Total de puntos de fidelidad acumulados para canje en tienda"
+                                            style={{
+                                                fontFamily:    'var(--font-mono)',
+                                                fontSize:      '11px',
+                                                fontWeight:    400,
+                                                color:         c.puntosFidelidad
+                                                                   ? 'var(--text-secondary)'
+                                                                   : 'var(--text-muted)',
+                                                letterSpacing: '0.02em',
+                                                cursor:        'default',
+                                            }}
+                                        >
+                                            {c.puntosFidelidad
+                                                ? c.puntosFidelidad.toLocaleString('es-ES')
+                                                : '—'}
                                         </span>
                                     </td>
                                     <td style={tdStyle}>

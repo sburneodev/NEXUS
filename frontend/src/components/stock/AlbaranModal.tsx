@@ -23,6 +23,7 @@
 import { createPortal } from 'react-dom';
 import type { CSSProperties } from 'react';
 import { Code39Barcode }     from './Code39Barcode';
+import { Logo }              from '../brand/Logo';
 import type { Producto, TipoMovimiento } from '../../types/models';
 
 // ── Tipos públicos ─────────────────────────────────────────────────────────────
@@ -104,9 +105,9 @@ const TIPO_COLOR_VAR: Record<TipoMovimiento, string> = {
 // Alineada con NEXUS ERP v3 Design System — azul profundo para documentos impresos ──
 
 const C = {
-    navy:    '#0C2A54',   /* azul profundo NEXUS */
-    navyMid: '#1A4080',   /* azul medio */
-    accent:  '#1D4ED8',   /* azul acento NEXUS */
+    navy:    '#1E3A8A',   /* azul corporativo profundo NEXUS */
+    navyMid: '#1D4ED8',   /* azul medio */
+    accent:  '#2563EB',   /* azul acento */
     line:    '#CBD5E1',   /* slate-300 */
     bgBlock: '#F1F5F9',   /* slate-100 */
     text:    '#111827',   /* near-black */
@@ -169,10 +170,9 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
                 borderBottom:   `3px solid ${C.navy}`,   /* navy NEXUS */
                 marginBottom:   '18px',
             }}>
-                {/* Izquierda: isotipo + marca */}
+                {/* Izquierda: isotipo + marca — mismo componente SVG que el sidebar */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <img src="/nexus-mark.svg" alt="" aria-hidden="true"
-                         style={{ height: '44px', width: 'auto', objectFit: 'contain', flexShrink: 0 }} />
+                    <Logo variant="mark" theme="brand" size={44} />
                     <div>
                         <div style={{
                             fontSize:      '20px',

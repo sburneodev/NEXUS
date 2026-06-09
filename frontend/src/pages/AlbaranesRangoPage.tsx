@@ -14,10 +14,13 @@ import { AlbaranTemplate }    from '../components/albaran/AlbaranTemplate';
 import type { AlbaranData }   from '../components/albaran/AlbaranTemplate';
 import { AlbaranModal }       from '../components/stock/AlbaranModal';
 import type { AlbaranInfo }   from '../components/stock/AlbaranModal';
+import { Logo }               from '../components/brand/Logo';
 
 // ── Empresa emisora ───────────────────────────────────────────────────
+// markComponent usa el mismo componente SVG inline que el sidebar,
+// garantizando que el logo del albarán sea idéntico al de la app.
 const EMPRESA_NEXUS = {
-    markUrl:   '/nexus-mark.svg',
+    markComponent: <Logo variant="mark" theme="brand" size={44} />,
     brandName: 'NEXUS',
     tagline:   'ERP · LEVELUP ARCADE',
     nombre:    'NEXUS Distribución S.L.',

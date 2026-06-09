@@ -106,7 +106,7 @@ public class UsuarioService {
     }
 
     /** Contraseña temporal asignada automáticamente a todos los usuarios creados por el admin. */
-    private static final String TEMP_PASSWORD = "NEXUS2026!";
+    private static final String TEMP_PASSWORD = System.getenv().getOrDefault("TEMP_PASSWORD", "NEXUS2026!");
 
     /**
      * Crea un usuario nuevo desde el panel de administración.

@@ -66,6 +66,11 @@ services:
       APP_BASE_URL:               ${APP_BASE_URL:-http://localhost}
       SERVER_PORT:                8080
       SPRING_PROFILES_ACTIVE:     ${SPRING_PROFILE:-dev}
+      SPRING_FLYWAY_ENABLED: "true"
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "8"
+      SPRING_FLYWAY_VALIDATE_ON_MIGRATE: "false"
+      TEMP_PASSWORD: ${TEMP_PASSWORD:-NEXUS2026!}
     ports:
       - "${BACKEND_PORT_EXTERNAL:-8080}:8080"
     volumes:

@@ -13,24 +13,16 @@ import java.util.*;
 @RequestMapping("/almacen")
 public class AlmacenController {
 
+    private static final String COL_PASILLO    = "pasillo";
+    private static final String COL_ESTANTERIA = "estanteria";
+    private static final String COL_NIVEL      = "nivel";
+
     private final JdbcTemplate jdbcTemplate;
-    private final String pasillo="pasillo";
 
     public AlmacenController(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    // ── GET /api/almacen/ubicaciones ─────────────────────────────────────
-    /**
-     * Lista plana de todas las zonas del almacén con el número de productos
-     * que contiene cada una. Modelo zona compartida (1:N): una ubicación puede
-     * albergar múltiples productos/títulos.
-     *
-     * Respuesta: [ { id, pasillo, estanteria, nivel, numProductos } ]
-     *
-     * Accesible a cualquier usuario autenticado: el modal de alta/edición
-     * de producto es visible para todos los roles.
-     */
     @GetMapping("/ubicaciones")
     public ResponseEntity<List<Map<String, Object>>> getUbicaciones() {
         String sql = """
@@ -51,9 +43,9 @@ public class AlmacenController {
         for (Map<String, Object> row : rows) {
             Map<String, Object> u = new LinkedHashMap<>();
             u.put("id",           row.get("id"));
-            u.put("pasillo",      row.get("pasillo"));
-            u.put("estanteria",   row.get("estanteria"));
-            u.put("nivel",        row.get("nivel"));
+            u.put(COL_PASILLO,    row.get(COL_PASILLO));
+            u.put(COL_ESTANTERIA, row.get(COL_ESTANTERIA));
+            u.put(COL_NIVEL,      row.get(COL_NIVEL));
             u.put("numProductos", row.get("num_productos") != null
                                     ? ((Number) row.get("num_productos")).intValue()
                                     : 0);
@@ -63,11 +55,6 @@ public class AlmacenController {
         return ResponseEntity.ok(result);
     }
 
-    // ── AI-09 — GET /api/almacen/mapa ─────────────────────────────────
-    // Modelo zona compartida (1:N): cada slot puede tener varios productos.
-    // Devuelve un detalle completo por producto dentro de cada slot,
-    // usando el ID del producto como clave interna para que el frontend
-    // pueda iterar con Object.values() y obtener un array de RackData.
     @GetMapping("/mapa")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<Map<String, Object>> getMapa() {
@@ -99,8 +86,8 @@ public class AlmacenController {
         int totalRacks = 0, racksOcupados = 0;
 
         for (Map<String, Object> fila : filas) {
-            String pasillo    = (String) fila.get("pasillo");
-            String estanteria = (String) fila.get("estanteria");
+            String pasillo    = (String) fila.get(COL_PASILLO);
+            String estanteria = (String) fila.get(COL_ESTANTERIA);
             int    nivelRack  = ((Number) fila.get("nivel_rack")).intValue();
 
             mapa.computeIfAbsent(pasillo, k -> new LinkedHashMap<>());
@@ -112,10 +99,9 @@ public class AlmacenController {
             Map<String, Object> estanteriaMap = (Map<String, Object>) pasilloMap.get(estanteria);
 
             if (fila.get("id_producto") != null) {
-                // Slot ocupado: una entrada por producto (clave = id del producto)
                 String prodKey = String.valueOf(fila.get("id_producto"));
                 Map<String, Object> rack = new LinkedHashMap<>();
-                rack.put("nivel",               nivelRack);
+                rack.put(COL_NIVEL,             nivelRack);
                 rack.put("id_producto",         ((Number) fila.get("id_producto")).longValue());
                 rack.put("sku",                 fila.get("sku"));
                 rack.put("nombre",              fila.get("nombre"));
@@ -130,10 +116,8 @@ public class AlmacenController {
                 rack.put("bajo_minimo",         Boolean.TRUE.equals(fila.get("bajo_minimo")));
                 estanteriaMap.put(prodKey, rack);
             }
-            // Si id_producto es null → slot vacío, estanteriaMap queda como {} (vacío)
         }
 
-        // Calcular estadísticas desde el mapa ya construido
         for (Map.Entry<String, Object> pe : mapa.entrySet()) {
             @SuppressWarnings("unchecked")
             Map<String, Object> pm = (Map<String, Object>) pe.getValue();
@@ -153,26 +137,14 @@ public class AlmacenController {
         return ResponseEntity.ok(response);
     }
 
-    // ── MAP-05 — POST /api/almacen/validar-ubicacion ──────────────────
-    /**
-     * Valida si una ubicación (pasillo + estantería + nivel) está libre.
-     * Si está ocupada, devuelve la alternativa libre más cercana en el mismo
-     * pasillo (primero mismo pasillo, luego pasillos adyacentes).
-     *
-     * Body: { "pasillo": "P1", "estanteria": "A", "nivel": 1, "idProducto": 5 }
-     * (idProducto es opcional — permite ignorar la ubicación actual del propio producto al editar)
-     *
-     * Respuesta OK:     { "libre": true }
-     * Respuesta ocupada:{ "libre": false, "ocupadoPor": {...}, "alternativa": {...} | null }
-     */
     @PostMapping("/validar-ubicacion")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<Map<String, Object>> validarUbicacion(
             @RequestBody Map<String, Object> body) {
 
-        String pasillo    = (String) body.get("pasillo");
-        String estanteria = (String) body.get("estanteria");
-        Object nivelObj   = body.get("nivel");
+        String pasillo    = (String) body.get(COL_PASILLO);
+        String estanteria = (String) body.get(COL_ESTANTERIA);
+        Object nivelObj   = body.get(COL_NIVEL);
         Object idProdObj  = body.get("idProducto");
 
         if (pasillo == null || estanteria == null || nivelObj == null) {
@@ -185,7 +157,6 @@ public class AlmacenController {
         int  nivel      = ((Number) nivelObj).intValue();
         Long idProducto = idProdObj != null ? ((Number) idProdObj).longValue() : null;
 
-        // Buscar qué producto ocupa actualmente esa ubicación
         String sqlOcupante = """
             SELECT p.id, p.sku, p.nombre, p.tipo_producto
             FROM ubicaciones_almacen ua
@@ -197,7 +168,6 @@ public class AlmacenController {
             sqlOcupante, pasillo, estanteria, nivel
         );
 
-        // Filtrar el propio producto si se está editando su ubicación
         if (idProducto != null) {
             final Long pid = idProducto;
             ocupantes = ocupantes.stream()
@@ -206,16 +176,13 @@ public class AlmacenController {
         }
 
         if (ocupantes.isEmpty()) {
-            // Ubicación libre
             Map<String, Object> resp = new LinkedHashMap<>();
             resp.put("libre", true);
             return ResponseEntity.ok(resp);
         }
 
-        // Ubicación ocupada — buscar alternativa libre cercana
         Map<String, Object> ocupadoPor = ocupantes.get(0);
 
-        // Obtener todas las ubicaciones libres (sin producto asignado)
         String sqlLibres = """
             SELECT ua.pasillo, ua.estanteria, ua.nivel
             FROM ubicaciones_almacen ua
@@ -226,9 +193,8 @@ public class AlmacenController {
 
         List<Map<String, Object>> libres = jdbcTemplate.queryForList(sqlLibres);
 
-        // Prioridad: mismo pasillo primero, luego pasillos numerados por cercanía
         Map<String, Object> alternativa = libres.stream()
-            .filter(u -> pasillo.equals(u.get("pasillo")))
+            .filter(u -> pasillo.equals(u.get(COL_PASILLO)))
             .findFirst()
             .orElse(libres.isEmpty() ? null : libres.get(0));
 

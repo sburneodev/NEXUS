@@ -41,6 +41,7 @@ public class SystemController {
     private static final String BACKUP_SCHEMA  = "NEXUS_ERP_BACKUP";
     private static final String BACKUP_VERSION = "1.0";
     private static final String APP_VERSION    = "1.0.0";
+    private static final String TABLE_USUARIOS_ROLES = "usuarios_roles";
 
     private final JdbcTemplate  jdbcTemplate;
     private final AuditService  auditService;
@@ -53,17 +54,18 @@ public class SystemController {
         "ubicaciones_almacen",
         "roles",
         "usuarios",
-        "usuarios_roles",
+        TABLE_USUARIOS_ROLES,
         "productos",
         "clientes"
     );
+    
 
     /**
      * Tablas que NO tienen columna 'id' (PK compuesta u otro esquema).
      * Se usa su clave primaria real para el ORDER BY del SELECT.
      */
     private static final Map<String, String> TABLE_ORDER_BY = Map.of(
-        "usuarios_roles", "id_usuario, id_rol"
+    		TABLE_USUARIOS_ROLES, "id_usuario, id_rol"
     );
 
     public SystemController(JdbcTemplate jdbcTemplate,
@@ -72,9 +74,7 @@ public class SystemController {
         this.auditService = auditService;
     }
 
-    // ══════════════════════════════════════════════════════════════════
     // GET /api/system/backup — Exportación completa
-    // ══════════════════════════════════════════════════════════════════
 
     /**
      * Genera una instantánea JSON de todas las entidades críticas y la envía
@@ -279,7 +279,7 @@ public class SystemController {
      */
     private boolean hasAdminInBackup(Map<String, List<Map<String, Object>>> tables) {
         List<Map<String, Object>> roles        = tables.getOrDefault("roles", List.of());
-        List<Map<String, Object>> usuariosRoles = tables.getOrDefault("usuarios_roles", List.of());
+        List<Map<String, Object>> usuariosRoles = tables.getOrDefault(TABLE_USUARIOS_ROLES, List.of());
 
         // Encontrar el ID del rol ADMIN en el backup
         Set<Object> adminRoleIds = new HashSet<>();

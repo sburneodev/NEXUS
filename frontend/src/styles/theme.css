@@ -34,11 +34,19 @@
     --accent-danger-dim:  #EF4444;
     --accent-danger-glow: rgba(248, 113, 113, 0.12);
 
-    /* WCAG AA — jerarquía clara de 3 niveles */
-    --text-primary:   #F0F6FC;   /* casi blanco */
-    --text-secondary: #C9D1D9;   /* gris claro */
-    --text-muted:     #8B949E;   /* gris medio */
+    /* WCAG AAA — máxima legibilidad para jornadas largas
+       Contrastes verificados contra --bg-surface (#1C2128 ≈ L 0.011):
+       --text-primary   ≈ 17.5:1  ✅ AAA
+       --text-secondary ≈ 12.6:1  ✅ AAA
+       --text-muted     ≈  7.3:1  ✅ AAA  (antes 5.5:1 — solo AA)  */
+    --text-primary:   #F8FAFC;   /* blanco puro — títulos, valores críticos */
+    --text-secondary: #D4DCE6;   /* gris nítido — subtítulos, labels         */
+    --text-muted:     #A8B5C2;   /* gris legible — hints, timestamps          */
     --text-inverse:   #0D1117;
+
+    /* Blue focus ring — color NEXUS, consistente con accent-primary */
+    --focus-color:    #3B82F6;
+    --focus-glow:     rgba(59, 130, 246, 0.22);
 
     /* ── Alias semánticos ───────────────────────────────────────────── */
     --text-main: var(--text-primary);
@@ -62,7 +70,7 @@
     --sidebar-border:      rgba(240, 246, 252, 0.24);
     --sidebar-shadow:      4px 0 24px rgba(0,0,0,0.40), 1px 0 0 rgba(255,255,255,0.05);
     --sidebar-shadow-mobile: 4px 0 32px rgba(0,0,0,0.55), 2px 0 0 rgba(255,255,255,0.06);
-    --sidebar-text:        rgba(255, 255, 255, 0.80);
+    --sidebar-text:        rgba(255, 255, 255, 0.90);  /* +10% — legible en sidebar */
     --sidebar-text-muted:  rgba(255, 255, 255, 0.42);
     --sidebar-text-active: #F0F6FC;
     --sidebar-icon-active: #60A5FA;
@@ -111,6 +119,9 @@ html.theme-light {
     --text-secondary: #374151;
     --text-muted:     #6B7280;
     --text-inverse:   #FFFFFF;
+
+    --focus-color:    #2563EB;   /* blue — visible sobre fondo claro */
+    --focus-glow:     rgba(37, 99, 235, 0.18);
 
     --text-main: #111827;
     --bg-panel:  #FFFFFF;

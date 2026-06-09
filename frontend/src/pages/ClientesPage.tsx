@@ -33,7 +33,7 @@ const FIELDS: FieldConfig[] = [
 
 function ActivoChips({ value, onChange }: { value: ActivoKey; onChange: (v: ActivoKey) => void }): JSX.Element {
     const OPTIONS: { key: ActivoKey; label: string; color: string }[] = [
-        { key: 'TODOS',    label: 'Todos',       color: 'var(--text-muted)' },
+        { key: 'TODOS',    label: 'Todos',       color: 'var(--accent-primary)' },
         { key: 'ACTIVOS',  label: '● Activos',   color: '#44cc88' },
         { key: 'INACTIVOS',label: '○ Inactivos', color: 'var(--text-muted)' },
     ];
@@ -207,7 +207,7 @@ export function ClientesPage(): JSX.Element {
         <div>
             {/* Toast */}
             {toast && (
-                <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 200, background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)', borderRadius: 'var(--radius-base)', padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', animation: 'fadeInUp 0.2s ease both' }}>
+                <div style={{ position: 'fixed', bottom: '88px', right: '28px', zIndex: 200, background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)', borderRadius: 'var(--radius-base)', padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', animation: 'fadeInUp 0.2s ease both' }}>
                     ✓ {toast}
                 </div>
             )}

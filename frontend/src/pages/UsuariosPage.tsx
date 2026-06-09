@@ -194,8 +194,8 @@ export function UsuariosPage(): JSX.Element {
             {toast && (
                 <div style={{
                     position:     'fixed',
-                    bottom:       '24px',
-                    right:        '24px',
+                    bottom:       '88px',
+                    right:        '28px',
                     zIndex:       300,
                     background:   'var(--bg-elevated)',
                     border:       `1px solid ${toast.type === 'ok' ? 'var(--accent-primary)' : 'var(--accent-danger)'}`,

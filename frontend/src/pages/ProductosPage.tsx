@@ -10,7 +10,6 @@
  */
 
 import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
-import { createPortal }                                                            from 'react-dom';
 import { useLocation }                                                     from 'react-router-dom';
 import type { Producto, TipoProducto, PaginatedResponse }                  from '../types/models';
 import { ProductFormPanel }                                                 from '../components/productos/ProductFormPanel';
@@ -18,6 +17,7 @@ import { useTableFilters, calculateAutoLimit }                              from
 import { TableControls, SkeletonRows }                                     from '../components/table/TableControls';
 import { productoService }                                                  from '../services/productoService';
 import api                                                                  from '../services/api';
+import { MovimientoDrawer }                                                 from '../components/stock/MovimientoDrawer';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -42,8 +42,10 @@ export function ProductosPage(): JSX.Element {
     const [sortDir,     setSortDir]     = useState<SortDir>('asc');
     const [editOpen,    setEditOpen]    = useState(false);
     const [selected,    setSelected]    = useState<Producto | null>(null);
-    const [adjusting,   setAdjusting]   = useState<Producto | null>(null);
     const [refreshTick, setRefreshTick] = useState(0);
+    const [drawerOpen,     setDrawerOpen]     = useState(false);
+    const [drawerProducto, setDrawerProducto] = useState<Producto | null>(null);
+    const [confirmId,      setConfirmId]      = useState<number | null>(null);
 
     // Mensaje de éxito tras crear producto desde /productos/nuevo
     const [successMsg, setSuccessMsg] = useState<string | null>(
@@ -140,28 +142,29 @@ export function ProductosPage(): JSX.Element {
         }
     }, [selected, refresh]);
 
-    // ── Eliminar ─────────────────────────────────────────────────────────────
-    const handleDelete = useCallback(async (id: number): Promise<void> => {
-        if (window.confirm('¿Eliminar este producto?')) {
-            try {
-                await productoService.eliminar(id);
-                refresh();
-            } catch (err) {
-                console.error('Error eliminando producto:', err);
-            }
+    // ── Soft delete (sin window.confirm — confirmación inline en la fila) ────────
+    const handleSoftDelete = useCallback(async (p: Producto): Promise<void> => {
+        try {
+            await productoService.editar(p.id, { ...p, activo: false } as any);
+            setConfirmId(null);
+            refresh();
+        } catch {
+            console.error('Error desactivando producto');
         }
     }, [refresh]);
 
-    // ── Ajuste de stock ───────────────────────────────────────────────────────
-    const handleStockSave = useCallback(async (producto: Producto, newStock: number): Promise<void> => {
-        try {
-            await productoService.editar(producto.id, { ...producto, stockActual: newStock } as any);
-            setAdjusting(null);
-            refresh();
-        } catch {
-            console.error('Error ajustando stock');
-        }
-    }, [refresh]);
+    // Escape cierra la confirmación inline
+    useEffect(() => {
+        if (!confirmId) return;
+        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setConfirmId(null); };
+        document.addEventListener('keydown', handler);
+        return () => document.removeEventListener('keydown', handler);
+    }, [confirmId]);
+
+    // ── Drawer de stock ───────────────────────────────────────────────────────
+    const openStockDrawer = (p: Producto): void => { setDrawerProducto(p); setDrawerOpen(true); };
+    const closeStockDrawer = (): void => { setDrawerOpen(false); setTimeout(() => setDrawerProducto(null), 320); };
+    const handleMovimientoSaved = useCallback((_id: number, _stock: number) => { refresh(); }, [refresh]);
 
     const openEdit = (p: Producto): void => { setSelected(p); setEditOpen(true); };
     const closeEdit = (): void => { setEditOpen(false); setSelected(null); };
@@ -478,28 +481,102 @@ export function ProductosPage(): JSX.Element {
 
                                             {/* Acciones */}
                                             <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                                <button
-                                                    onClick={() => setAdjusting(p)}
-                                                    style={actionBtn('var(--accent-primary)')}
-                                                    aria-label={`Ajustar stock de ${p.nombre}`}
-                                                    title="Ajustar stock"
-                                                >
-                                                    ± Stock
-                                                </button>
-                                                <button
-                                                    onClick={() => openEdit(p)}
-                                                    style={actionBtn('var(--accent-cyan)')}
-                                                    aria-label={`Editar ${p.nombre}`}
-                                                >
-                                                    ✎ Editar
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(p.id)}
-                                                    style={actionBtn('#cc2244', 0.55)}
-                                                    aria-label={`Eliminar ${p.nombre}`}
-                                                >
-                                                    ✕
-                                                </button>
+                                                {confirmId === p.id ? (
+                                                    /* ── Confirmación inline ── */
+                                                    <div style={{
+                                                        display:     'flex',
+                                                        alignItems:  'center',
+                                                        gap:         '6px',
+                                                        animation:   'fadeIn 120ms ease',
+                                                    }}>
+                                                        <span style={{
+                                                            fontFamily:    'var(--font-mono)',
+                                                            fontSize:      '11px',
+                                                            color:         '#f87171',
+                                                            letterSpacing: '0.04em',
+                                                            paddingRight:  '2px',
+                                                        }}>
+                                                            ¿Inactivar?
+                                                        </span>
+                                                        <button
+                                                            onClick={() => handleSoftDelete(p)}
+                                                            style={{
+                                                                fontFamily:    'var(--font-display)',
+                                                                fontSize:      '10px',
+                                                                fontWeight:    700,
+                                                                letterSpacing: '0.08em',
+                                                                padding:       '4px 10px',
+                                                                border:        '1px solid #dc2626',
+                                                                borderRadius:  '4px',
+                                                                background:    'rgba(220,38,38,0.14)',
+                                                                color:         '#f87171',
+                                                                cursor:        'pointer',
+                                                                transition:    'all 120ms ease',
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(220,38,38,0.28)';
+                                                                (e.currentTarget as HTMLButtonElement).style.color = '#fca5a5';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(220,38,38,0.14)';
+                                                                (e.currentTarget as HTMLButtonElement).style.color = '#f87171';
+                                                            }}
+                                                        >
+                                                            ✓ Sí
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setConfirmId(null)}
+                                                            style={{
+                                                                fontFamily:    'var(--font-display)',
+                                                                fontSize:      '10px',
+                                                                fontWeight:    700,
+                                                                letterSpacing: '0.08em',
+                                                                padding:       '4px 10px',
+                                                                border:        '1px solid var(--border-default)',
+                                                                borderRadius:  '4px',
+                                                                background:    'transparent',
+                                                                color:         'var(--text-muted)',
+                                                                cursor:        'pointer',
+                                                                transition:    'all 120ms ease',
+                                                            }}
+                                                            onMouseEnter={e => {
+                                                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-accent)';
+                                                                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+                                                            }}
+                                                            onMouseLeave={e => {
+                                                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                                                                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
+                                                            }}
+                                                        >
+                                                            No
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    /* ── Botones normales ── */
+                                                    <>
+                                                        <button
+                                                            onClick={() => openStockDrawer(p)}
+                                                            style={actionBtn('var(--accent-primary)')}
+                                                            title="Gestionar stock"
+                                                        >
+                                                            ⊕ Stock
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openEdit(p)}
+                                                            style={actionBtn('var(--accent-cyan)')}
+                                                            aria-label={`Editar ${p.nombre}`}
+                                                        >
+                                                            ✎ Editar
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setConfirmId(p.id)}
+                                                            style={actionBtn('#cc2244', 0.55)}
+                                                            aria-label={`Inactivar ${p.nombre}`}
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -510,14 +587,12 @@ export function ProductosPage(): JSX.Element {
                 </>
             )}
 
-            {/* ── Modal ajuste de stock ───────────────────────────── */}
-            {adjusting && (
-                <StockAdjustModal
-                    producto={adjusting}
-                    onClose={() => setAdjusting(null)}
-                    onSave={newStock => handleStockSave(adjusting, newStock)}
-                />
-            )}
+            <MovimientoDrawer
+                open={drawerOpen}
+                producto={drawerProducto}
+                onClose={closeStockDrawer}
+                onSaved={handleMovimientoSaved}
+            />
         </div>
     );
 }
@@ -592,203 +667,6 @@ function SortableTh({ label, field, currentField, dir, onSort }: {
     );
 }
 
-// ── Modal ajuste de stock ─────────────────────────────────────────────────────
-
-function StockAdjustModal({
-    producto, onClose, onSave,
-}: {
-    producto: Producto;
-    onClose:  () => void;
-    onSave:   (n: number) => void;
-}): JSX.Element {
-    const [value,   setValue]   = useState(String(producto.stockActual));
-    const [saving,  setSaving]  = useState(false);
-    const num   = parseInt(value, 10);
-    const valid = !isNaN(num) && num >= 0;
-    const delta = valid ? num - producto.stockActual : 0;
-
-    async function save() {
-        if (!valid) return;
-        setSaving(true);
-        await onSave(num);
-        setSaving(false);
-    }
-
-    // Cerrar con Escape
-    useEffect(() => {
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [onClose]);
-
-    return createPortal(
-        <>
-            {/* Backdrop */}
-            <div onClick={onClose} style={{
-                position: 'fixed', inset: 0, zIndex: 9998,
-                background: 'rgba(0,0,0,0.52)',
-                backdropFilter: 'blur(3px)', WebkitBackdropFilter: 'blur(3px)',
-            }} />
-
-            {/* Centrador — padding garantiza que la tarjeta nunca toque los bordes */}
-            <div style={{
-                position: 'fixed', inset: 0, zIndex: 9999,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                padding: '24px', pointerEvents: 'none',
-            }}>
-                <div onClick={e => e.stopPropagation()} style={{
-                    pointerEvents:  'auto',
-                    boxSizing:      'border-box',          /* padding incluido en el ancho */
-                    width:          'min(480px, 100%)',
-                    background:     'var(--bg-surface)',
-                    border:         '1px solid var(--border-default)',
-                    borderTop:      '3px solid var(--accent-primary)',
-                    borderRadius:   '14px',
-                    boxShadow:      '0 28px 64px rgba(0,0,0,0.60)',
-                    padding:        '28px',
-                    animation:      'fadeInUp 0.20s cubic-bezier(0.23,1,0.32,1) both',
-                }}>
-
-                    {/* ── Header ── */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px', marginBottom: '24px' }}>
-                        <div>
-                            <div style={{
-                                fontFamily: 'var(--font-display)', fontSize: '14px',
-                                fontWeight: 700, letterSpacing: '0.12em',
-                                textTransform: 'uppercase', color: 'var(--text-primary)',
-                                lineHeight: 1.2,
-                            }}>
-                                ± Ajustar Stock
-                            </div>
-                            <div style={{
-                                fontFamily: 'var(--font-mono)', fontSize: '12px',
-                                color: 'var(--accent-cyan)', marginTop: '5px', letterSpacing: '0.03em',
-                            }}>
-                                {producto.sku} · {producto.nombre.slice(0, 36)}{producto.nombre.length > 36 ? '…' : ''}
-                            </div>
-                        </div>
-                        <button onClick={onClose} aria-label="Cerrar" style={{
-                            flexShrink: 0, width: '36px', height: '36px',
-                            background: 'transparent', border: '1px solid var(--border-subtle)',
-                            borderRadius: '7px', color: 'var(--text-muted)', cursor: 'pointer',
-                            fontSize: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            transition: 'all 160ms ease',
-                        }}
-                        onMouseEnter={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = 'var(--border-accent)'; b.style.color = 'var(--text-secondary)'; }}
-                        onMouseLeave={e => { const b = e.currentTarget as HTMLButtonElement; b.style.borderColor = 'var(--border-subtle)'; b.style.color = 'var(--text-muted)'; }}
-                        >✕</button>
-                    </div>
-
-                    {/* ── Stock actual ── */}
-                    <div style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                        borderRadius: '10px', padding: '14px 18px', marginBottom: '18px',
-                    }}>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                            Stock actual
-                        </span>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '26px', fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                            {producto.stockActual}
-                        </span>
-                    </div>
-
-                    {/* ── Control +/− — grid con columnas fijas para evitar overflow ── */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: '56px 1fr 56px',
-                        gap: '10px',
-                        marginBottom: '14px',
-                    }}>
-                        <button
-                            onClick={() => setValue(v => String(Math.max(0, (parseInt(v, 10) || 0) - 1)))}
-                            aria-label="Restar uno"
-                            style={adjBtn}
-                        >−</button>
-
-                        <input
-                            type="number" min={0}
-                            value={value}
-                            onChange={e => setValue(e.target.value)}
-                            onKeyDown={e => { if (e.key === 'Enter') save(); }}
-                            autoFocus
-                            style={{
-                                width: '100%', boxSizing: 'border-box',
-                                textAlign: 'center',
-                                fontFamily: 'var(--font-mono)', fontSize: '28px', fontWeight: 700,
-                                color: 'var(--text-primary)', background: 'var(--bg-elevated)',
-                                border: '2px solid var(--accent-primary)', borderRadius: '10px',
-                                padding: '12px 8px', outline: 'none',
-                                caretColor: 'var(--accent-cyan)',
-                                boxShadow: '0 0 0 4px rgba(59,130,246,0.14)',
-                                transition: 'border-color 160ms ease, box-shadow 160ms ease',
-                            }}
-                            onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-cyan)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(56,189,248,0.18)'; }}
-                            onBlur={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.14)'; }}
-                        />
-
-                        <button
-                            onClick={() => setValue(v => String((parseInt(v, 10) || 0) + 1))}
-                            aria-label="Sumar uno"
-                            style={adjBtn}
-                        >+</button>
-                    </div>
-
-                    {/* ── Delta ── */}
-                    <div style={{ minHeight: '22px', textAlign: 'center', marginBottom: '20px' }}>
-                        {valid && delta !== 0 && (
-                            <span style={{
-                                fontFamily: 'var(--font-mono)', fontSize: '13px',
-                                color: delta > 0 ? 'var(--accent-primary)' : 'var(--accent-danger)',
-                                letterSpacing: '0.02em',
-                            }}>
-                                {delta > 0 ? `+${delta}` : delta} unidades respecto al actual
-                            </span>
-                        )}
-                    </div>
-
-                    {/* ── Botones de acción ── */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '10px' }}>
-                        <button onClick={onClose} style={{
-                            fontFamily: 'var(--font-display)', fontSize: '12px',
-                            fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase',
-                            height: '48px', background: 'transparent', color: 'var(--text-secondary)',
-                            border: '1px solid var(--border-default)', borderRadius: '8px',
-                            cursor: 'pointer', transition: 'all 160ms ease',
-                        }}
-                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-accent)'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'; }}
-                        >
-                            Cancelar
-                        </button>
-                        <button onClick={save} disabled={!valid || saving} style={{
-                            fontFamily: 'var(--font-display)', fontSize: '13px',
-                            fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase',
-                            height: '48px',
-                            background: valid && !saving
-                                ? 'linear-gradient(90deg, var(--accent-primary), var(--accent-cyan))'
-                                : 'var(--bg-elevated)',
-                            color: valid && !saving ? 'var(--text-inverse)' : 'var(--text-muted)',
-                            border: 'none', borderRadius: '8px',
-                            cursor: valid && !saving ? 'pointer' : 'not-allowed',
-                            boxShadow: valid && !saving ? '0 0 18px rgba(59,130,246,0.30)' : 'none',
-                            transition: 'all 160ms ease',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '7px',
-                        }}
-                        onMouseEnter={e => { if (valid && !saving) (e.currentTarget as HTMLButtonElement).style.opacity = '0.88'; }}
-                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
-                        >
-                            {saving ? '· Guardando…' : '✓ Guardar'}
-                        </button>
-                    </div>
-
-                </div>
-            </div>
-        </>,
-        document.body,
-    );
-}
-
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
 const tdStyle: CSSProperties = {
@@ -827,23 +705,3 @@ function actionBtn(color: string, opacity = 0.8): CSSProperties {
         transition:    'opacity 120ms ease',
     };
 }
-
-const adjBtn: CSSProperties = {
-    /* alto igual al input (12px padding × 2 + 28px font + 4px border × 2 ≈ 56px) */
-    width:          '100%',
-    height:         '56px',
-    boxSizing:      'border-box',
-    borderRadius:   '10px',
-    background:     'var(--bg-elevated)',
-    border:         '1px solid var(--border-default)',
-    color:          'var(--text-primary)',
-    fontFamily:     'var(--font-mono)',
-    fontSize:       '22px',
-    fontWeight:     700,
-    lineHeight:     1,
-    cursor:         'pointer',
-    display:        'flex',
-    alignItems:     'center',
-    justifyContent: 'center',
-    transition:     'border-color 140ms ease, background 140ms ease',
-};

@@ -1,95 +1,31 @@
 /**
- * pages/StockPage.tsx — Control de Stock v4 · Acción Contextual
+ * pages/StockPage.tsx — Control de Stock v5
  *
- * · Tabla a ancho completo (panel fijo eliminado)
- * · Columna "Acciones" con botones Entrada / Salida / Ajuste
- * · Drawer deslizante desde la derecha con precarga contextual
- * · Validación: Salida > stockActual → botón bloqueado + aviso
+ * · Drawer extraído a components/stock/MovimientoDrawer
+ * · Tabla a ancho completo con botones Entrada / Salida / Ajuste por fila
  */
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { createPortal }           from 'react-dom';
-import api                        from '../services/api';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { productoService }        from '../services/productoService';
 import { calculateAutoLimit }     from '../hooks/useTableFilters';
 import type { Producto, TipoMovimiento } from '../types/models';
-import { AlbaranModal }           from '../components/stock/AlbaranModal';
-import type { AlbaranInfo }       from '../components/stock/AlbaranModal';
+import {
+    MovimientoDrawer,
+    getEstado,
+    ESTADO_COLOR,
+    getEstadoBadge,
+    getStockColor,
+    TIPO_COLOR,
+} from '../components/stock/MovimientoDrawer';
+import type { StockEstado } from '../components/stock/MovimientoDrawer';
 
-// ── Tipos locales ──────────────────────────────────────────────────────────────
-
-interface EntidadOpcion { id: number; nombre: string; }
-type StockEstado = 'OK' | 'BAJO' | 'CRITICO';
-
-// ── Helpers de estado ──────────────────────────────────────────────────────────
-
-function getEstado(p: Producto): StockEstado {
-    if (p.tipoProducto === 'RETRO')         return 'OK';
-    if (p.stockActual <= p.stockMinimo)     return 'CRITICO';
-    if (p.stockActual <= p.stockMinimo * 2) return 'BAJO';
-    return 'OK';
-}
-
-const ESTADO_COLOR: Record<StockEstado, string> = {
-    OK:      'var(--accent-primary)',
-    BAJO:    'var(--accent-gold)',
-    CRITICO: 'var(--accent-danger)',
-};
-
-function getStockColor(p: Producto) {
-    return p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : ESTADO_COLOR[getEstado(p)];
-}
-
-function getEstadoBadge(p: Producto): { text: string; color: string } {
-    if (p.tipoProducto === 'RETRO') {
-        return p.activo
-            ? { text: '● OK',    color: 'var(--accent-primary)' }
-            : { text: 'VENDIDO', color: 'var(--accent-danger)'  };
-    }
-    const e = getEstado(p);
-    return {
-        text:  e === 'OK' ? '● OK' : e === 'BAJO' ? '⚠ BAJO' : '⛔ CRÍTICO',
-        color: ESTADO_COLOR[e],
-    };
-}
-
-const TIPO_COLOR: Record<TipoMovimiento, string> = {
-    ENTRADA: 'var(--accent-primary)',
-    SALIDA:  'var(--accent-danger)',
-    AJUSTE:  'var(--accent-gold)',
-};
-
-// ── Form ───────────────────────────────────────────────────────────────────────
-
-interface MovimientoForm {
-    tipoMovimiento: TipoMovimiento;
-    cantidad:       string;
-    precioUnitario: string;
-    referencia:     string;
-    notas:          string;
-}
-
-const EMPTY_FORM: MovimientoForm = {
-    tipoMovimiento: 'ENTRADA',
-    cantidad: '', precioUnitario: '', referencia: '', notas: '',
-};
-
-interface OpResult { ok: boolean; mensaje: string; stockNuevo?: number; }
-
-// ── Estilos base ───────────────────────────────────────────────────────────────
-
-const labelStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-    letterSpacing: '0.10em', textTransform: 'uppercase',
-    color: 'var(--text-secondary)', display: 'block', marginBottom: '5px',
-};
+// ── Estilos reutilizables ─────────────────────────────────────────────────────
 
 const inputStyle: React.CSSProperties = {
     width: '100%', fontFamily: 'var(--font-mono)', fontSize: '14px',
     color: 'var(--text-primary)', background: 'var(--bg-elevated)',
     border: '1px solid var(--border-default)', borderRadius: '6px',
     padding: '9px 12px',
-    /* outline: none bloquea el anillo violeta global (:focus-visible !important) */
     outline: 'none', outlineOffset: '0',
     caretColor: 'var(--accent-cyan)',
     transition: 'border-color 160ms ease, box-shadow 160ms ease',
@@ -105,596 +41,26 @@ const onBI = (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement | HTMLS
     e.currentTarget.style.boxShadow   = 'none';
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// Selector predictivo genérico
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface SelectorProps {
-    opciones:     EntidadOpcion[];
-    selected:     EntidadOpcion | null;
-    onSelect:     (v: EntidadOpcion | null) => void;
-    placeholder?: string;
-    accentColor?: string;
-}
-
-function SelectorPredictivo({
-    opciones, selected, onSelect,
-    placeholder = 'Buscar por ID o nombre…',
-    accentColor = 'var(--accent-cyan)',
-}: SelectorProps): JSX.Element {
-    const [query, setQuery] = useState('');
-    const [open,  setOpen]  = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-
-    useEffect(() => { if (!selected) setQuery(''); }, [selected]);
-
-    useEffect(() => {
-        const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-        };
-        document.addEventListener('mousedown', handler);
-        return () => document.removeEventListener('mousedown', handler);
-    }, []);
-
-    const filtered = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return opciones;
-        return opciones.filter(o =>
-            String(o.id).includes(q) || o.nombre.toLowerCase().includes(q)
-        );
-    }, [opciones, query]);
-
-    const displayValue   = selected ? `#${selected.id} — ${selected.nombre}` : query;
-    const hasInvalidText = query.trim().length > 0 && !selected;
-
-    return (
-        <div ref={ref} style={{ position: 'relative' }}>
-            <input
-                type="text"
-                placeholder={placeholder}
-                value={displayValue}
-                autoComplete="off"
-                onChange={e => { onSelect(null); setQuery(e.target.value); setOpen(true); }}
-                onFocus={() => setOpen(true)}
-                style={{
-                    ...inputStyle,
-                    borderColor: hasInvalidText ? 'var(--accent-danger)' : open ? accentColor : 'var(--border-default)',
-                    boxShadow: hasInvalidText
-                        ? '0 0 0 3px rgba(248,113,113,0.14)'
-                        : open ? `0 0 0 3px color-mix(in srgb, ${accentColor} 15%, transparent)` : 'none',
-                }}
-            />
-            {open && (
-                <div style={{
-                    position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 200,
-                    background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
-                    borderRadius: '8px', boxShadow: '0 8px 24px rgba(0,0,0,0.40)',
-                    maxHeight: '196px', overflowY: 'auto',
-                }}>
-                    {filtered.length === 0 ? (
-                        <div style={{ padding: '14px 16px', fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--accent-danger)', lineHeight: 1.6 }}>
-                            Sin coincidencias. Comprueba el ID o nombre.
-                        </div>
-                    ) : filtered.map(o => (
-                        <div key={o.id}
-                            onMouseDown={e => { e.preventDefault(); onSelect(o); setQuery(''); setOpen(false); }}
-                            style={{ padding: '9px 14px', cursor: 'pointer', display: 'flex', gap: '10px', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', transition: 'background 100ms ease' }}
-                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-overlay)')}
-                            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                        >
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: accentColor, minWidth: '28px', letterSpacing: '0.04em' }}>#{o.id}</span>
-                            <span style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{o.nombre}</span>
-                        </div>
-                    ))}
-                </div>
-            )}
-            {hasInvalidText && (
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--accent-danger)', margin: '4px 0 0', letterSpacing: '0.02em' }}>
-                    Selecciona una opción válida de la lista.
-                </p>
-            )}
-        </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Panel de resultado
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function ResultPanel({ result }: { result: OpResult }): JSX.Element {
-    const isOk  = result.ok;
-    const color = isOk ? 'var(--accent-primary)' : 'var(--accent-danger)';
-    const bg    = isOk ? 'rgba(59,130,246,0.08)' : 'rgba(248,113,113,0.08)';
-
-    return (
-        <div style={{ borderRadius: '8px', border: `1px solid ${color}`, background: bg, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: result.stockNuevo !== undefined ? `1px solid ${color}30` : 'none', background: `${color}12` }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', fontWeight: 700, color, lineHeight: 1 }}>
-                    {isOk ? '✓' : '✕'}
-                </span>
-                <span style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color }}>
-                    {isOk ? 'Operación completada' : 'Operación rechazada'}
-                </span>
-            </div>
-            <div style={{ padding: '10px 14px' }}>
-                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6, wordBreak: 'break-word' }}>
-                    {result.mensaje}
-                </p>
-            </div>
-            {isOk && result.stockNuevo !== undefined && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 14px', borderTop: `1px solid ${color}25`, background: `${color}08` }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                        Stock actualizado
-                    </span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', fontWeight: 700, color, lineHeight: 1 }}>
-                        {result.stockNuevo}
-                    </span>
-                </div>
-            )}
-        </div>
-    );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Drawer de movimiento (portal)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-interface DrawerProps {
-    open:               boolean;
-    producto:           Producto | null;
-    form:               MovimientoForm;
-    isSaving:           boolean;
-    result:             OpResult | null;
-    clientes:           EntidadOpcion[];
-    proveedores:        EntidadOpcion[];
-    selectedCliente:    EntidadOpcion | null;
-    selectedProveedor:  EntidadOpcion | null;
-    onClose:            () => void;
-    onSetField:         <K extends keyof MovimientoForm>(k: K, v: MovimientoForm[K]) => void;
-    onSetCliente:       (v: EntidadOpcion | null) => void;
-    onSetProveedor:     (v: EntidadOpcion | null) => void;
-    onSubmit:           () => void;
-}
-
-function MovimientoDrawer({
-    open, producto, form, isSaving, result,
-    clientes, proveedores, selectedCliente, selectedProveedor,
-    onClose, onSetField, onSetCliente, onSetProveedor, onSubmit,
-}: DrawerProps): JSX.Element {
-    const cantidadNum       = parseInt(form.cantidad, 10);
-    const stockInsuficiente = form.tipoMovimiento === 'SALIDA'
-        && !isNaN(cantidadNum) && cantidadNum > 0
-        && producto !== null
-        && cantidadNum > producto.stockActual;
-
-    const canSubmit = !isSaving && !stockInsuficiente;
-
-    const tipoLabel: Record<TipoMovimiento, string> = {
-        ENTRADA: '↓ Entrada',
-        SALIDA:  '↑ Salida',
-        AJUSTE:  '⚙ Ajuste',
-    };
-
-    // Cerrar con Escape
-    useEffect(() => {
-        if (!open) return;
-        const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-        document.addEventListener('keydown', handler);
-        return () => document.removeEventListener('keydown', handler);
-    }, [open, onClose]);
-
-    return createPortal(
-        <>
-            {/* ── Backdrop ── */}
-            <div
-                onClick={onClose}
-                style={{
-                    position:   'fixed', inset: 0, zIndex: 1000,
-                    background: 'rgba(0,0,0,0.50)',
-                    backdropFilter: 'blur(2px)',
-                    WebkitBackdropFilter: 'blur(2px)',
-                    opacity:    open ? 1 : 0,
-                    pointerEvents: open ? 'auto' : 'none',
-                    transition: 'opacity 260ms ease',
-                }}
-            />
-
-            {/* ── Panel deslizante ── */}
-            <div
-                className="drawer-panel"
-                style={{
-                    position:    'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001,
-                    width:       'min(480px, 100vw)',
-                    background:  'var(--bg-elevated)',
-                    borderLeft:  '1px solid var(--border-default)',
-                    boxShadow:   '-8px 0 40px rgba(0,0,0,0.50)',
-                    display:     'flex',
-                    flexDirection: 'column',
-                    transform:   open ? 'translateX(0)' : 'translateX(100%)',
-                    transition:  'transform 280ms cubic-bezier(0.23,1,0.32,1)',
-                }}
-            >
-                {/* ── Header del drawer ── */}
-                <div style={{
-                    padding:      '0 20px',
-                    borderBottom: '1px solid var(--border-subtle)',
-                    flexShrink:   0,
-                    background:   'linear-gradient(180deg, rgba(139,92,246,0.06) 0%, transparent 100%)',
-                }}>
-                    {/* Barra superior con título y cierre */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '18px', paddingBottom: '12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{
-                                fontFamily:    'var(--font-mono)', fontSize: '18px',
-                                color:         producto ? TIPO_COLOR[form.tipoMovimiento] : 'var(--text-muted)',
-                            }}>
-                                {form.tipoMovimiento === 'ENTRADA' ? '↓'
-                                    : form.tipoMovimiento === 'SALIDA' ? '↑' : '⚙'}
-                            </span>
-                            <span style={{
-                                fontFamily:    'var(--font-display)', fontSize: '13px', fontWeight: 700,
-                                letterSpacing: '0.14em', textTransform: 'uppercase',
-                                color:         'var(--text-primary)',
-                            }}>
-                                Registrar {form.tipoMovimiento}
-                            </span>
-                        </div>
-                        <button
-                            onClick={onClose}
-                            style={{
-                                background: 'transparent',
-                                border:     '1px solid var(--border-subtle)',
-                                borderRadius: '6px',
-                                color:      'var(--text-muted)',
-                                cursor:     'pointer',
-                                padding:    '4px 10px',
-                                fontSize:   '14px',
-                                lineHeight:  1,
-                                transition: 'all 140ms ease',
-                            }}
-                            onMouseEnter={e => {
-                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-accent)';
-                                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
-                            }}
-                            onMouseLeave={e => {
-                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)';
-                                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-                            }}
-                        >✕</button>
-                    </div>
-
-                    {/* Contexto del producto */}
-                    {producto && (() => {
-                        const badge = getEstadoBadge(producto);
-                        return (
-                            <div style={{ paddingBottom: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-
-                                {/* Fila: SKU + Nombre */}
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                                    <span style={{
-                                        fontFamily:    'var(--font-mono)', fontSize: '12px', fontWeight: 700,
-                                        color:         'var(--accent-cyan)',
-                                        background:    'rgba(56,189,248,0.08)',
-                                        border:        '1px solid rgba(56,189,248,0.20)',
-                                        borderRadius:  '4px', padding: '3px 9px',
-                                        letterSpacing: '0.04em', flexShrink: 0,
-                                    }}>
-                                        {producto.sku}
-                                    </span>
-                                    <span style={{
-                                        fontFamily:    'var(--font-body)', fontSize: '14px', fontWeight: 600,
-                                        color:         'var(--text-primary)',
-                                        overflow:      'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                                    }}>
-                                        {producto.nombre}
-                                    </span>
-                                </div>
-
-                                {/* Franja de métricas: stock actual · mínimo · estado */}
-                                <div style={{
-                                    display:       'flex',
-                                    alignItems:    'center',
-                                    gap:           '0',
-                                    background:    'var(--bg-surface)',
-                                    border:        '1px solid var(--border-subtle)',
-                                    borderRadius:  '6px',
-                                    overflow:      'hidden',
-                                }}>
-                                    {[
-                                        { label: 'Stock actual', value: String(producto.stockActual), color: getStockColor(producto) },
-                                        { label: 'Mínimo',       value: String(producto.stockMinimo), color: 'var(--text-secondary)' },
-                                        { label: 'Estado',       value: badge.text,                   color: badge.color             },
-                                    ].map((item, i) => (
-                                        <div key={i} style={{
-                                            flex:          1,
-                                            padding:       '8px 12px',
-                                            borderRight:   i < 2 ? '1px solid var(--border-subtle)' : 'none',
-                                            textAlign:     'center',
-                                        }}>
-                                            <div style={{
-                                                fontFamily:    'var(--font-display)', fontSize: '9px', fontWeight: 700,
-                                                letterSpacing: '0.10em', textTransform: 'uppercase',
-                                                color:         'var(--text-muted)', marginBottom: '3px',
-                                            }}>
-                                                {item.label}
-                                            </div>
-                                            <div style={{
-                                                fontFamily:  'var(--font-mono)',
-                                                fontSize:    i === 0 ? '18px' : '12px',
-                                                fontWeight:  700,
-                                                color:       item.color,
-                                                lineHeight:  1,
-                                                letterSpacing: '0.02em',
-                                            }}>
-                                                {item.value}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-
-                            </div>
-                        );
-                    })()}
-                </div>
-
-                {/* ── Cuerpo scrollable ── */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                    {/* Selector de tipo */}
-                    <div>
-                        <label style={labelStyle}>Tipo de movimiento</label>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                            {(['ENTRADA', 'SALIDA', 'AJUSTE'] as TipoMovimiento[]).map(t => {
-                                const active = form.tipoMovimiento === t;
-                                return (
-                                    <button key={t}
-                                        onClick={() => { onSetField('tipoMovimiento', t); onSetCliente(null); onSetProveedor(null); }}
-                                        style={{
-                                            flex:          1,
-                                            fontFamily:    'var(--font-display)',
-                                            fontSize:      '10px',
-                                            fontWeight:    700,
-                                            letterSpacing: '0.07em',
-                                            textTransform: 'uppercase',
-                                            padding:       '6px 4px',
-                                            /* Activo: tinte suave + borde coloreado (sin fondo sólido) */
-                                            background: active
-                                                ? `color-mix(in srgb, ${TIPO_COLOR[t]} 14%, transparent)`
-                                                : 'transparent',
-                                            color:         active ? TIPO_COLOR[t] : 'var(--text-muted)',
-                                            border:        `1px solid ${active ? TIPO_COLOR[t] : 'var(--border-default)'}`,
-                                            borderRadius:  '5px',
-                                            cursor:        'pointer',
-                                            transition:    'all 140ms ease',
-                                            opacity:       active ? 1 : 0.7,
-                                        }}
-                                        onMouseEnter={e => {
-                                            if (!active) {
-                                                (e.currentTarget as HTMLButtonElement).style.opacity = '1';
-                                                (e.currentTarget as HTMLButtonElement).style.color = TIPO_COLOR[t];
-                                                (e.currentTarget as HTMLButtonElement).style.borderColor = TIPO_COLOR[t];
-                                            }
-                                        }}
-                                        onMouseLeave={e => {
-                                            if (!active) {
-                                                (e.currentTarget as HTMLButtonElement).style.opacity = '0.7';
-                                                (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-                                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
-                                            }
-                                        }}
-                                    >
-                                        {tipoLabel[t]}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Cantidad */}
-                    <div>
-                        <label style={labelStyle}>Cantidad *</label>
-                        <input
-                            type="number" min={1}
-                            placeholder="Introduce la cantidad…"
-                            value={form.cantidad}
-                            onChange={e => onSetField('cantidad', e.target.value)}
-                            style={{
-                                ...inputStyle,
-                                borderColor: stockInsuficiente ? 'var(--accent-danger)' : 'var(--border-default)',
-                                boxShadow:   stockInsuficiente ? '0 0 0 3px rgba(248,113,113,0.15)' : 'none',
-                            }}
-                            onFocus={stockInsuficiente ? undefined : onFI}
-                            onBlur={onBI}
-                        />
-                        {/* Validación: stock insuficiente */}
-                        {stockInsuficiente && (
-                            <div style={{
-                                display:      'flex', alignItems: 'center', gap: '7px',
-                                marginTop:    '7px', padding: '8px 12px',
-                                background:   'rgba(248,113,113,0.08)',
-                                border:       '1px solid rgba(248,113,113,0.30)',
-                                borderRadius: '6px',
-                                fontFamily:   'var(--font-mono)', fontSize: '12px',
-                                color:        'var(--accent-danger)', lineHeight: 1.5,
-                            }}>
-                                <span style={{ fontSize: '14px', flexShrink: 0 }}>⛔</span>
-                                <span>
-                                    <strong>Stock insuficiente</strong> — Disponible:{' '}
-                                    <strong style={{ color: 'var(--text-primary)' }}>{producto?.stockActual}</strong>{' '}
-                                    · Pedido: <strong style={{ color: 'var(--text-primary)' }}>{cantidadNum}</strong>
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Precio unitario */}
-                    {form.tipoMovimiento !== 'AJUSTE' && (
-                        <div>
-                            <label style={labelStyle}>
-                                Precio unitario (€){' '}
-                                <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— opcional</span>
-                            </label>
-                            <input type="number" min={0} step="0.01" placeholder="0.00"
-                                value={form.precioUnitario}
-                                onChange={e => onSetField('precioUnitario', e.target.value)}
-                                style={inputStyle} onFocus={onFI} onBlur={onBI}
-                            />
-                        </div>
-                    )}
-
-                    {/* Selector cliente — SALIDA */}
-                    {form.tipoMovimiento === 'SALIDA' && (
-                        <div>
-                            <label style={labelStyle}>
-                                Cliente{' '}
-                                <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— opcional</span>
-                            </label>
-                            <SelectorPredictivo
-                                opciones={clientes} selected={selectedCliente} onSelect={onSetCliente}
-                                placeholder="Buscar cliente por ID o nombre…"
-                                accentColor="var(--accent-cyan)"
-                            />
-                        </div>
-                    )}
-
-                    {/* Selector proveedor — ENTRADA */}
-                    {form.tipoMovimiento === 'ENTRADA' && (
-                        <div>
-                            <label style={labelStyle}>
-                                Proveedor{' '}
-                                <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— opcional</span>
-                            </label>
-                            <SelectorPredictivo
-                                opciones={proveedores} selected={selectedProveedor} onSelect={onSetProveedor}
-                                placeholder="Buscar proveedor por ID o razón social…"
-                                accentColor="var(--accent-primary)"
-                            />
-                        </div>
-                    )}
-
-                    {/* Referencia */}
-                    <div>
-                        <label style={labelStyle}>
-                            Referencia{' '}
-                            <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— albarán, factura…</span>
-                        </label>
-                        <input type="text" placeholder="ej. ALB-2026-0042"
-                            value={form.referencia}
-                            onChange={e => onSetField('referencia', e.target.value)}
-                            style={inputStyle} onFocus={onFI} onBlur={onBI}
-                        />
-                    </div>
-
-                    {/* Notas */}
-                    <div>
-                        <label style={labelStyle}>
-                            Notas{' '}
-                            <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— opcional</span>
-                        </label>
-                        <textarea
-                            placeholder="Información adicional del movimiento…"
-                            rows={3}
-                            value={form.notas}
-                            onChange={e => onSetField('notas', e.target.value)}
-                            style={{ ...inputStyle, resize: 'vertical', minHeight: '72px', lineHeight: 1.6 }}
-                            onFocus={onFI} onBlur={onBI}
-                        />
-                    </div>
-
-                    {/* Resultado previo */}
-                    {result && <ResultPanel result={result} />}
-                </div>
-
-                {/* ── Footer con botón principal ── */}
-                <div style={{
-                    padding:     '16px 20px',
-                    borderTop:   '1px solid var(--border-subtle)',
-                    flexShrink:  0,
-                    background:  'var(--bg-elevated)',
-                }}>
-                    <button
-                        onClick={onSubmit}
-                        disabled={!canSubmit}
-                        style={{
-                            width:         '100%',
-                            fontFamily:    'var(--font-display)',
-                            fontSize:      '11px',
-                            fontWeight:    700,
-                            letterSpacing: '0.12em',
-                            textTransform: 'uppercase',
-                            padding:       '10px',          /* reducido de 13px */
-                            borderRadius:  '6px',
-                            border:        canSubmit
-                                ? `1px solid ${
-                                    form.tipoMovimiento === 'ENTRADA' ? 'var(--accent-primary)'
-                                    : form.tipoMovimiento === 'SALIDA' ? '#dc2626'
-                                    : 'var(--accent-gold)'}`
-                                : '1px solid var(--border-subtle)',
-                            cursor:        canSubmit ? 'pointer' : 'not-allowed',
-                            /* fondo sólido suave — sin gradiente llamativo */
-                            background:    canSubmit
-                                ? form.tipoMovimiento === 'ENTRADA'
-                                    ? 'rgba(59,130,246,0.18)'
-                                    : form.tipoMovimiento === 'SALIDA'
-                                        ? 'rgba(220,38,38,0.18)'
-                                        : 'rgba(251,191,36,0.14)'
-                                : 'var(--bg-surface)',
-                            color: canSubmit
-                                ? form.tipoMovimiento === 'ENTRADA' ? 'var(--accent-primary)'
-                                : form.tipoMovimiento === 'SALIDA'  ? '#f87171'
-                                : 'var(--accent-gold)'
-                                : 'var(--text-muted)',
-                            boxShadow:     'none',          /* sin glow externo */
-                            transition:    'all 160ms ease',
-                            opacity:       isSaving ? 0.6 : 1,
-                        }}
-                    >
-                        {isSaving
-                            ? '· Procesando…'
-                            : stockInsuficiente
-                                ? '⛔ Stock insuficiente'
-                                : `✓ Confirmar ${form.tipoMovimiento}`}
-                    </button>
-                    <div style={{
-                        marginTop:  '8px', textAlign: 'center',
-                        fontFamily: 'var(--font-mono)', fontSize: '10px',
-                        color:      'var(--text-muted)', letterSpacing: '0.04em',
-                    }}>
-                        Esc para cerrar
-                    </div>
-                </div>
-            </div>
-        </>,
-        document.body,
-    );
-}
+// ── Supress unused-import warning for StockEstado (used as type annotation) ──
+// (type-only import keeps the bundle clean)
+type _SE = StockEstado; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Página principal
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function StockPage(): JSX.Element {
-    const [productos,         setProductos]        = useState<Producto[]>([]);
-    const [clientes,          setClientes]          = useState<EntidadOpcion[]>([]);
-    const [proveedores,       setProveedores]       = useState<EntidadOpcion[]>([]);
-    const [loadState,         setLoadState]         = useState<'loading'|'ok'|'error'>('loading');
-    const [activeFilter,      setActiveFilter]      = useState<'TODOS'|'ESTANDAR'|'RETRO'|'OK'|'BAJO'|'CRITICO'>('TODOS');
-    const [searchTerm,        setSearchTerm]        = useState('');
-    const [currentPage,       setCurrentPage]       = useState(0);
-    const [rowsPerPage,       setRowsPerPage]       = useState<number>(() => calculateAutoLimit());
+    const [productos,       setProductos]      = useState<Producto[]>([]);
+    const [loadState,       setLoadState]      = useState<'loading'|'ok'|'error'>('loading');
+    const [activeFilter,    setActiveFilter]   = useState<'TODOS'|'ESTANDAR'|'RETRO'|'OK'|'BAJO'|'CRITICO'>('TODOS');
+    const [searchTerm,      setSearchTerm]     = useState('');
+    const [currentPage,     setCurrentPage]    = useState(0);
+    const [rowsPerPage,     setRowsPerPage]    = useState<number>(() => calculateAutoLimit());
 
     // Drawer
-    const [drawerOpen,        setDrawerOpen]        = useState(false);
-    const [drawerProducto,    setDrawerProducto]    = useState<Producto | null>(null);
-    const [form,              setForm]              = useState<MovimientoForm>(EMPTY_FORM);
-    const [isSaving,          setIsSaving]          = useState(false);
-    const [result,            setResult]            = useState<OpResult | null>(null);
-    const [selectedCliente,   setSelectedCliente]   = useState<EntidadOpcion | null>(null);
-    const [selectedProveedor, setSelectedProveedor] = useState<EntidadOpcion | null>(null);
-
-    // Albarán
-    const [albaranOpen, setAlbaranOpen] = useState(false);
-    const [albaranInfo, setAlbaranInfo] = useState<AlbaranInfo | null>(null);
+    const [drawerOpen,      setDrawerOpen]     = useState(false);
+    const [drawerProducto,  setDrawerProducto] = useState<Producto | null>(null);
+    const [drawerInitialTipo, setDrawerInitialTipo] = useState<TipoMovimiento>('ENTRADA');
 
     // ── Carga inicial ──────────────────────────────────────────────────────────
     useEffect(() => {
@@ -716,13 +82,7 @@ export function StockPage(): JSX.Element {
                     resto.forEach(p => { todos = [...todos, ...p.content]; });
                 }
 
-                const clientesResp    = await api.get<{ content: { id: number; nombre: string }[] }>('/clientes?size=200&sort=nombre');
-                const proveedoresResp = await api.get<{ id: number; razonSocial: string }[]>('/proveedores');
-                if (cancelled) return;
-
                 setProductos(todos);
-                setClientes((clientesResp.data.content ?? []).map(c => ({ id: c.id, nombre: c.nombre })));
-                setProveedores((proveedoresResp.data ?? []).map(p => ({ id: p.id, nombre: p.razonSocial })));
                 setLoadState('ok');
             } catch {
                 if (!cancelled) setLoadState('error');
@@ -755,103 +115,21 @@ export function StockPage(): JSX.Element {
         [filtered, safePage, rowsPerPage],
     );
 
-    // ── Abrir drawer con contexto preestablecido ───────────────────────────────
+    // ── Drawer helpers ─────────────────────────────────────────────────────────
     const openDrawer = useCallback((p: Producto, tipo: TipoMovimiento) => {
         setDrawerProducto(p);
-        setForm({ ...EMPTY_FORM, tipoMovimiento: tipo });
-        setResult(null);
-        setSelectedCliente(null);
-        setSelectedProveedor(null);
+        setDrawerInitialTipo(tipo);
         setDrawerOpen(true);
     }, []);
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false);
-        // Delay reset so animation can finish
-        setTimeout(() => { setDrawerProducto(null); setResult(null); }, 320);
+        setTimeout(() => setDrawerProducto(null), 320);
     }, []);
 
-    // ── Set field ─────────────────────────────────────────────────────────────
-    function setField<K extends keyof MovimientoForm>(k: K, v: MovimientoForm[K]) {
-        setForm(prev => ({ ...prev, [k]: v }));
-        setResult(null);
-    }
-
-    // ── Submit ─────────────────────────────────────────────────────────────────
-    const handleSubmit = useCallback(async () => {
-        if (!drawerProducto) return;
-
-        const cantidadNum = parseInt(form.cantidad, 10);
-        if (!cantidadNum || cantidadNum < 1) {
-            setResult({ ok: false, mensaje: 'La cantidad debe ser un número entero positivo.' });
-            return;
-        }
-
-        setIsSaving(true);
-        setResult(null);
-
-        const body: Record<string, unknown> = {
-            idProducto:     drawerProducto.id,
-            tipoMovimiento: form.tipoMovimiento,
-            cantidad:       cantidadNum,
-        };
-
-        const precio = parseFloat(form.precioUnitario);
-        if (!isNaN(precio) && precio > 0)  body.precioUnitario = precio;
-        if (form.referencia.trim())         body.referencia     = form.referencia.trim();
-        if (form.notas.trim())              body.notas          = form.notas.trim();
-        if (form.tipoMovimiento === 'SALIDA'  && selectedCliente)   body.idCliente   = selectedCliente.id;
-        if (form.tipoMovimiento === 'ENTRADA' && selectedProveedor) body.idProveedor = selectedProveedor.id;
-
-        try {
-            interface MovResponse { resultado: string; stockNuevo: number; albaranCodigo?: string; albaranFecha?: string; }
-            const { data } = await api.post<MovResponse>('/stock/movimiento', body);
-
-            // Actualizar stock en lista local
-            setProductos(prev =>
-                prev.map(p => p.id === drawerProducto.id ? { ...p, stockActual: data.stockNuevo } : p)
-            );
-            setDrawerProducto(prev =>
-                prev?.id === drawerProducto.id ? { ...prev, stockActual: data.stockNuevo } : prev
-            );
-
-            if (form.tipoMovimiento !== 'AJUSTE' && data.albaranCodigo) {
-                setAlbaranInfo({
-                    codigo: data.albaranCodigo,
-                    fecha:  data.albaranFecha ?? new Date().toISOString(),
-                    tipoMovimiento: form.tipoMovimiento,
-                    producto:       drawerProducto,
-                    cantidad:       cantidadNum,
-                    precioUnitario: !isNaN(precio) && precio > 0 ? precio : null,
-                    referencia:     form.referencia.trim(),
-                    notas:          form.notas.trim(),
-                    stockNuevo:     data.stockNuevo,
-                });
-                setAlbaranOpen(true);
-            }
-
-            setResult({ ok: true, mensaje: data.resultado, stockNuevo: data.stockNuevo });
-            setSelectedCliente(null);
-            setSelectedProveedor(null);
-            setForm(EMPTY_FORM);
-
-        } catch (err: unknown) {
-            let msg = 'Error de red o servidor no disponible.';
-            if (err && typeof err === 'object' && 'response' in err) {
-                const ae = err as { response?: { status?: number; data?: { message?: string } } };
-                const st = ae.response?.status;
-                const sm = ae.response?.data?.message ?? '';
-                if      (st === 409) msg = sm || 'Stock insuficiente o artículo no disponible.';
-                else if (st === 422) msg = sm || 'ID no existente o inactivo.';
-                else if (st === 403) msg = 'Sin permiso. Roles: CAJERO · GESTOR_INVENTARIO · ADMIN';
-                else if (st === 401) msg = 'Sesión expirada. Redirigiendo al login…';
-                else                 msg = sm || `Error ${st ?? 'desconocido'}.`;
-            }
-            setResult({ ok: false, mensaje: msg });
-        } finally {
-            setIsSaving(false);
-        }
-    }, [drawerProducto, form, selectedCliente, selectedProveedor]);
+    const handleMovimientoSaved = useCallback((productoId: number, stockNuevo: number) => {
+        setProductos(prev => prev.map(p => p.id === productoId ? { ...p, stockActual: stockNuevo } : p));
+    }, []);
 
     // ── Render ─────────────────────────────────────────────────────────────────
     return (
@@ -873,7 +151,7 @@ export function StockPage(): JSX.Element {
             {/* ── Buscador + chips en una sola fila ── */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
 
-                {/* Buscador — crece para ocupar el espacio disponible */}
+                {/* Buscador */}
                 <div style={{ position: 'relative', flex: '1 1 200px', minWidth: '160px' }}>
                     <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', pointerEvents: 'none' }}>⌕</span>
                     <input
@@ -918,11 +196,10 @@ export function StockPage(): JSX.Element {
 
             </div>
 
-            {/* ── Contador + Paginación (misma posición que el resto de la app) ── */}
+            {/* ── Contador + Paginación ── */}
             {loadState === 'ok' && (
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
 
-                    {/* Contador */}
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
                         {filtered.length === 0
                             ? 'Sin productos'
@@ -937,7 +214,6 @@ export function StockPage(): JSX.Element {
                         }
                     </span>
 
-                    {/* Botones de página */}
                     {totalPages > 1 && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                             <button disabled={safePage === 0} onClick={() => setCurrentPage(p => Math.max(0, p - 1))} style={pagBtn(safePage === 0)}>◀</button>
@@ -1084,22 +360,10 @@ export function StockPage(): JSX.Element {
         <MovimientoDrawer
             open={drawerOpen}
             producto={drawerProducto}
-            form={form}
-            isSaving={isSaving}
-            result={result}
-            clientes={clientes}
-            proveedores={proveedores}
-            selectedCliente={selectedCliente}
-            selectedProveedor={selectedProveedor}
+            initialTipo={drawerInitialTipo}
             onClose={closeDrawer}
-            onSetField={setField}
-            onSetCliente={setSelectedCliente}
-            onSetProveedor={setSelectedProveedor}
-            onSubmit={handleSubmit}
+            onSaved={handleMovimientoSaved}
         />
-
-        {/* ── Modal albarán ── */}
-        <AlbaranModal isOpen={albaranOpen} onClose={() => setAlbaranOpen(false)} data={albaranInfo} />
         </>
     );
 }
@@ -1163,3 +427,7 @@ function pagBtn(disabled: boolean): React.CSSProperties {
         transition: 'all 120ms ease',
     };
 }
+
+// ── Re-export helpers (convenience for other consumers) ───────────────────────
+export { getEstado, ESTADO_COLOR, getEstadoBadge, getStockColor, TIPO_COLOR };
+export type { StockEstado };

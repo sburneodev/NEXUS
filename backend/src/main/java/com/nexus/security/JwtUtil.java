@@ -20,7 +20,7 @@ public class JwtUtil {
     private String secretKey;
 
     // 8 horas en milisegundos (exigencia de la SEC-02)
-    private final long EXPIRATION_TIME = 8 * 60 * 60 * 1000;
+    private final long EXPIRATION_TIME = 8L * 60 * 60 * 1000;
 
     // Prepara la "firma" criptográfica
     private SecretKey getSigningKey() {

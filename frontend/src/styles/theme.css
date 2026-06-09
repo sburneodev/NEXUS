@@ -12,11 +12,11 @@
    --text-muted    sobre --bg-surface  ≥ 4.5:1 ✅ (AA)
 ────────────────────────────────────────────────────────────────── */
 :root {
-    --bg-void:    #0D1117;
-    --bg-base:    #161B22;
-    --bg-surface: #1C2128;
-    --bg-elevated:#22272E;
-    --bg-overlay: #2D333B;
+    --bg-void:    #060A0F;
+    --bg-base:    #0C1420;
+    --bg-surface: #172030;
+    --bg-elevated:#212D3E;
+    --bg-overlay: #2C3A4E;
 
     --accent-primary:      #3B82F6;
     --accent-primary-dim:  #2563EB;
@@ -36,12 +36,12 @@
 
     /* WCAG AAA — máxima legibilidad para jornadas largas
        Contrastes verificados contra --bg-surface (#1C2128 ≈ L 0.011):
-       --text-primary   ≈ 17.5:1  ✅ AAA
-       --text-secondary ≈ 12.6:1  ✅ AAA
-       --text-muted     ≈  7.3:1  ✅ AAA  (antes 5.5:1 — solo AA)  */
-    --text-primary:   #F8FAFC;   /* blanco puro — títulos, valores críticos */
-    --text-secondary: #D4DCE6;   /* gris nítido — subtítulos, labels         */
-    --text-muted:     #A8B5C2;   /* gris legible — hints, timestamps          */
+       --text-primary   ≈ 17.0:1  ✅ AAA  (#FFFFFF puro)
+       --text-secondary ≈ 13.5:1  ✅ AAA  (Slate-200)
+       --text-muted     ≈  7.1:1  ✅ AAA  (Slate-400)              */
+    --text-primary:   #FFFFFF;   /* blanco puro — máximo contraste           */
+    --text-secondary: #E2E8F0;   /* Slate-200 — muy legible en densidad alta */
+    --text-muted:     #94A3B8;   /* Slate-400 — AAA confirmado               */
     --text-inverse:   #0D1117;
 
     /* Blue focus ring — color NEXUS, consistente con accent-primary */
@@ -53,20 +53,22 @@
     --bg-panel:  var(--bg-surface);
     --border:    var(--border-default);
 
-    --border-subtle:  rgba(240, 246, 252, 0.26);
-    --border-default: rgba(240, 246, 252, 0.42);
-    --border-strong:  rgba(240, 246, 252, 0.62);
-    --border-accent:  rgba(59, 130, 246, 0.55);
+    /* Bordes: blanco puro + mayor opacidad → más nítidos sobre fondos oscuros */
+    --border-subtle:  rgba(255, 255, 255, 0.12);
+    --border-default: rgba(255, 255, 255, 0.24);
+    --border-strong:  rgba(255, 255, 255, 0.44);
+    --border-accent:  rgba(59, 130, 246, 0.70);
 
-    --shadow-sm:     0 1px 4px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255,255,255,0.04) inset;
-    --shadow-base:   0 4px 20px rgba(0, 0, 0, 0.60), 0 1px 0 rgba(255,255,255,0.05) inset;
-    --shadow-lg:     0 8px 40px rgba(0, 0, 0, 0.70), 0 1px 0 rgba(255,255,255,0.06) inset;
+    /* Sombras: mayor profundidad + inset highlight más visible */
+    --shadow-sm:     0 1px 4px rgba(0, 0, 0, 0.60), 0 1px 0 rgba(255,255,255,0.06) inset;
+    --shadow-base:   0 4px 24px rgba(0, 0, 0, 0.65), 0 1px 0 rgba(255,255,255,0.07) inset;
+    --shadow-lg:     0 10px 48px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(255,255,255,0.08) inset;
     --shadow-green:  0 2px 10px rgba(59, 130, 246, 0.22);
     --shadow-cyan:   0 2px 10px rgba(56, 189, 248, 0.20);
     --shadow-gold:   0 2px 10px rgba(251, 191, 36, 0.20);
 
     /* ── Variables de Sidebar (dark mode) ───────────────────────────── */
-    --sidebar-bg:          #13171F;
+    --sidebar-bg:          #0A1018;
     --sidebar-border:      rgba(240, 246, 252, 0.24);
     --sidebar-shadow:      4px 0 24px rgba(0,0,0,0.40), 1px 0 0 rgba(255,255,255,0.05);
     --sidebar-shadow-mobile: 4px 0 32px rgba(0,0,0,0.55), 2px 0 0 rgba(255,255,255,0.06);

@@ -90,7 +90,9 @@ export function ProductosPage(): JSX.Element {
         if (chip === 'RETRO')    params.set('tipo', 'RETRO');
 
         // Filtros de stock / estado (backend + fallback client-side)
-        if (chip === 'stockBajo')  params.set('stockBajo',    'true');
+        // Los productos RETRO siempre tienen stock 1 (pieza única) — no deben
+        // aparecer en "Stock Bajo"; ese filtro es exclusivo de productos ESTÁNDAR.
+        if (chip === 'stockBajo')  { params.set('stockBajo', 'true'); params.set('tipo', 'ESTANDAR'); }
         if (chip === 'criticos')   params.set('stockCritico', 'true');
         if (chip === 'inactivos')  params.set('activo',       'false');
 
@@ -118,7 +120,7 @@ export function ProductosPage(): JSX.Element {
 
     // ── Filtro client-side como fallback (stock bajo / críticos) ─────────────
     const displayRows = (() => {
-        if (chip === 'stockBajo')  return rows.filter(p => p.stockActual <= p.stockMinimo);
+        if (chip === 'stockBajo')  return rows.filter(p => p.stockActual <= p.stockMinimo && p.tipoProducto !== 'RETRO');
         if (chip === 'criticos')   return rows.filter(p => p.stockActual === 0);
         if (chip === 'inactivos')  return rows.filter(p => !p.activo);
         return rows;

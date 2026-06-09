@@ -16,7 +16,7 @@ type ChartScriptContext = {
     };
 };
 
-// ── Control de Almacén — barras de salud de stock ────────────────────
+// ── Control de Almacén — gráfica de barras verticales por % del catálogo ──
 function ControlAlmacen({ critico, bajo, ok, retro, isDark, titleColor, pctOcupado, libres }: {
     critico:     number;
     bajo:        number;
@@ -31,55 +31,62 @@ function ControlAlmacen({ critico, bajo, ok, retro, isDark, titleColor, pctOcupa
 
     useEffect(() => {
         setAnimated(false);
-        const t = setTimeout(() => setAnimated(true), 70);
+        const t = setTimeout(() => setAnimated(true), 80);
         return () => clearTimeout(t);
     }, [critico, bajo, ok, retro]);
 
-    // Badge de ocupación del almacén físico
-    // Si no se ha cargado aún (undefined), no mostramos badge
-    const hasBadge    = pctOcupado !== undefined;
-    const badgeColor  = !hasBadge ? 'transparent'
-        : pctOcupado > 85 ? (isDark ? '#F87171' : '#DC2626')
-        : pctOcupado > 60 ? (isDark ? '#FBBF24' : '#D97706')
-        :                    (isDark ? '#4ADE80' : '#16A34A');
+    const hasBadge   = pctOcupado !== undefined;
+    const badgeColor = !hasBadge ? 'transparent'
+        : pctOcupado! > 85 ? (isDark ? '#F87171' : '#DC2626')
+        : pctOcupado! > 60 ? (isDark ? '#FBBF24' : '#D97706')
+        :                     (isDark ? '#4ADE80' : '#16A34A');
 
-    const maxVal    = Math.max(critico, bajo, ok, retro, 1);
-    const mutedText  = isDark ? '#8B949E' : '#6B7280';
-    const valueColor = isDark ? '#C9D1D9' : '#374151';
-    const trackColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+    const mutedText = isDark ? '#8B949E' : '#6B7280';
+    const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const axisColor = isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)';
 
-    const rows = [
+    // % de participación en el catálogo total (no relativo al máximo)
+    const total = critico + bajo + ok + retro || 1;
+    const bars = [
         {
-            label: 'CRÍTICO',
-            count:  critico,
-            color: isDark ? '#F87171' : '#DC2626',
-            glow:  isDark ? '#F8717155' : '#DC262633',
+            label:      'CRÍT.',
+            pct:        Math.round((critico / total) * 100),
+            colorDark:  '#C0645A',
+            colorLight: '#B54B42',
+            glow:       'rgba(192,100,90,0.25)',
         },
         {
-            label: 'BAJO',
-            count:  bajo,
-            color: isDark ? '#FBBF24' : '#D97706',
-            glow:  isDark ? '#FBBF2455' : '#D9770633',
+            label:      'BAJO',
+            pct:        Math.round((bajo / total) * 100),
+            colorDark:  '#B8943A',
+            colorLight: '#9A7B2E',
+            glow:       'rgba(184,148,58,0.25)',
         },
         {
-            label: 'OK',
-            count:  ok,
-            color: isDark ? '#38BDF8' : '#0891B2',
-            glow:  isDark ? '#38BDF855' : '#0891B233',
+            label:      'OK',
+            pct:        Math.round((ok / total) * 100),
+            colorDark:  '#4A9EAB',
+            colorLight: '#2E7D8A',
+            glow:       'rgba(74,158,171,0.25)',
         },
         {
-            label: 'RETRO',
-            count:  retro,
-            color: isDark ? '#3B82F6' : '#2563EB',
-            glow:  isDark ? '#3B82F655' : '#2563EB33',
+            label:      'RETRO',
+            pct:        Math.round((retro / total) * 100),
+            colorDark:  '#7B72B8',
+            colorLight: '#5D56A0',
+            glow:       'rgba(123,114,184,0.25)',
         },
     ];
+
+    // Área de barras en píxeles fijos para calcular alturas sin depender de % en CSS
+    const PLOT_H = 110;
+    const Y_TICKS = [0, 25, 50, 75, 100];
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
 
-            {/* Cabecera: título + badge de salud */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            {/* Cabecera */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexShrink: 0 }}>
                 <p style={{
                     margin:        0,
                     fontFamily:    "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
@@ -89,78 +96,170 @@ function ControlAlmacen({ critico, bajo, ok, retro, isDark, titleColor, pctOcupa
                     color:         titleColor,
                 }}>CONTROL DE ALMACÉN</p>
 
-                {/* Badge de ocupación — solo cuando ya tenemos el dato */}
                 {hasBadge && (
-                    <div style={{
-                        display:       'flex',
-                        flexDirection: 'column',
-                        alignItems:    'flex-end',
-                        gap:           '1px',
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px',
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1px' }}>
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: '5px',
                             padding: '3px 9px', borderRadius: '20px',
                             background: `${badgeColor}18`, border: `1px solid ${badgeColor}44`,
                         }}>
-                            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:'10px', color: mutedText, letterSpacing:'0.06em' }}>
-                                OCUPADO
-                            </span>
-                            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:'13px', fontWeight:700, color: badgeColor }}>
-                                {pctOcupado}%
-                            </span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '10px', color: mutedText, letterSpacing: '0.06em' }}>OCUPADO</span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '13px', fontWeight: 700, color: badgeColor }}>{pctOcupado}%</span>
                         </div>
                         {libres !== undefined && (
-                            <span style={{ fontFamily:"'JetBrains Mono', monospace", fontSize:'9px', color: mutedText, opacity: 0.65, paddingRight: '4px' }}>
-                                {libres} libres
-                            </span>
+                            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '9px', color: mutedText, opacity: 0.65, paddingRight: '4px' }}>{libres} libres</span>
                         )}
                     </div>
                 )}
             </div>
 
-            {/* Filas de stock */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly' }}>
-                {rows.map(row => {
-                    const pct = (row.count / maxVal) * 100;
-                    return (
-                        <div key={row.label}>
-                            {/* Etiqueta + contador */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '5px' }}>
-                                <span style={{
-                                    fontFamily:    "'JetBrains Mono', monospace",
-                                    fontSize:      '11px',
-                                    fontWeight:    700,
-                                    letterSpacing: '0.07em',
-                                    color:         row.color,
-                                }}>{row.label}</span>
+            {/* Cuerpo del gráfico */}
+            <div style={{ flex: 1, display: 'flex', gap: '6px', minHeight: 0 }}>
 
-                                <span style={{
-                                    fontFamily: "'JetBrains Mono', monospace",
-                                    fontSize:   '11px',
-                                }}>
-                                    <span style={{ fontWeight: 600, color: valueColor }}>{row.count}</span>
-                                    <span style={{ marginLeft: '3px', color: mutedText, opacity: 0.6, fontSize: '10px' }}>uds</span>
-                                </span>
-                            </div>
+                {/* Eje Y — etiquetas de % */}
+                <div style={{
+                    display:        'flex',
+                    flexDirection:  'column',
+                    justifyContent: 'space-between',
+                    width:          '26px',
+                    flexShrink:     0,
+                    paddingBottom:  '22px', // alinea con el área de barras (X-axis label)
+                }}>
+                    {[...Y_TICKS].reverse().map(t => (
+                        <span key={t} style={{
+                            fontFamily: "'JetBrains Mono', monospace",
+                            fontSize:   '8px',
+                            color:      mutedText,
+                            textAlign:  'right',
+                            lineHeight: 1,
+                            opacity:    0.75,
+                        }}>{t}%</span>
+                    ))}
+                </div>
 
-                            {/* Track + fill */}
-                            <div style={{
-                                height:       '6px',
-                                borderRadius: '4px',
-                                background:   trackColor,
-                                overflow:     'hidden',
-                            }}>
-                                <div style={{
-                                    height:       '100%',
-                                    borderRadius: '4px',
-                                    background:   row.color,
-                                    width:        animated ? `${pct}%` : '0%',
-                                    transition:   'width 700ms cubic-bezier(0.23,1,0.32,1)',
-                                    boxShadow:    `0 0 8px ${row.glow}`,
-                                }} />
-                            </div>
+                {/* Área de plot + etiquetas X */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+                    {/* Plot: grid + barras */}
+                    <div style={{ position: 'relative', height: `${PLOT_H}px`, flexShrink: 0 }}>
+
+                        {/* Líneas de grid horizontales */}
+                        {Y_TICKS.map(t => (
+                            <div key={t} style={{
+                                position:   'absolute',
+                                left:       0,
+                                right:      0,
+                                bottom:     `${t}%`,
+                                height:     '1px',
+                                background: t === 0 ? axisColor : gridColor,
+                                zIndex:     0,
+                            }} />
+                        ))}
+
+                        {/* Barras — alineadas al fondo del plot */}
+                        <div style={{
+                            position:    'absolute',
+                            inset:       0,
+                            display:     'flex',
+                            alignItems:  'flex-end',
+                            gap:         '6px',
+                            paddingBottom: '1px',
+                            zIndex:      1,
+                        }}>
+                            {bars.map(bar => {
+                                const col       = isDark ? bar.colorDark : bar.colorLight;
+                                const barHeightPx = Math.round((bar.pct / 100) * PLOT_H);
+
+                                return (
+                                    <div key={bar.label} style={{
+                                        flex:           1,
+                                        display:        'flex',
+                                        flexDirection:  'column',
+                                        alignItems:     'center',
+                                        justifyContent: 'flex-end',
+                                        height:         '100%',
+                                    }}>
+                                        {/* % encima de la barra */}
+                                        <span style={{
+                                            fontFamily:  "'JetBrains Mono', monospace",
+                                            fontSize:    '10px',
+                                            fontWeight:  700,
+                                            color:       col,
+                                            marginBottom:'3px',
+                                            lineHeight:  1,
+                                            opacity:     animated ? 1 : 0,
+                                            transition:  'opacity 250ms ease 650ms',
+                                        }}>
+                                            {bar.pct}%
+                                        </span>
+
+                                        {/* Barra */}
+                                        <div style={{
+                                            width:        '100%',
+                                            height:       animated ? `${barHeightPx}px` : '0px',
+                                            background:   `linear-gradient(180deg, ${col} 0%, ${col}99 100%)`,
+                                            borderRadius: '4px 4px 0 0',
+                                            transition:   'height 700ms cubic-bezier(0.23,1,0.32,1)',
+                                            boxShadow:    animated ? `0 0 14px ${bar.glow}, 0 -2px 8px ${bar.glow}` : 'none',
+                                            minHeight:    bar.pct > 0 && animated ? '2px' : '0px',
+                                        }} />
+                                    </div>
+                                );
+                            })}
                         </div>
-                    );
-                })}
+                    </div>
+
+                    {/* Línea eje X */}
+                    <div style={{ height: '1px', background: axisColor, flexShrink: 0 }} />
+
+                    {/* Etiquetas eje X — categorías */}
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px', flexShrink: 0 }}>
+                        {bars.map(bar => {
+                            const col = isDark ? bar.colorDark : bar.colorLight;
+                            return (
+                                <div key={bar.label} style={{ flex: 1, textAlign: 'center' }}>
+                                    <span style={{
+                                        fontFamily:    "'JetBrains Mono', monospace",
+                                        fontSize:      '9px',
+                                        fontWeight:    700,
+                                        color:         col,
+                                        letterSpacing: '0.04em',
+                                    }}>{bar.label}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Título eje X */}
+                    <div style={{ textAlign: 'center', marginTop: '3px', flexShrink: 0 }}>
+                        <span style={{
+                            fontFamily:    "'JetBrains Mono', monospace",
+                            fontSize:      '8px',
+                            color:         mutedText,
+                            letterSpacing: '0.08em',
+                            opacity:       0.65,
+                            textTransform: 'uppercase',
+                        }}>Categorías</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Título eje Y — rotado verticalmente */}
+            <div style={{
+                display:        'flex',
+                justifyContent: 'flex-start',
+                paddingLeft:    '2px',
+                marginTop:      '2px',
+                flexShrink:     0,
+            }}>
+                <span style={{
+                    fontFamily:    "'JetBrains Mono', monospace",
+                    fontSize:      '8px',
+                    color:         mutedText,
+                    letterSpacing: '0.07em',
+                    opacity:       0.65,
+                    textTransform: 'uppercase',
+                }}>% participación en catálogo</span>
             </div>
         </div>
     );

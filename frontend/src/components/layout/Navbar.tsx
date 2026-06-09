@@ -351,12 +351,26 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                         onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border-subtle)'; }}
                     >
                         <div style={{
-                            width: '26px', height: '26px', borderRadius: '50%',
-                            background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontFamily: 'var(--font-display)', fontSize: '11px',
-                            fontWeight: 700, color: 'var(--text-inverse)', flexShrink: 0,
-                            overflow: 'hidden',
+                            width:          '30px',
+                            height:         '30px',
+                            borderRadius:   '9px',
+                            background:     avatarUrl
+                                ? 'transparent'
+                                : 'linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.07) 100%)',
+                            border:         avatarUrl
+                                ? 'none'
+                                : '1.5px solid rgba(245,158,11,0.40)',
+                            boxShadow:      avatarUrl ? 'none' : '0 0 0 3px rgba(245,158,11,0.10)',
+                            display:        'flex',
+                            alignItems:     'center',
+                            justifyContent: 'center',
+                            fontFamily:     'var(--font-display)',
+                            fontSize:       '11px',
+                            fontWeight:     800,
+                            letterSpacing:  '0.06em',
+                            color:          '#F59E0B',
+                            flexShrink:     0,
+                            overflow:       'hidden',
                         }}>
                             {avatarUrl
                                 ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -418,27 +432,41 @@ export function Navbar({ title = 'DASHBOARD', badge, onMenuToggle, isMobile = fa
                                             onMouseEnter={() => setAvatarHover(true)}
                                             onMouseLeave={() => setAvatarHover(false)}
                                             style={{
-                                                width: '40px', height: '40px', borderRadius: '50%',
-                                                background: avatarUrl ? 'transparent' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                overflow: 'hidden', flexShrink: 0,
-                                                cursor: 'pointer', position: 'relative',
-                                                border: `2px solid ${avatarHover ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
-                                                transition: 'border-color 160ms ease',
+                                                width:          '44px',
+                                                height:         '44px',
+                                                borderRadius:   '13px',
+                                                background:     avatarUrl
+                                                    ? 'transparent'
+                                                    : 'linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.07) 100%)',
+                                                border:         `1.5px solid ${avatarHover
+                                                    ? 'rgba(245,158,11,0.70)'
+                                                    : avatarUrl ? 'var(--border-subtle)' : 'rgba(245,158,11,0.40)'}`,
+                                                boxShadow:      avatarHover
+                                                    ? '0 0 0 3px rgba(245,158,11,0.18)'
+                                                    : '0 0 0 3px rgba(245,158,11,0.10)',
+                                                display:        'flex',
+                                                alignItems:     'center',
+                                                justifyContent: 'center',
+                                                overflow:       'hidden',
+                                                flexShrink:     0,
+                                                cursor:         'pointer',
+                                                position:       'relative',
+                                                transition:     'border-color 160ms ease, box-shadow 160ms ease',
                                             }}
                                         >
                                             {avatarUrl
                                                 ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                : <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'var(--text-inverse)' }}>{initials}</span>
+                                                : <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 800, letterSpacing: '0.06em', color: '#F59E0B' }}>{initials}</span>
                                             }
                                             {/* Overlay de cámara al hover */}
                                             <div style={{
-                                                position: 'absolute', inset: 0,
-                                                background: 'rgba(0,0,0,0.45)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                opacity: avatarHover ? 1 : 0,
+                                                position:   'absolute', inset: 0,
+                                                background: 'rgba(0,0,0,0.50)',
+                                                display:    'flex', alignItems: 'center', justifyContent: 'center',
+                                                opacity:    avatarHover ? 1 : 0,
                                                 transition: 'opacity 160ms ease',
-                                                fontSize: '14px',
+                                                fontSize:   '16px',
+                                                borderRadius: '13px',
                                             }}>
                                                 📷
                                             </div>

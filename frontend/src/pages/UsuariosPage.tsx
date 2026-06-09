@@ -40,6 +40,8 @@ interface InviteForm {
     password: string;
 }
 
+const SELF_COLOR = '#F59E0B';
+
 const ROLES_INVITAR = [
     { value: 'GESTOR_INVENTARIO', label: 'Gestor de Inventario' },
     { value: 'CAJERO',            label: 'Cajero'               },
@@ -638,28 +640,65 @@ export function UsuariosPage(): JSX.Element {
                                     >
                                         {/* ── Usuario ── */}
                                         <td style={{ padding: '12px 16px' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                <div style={{
-                                                    width:          '28px',
-                                                    height:         '28px',
-                                                    borderRadius:   '50%',
-                                                    background:     self
-                                                        ? 'linear-gradient(135deg, var(--accent-gold), var(--accent-primary))'
-                                                        : 'linear-gradient(135deg, var(--accent-primary), var(--accent-cyan))',
-                                                    display:        'flex',
-                                                    alignItems:     'center',
-                                                    justifyContent: 'center',
-                                                    fontFamily:     'var(--font-display)',
-                                                    fontSize:       '11px',
-                                                    fontWeight:     700,
-                                                    color:          'var(--text-inverse)',
-                                                    flexShrink:     0,
-                                                }}>
-                                                    {u.username.slice(0, 2).toUpperCase()}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '11px' }}>
+
+                                                {/* Avatar squircle — design system blue / gold para self */}
+                                                <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                    <div style={{
+                                                        width:          '38px',
+                                                        height:         '38px',
+                                                        borderRadius:   '11px',
+                                                        background:     self
+                                                            ? 'linear-gradient(145deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.07) 100%)'
+                                                            : 'linear-gradient(145deg, rgba(59,130,246,0.18) 0%, rgba(56,189,248,0.07) 100%)',
+                                                        border:         self
+                                                            ? '1.5px solid rgba(245,158,11,0.40)'
+                                                            : '1.5px solid rgba(59,130,246,0.35)',
+                                                        boxShadow:      self
+                                                            ? '0 0 0 3px rgba(245,158,11,0.10)'
+                                                            : '0 0 0 3px rgba(59,130,246,0.10)',
+                                                        display:        'flex',
+                                                        alignItems:     'center',
+                                                        justifyContent: 'center',
+                                                        fontFamily:     'var(--font-display)',
+                                                        fontSize:       '12px',
+                                                        fontWeight:     800,
+                                                        letterSpacing:  '0.06em',
+                                                        color:          self ? SELF_COLOR : 'var(--accent-primary)',
+                                                        userSelect:     'none',
+                                                        opacity:        u.isActive ? 1 : 0.5,
+                                                        transition:     'opacity 300ms ease',
+                                                    }}>
+                                                        {u.username.slice(0, 2).toUpperCase()}
+                                                    </div>
                                                 </div>
-                                                <span style={{ fontFamily: 'var(--font-display)', fontSize: '13px', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
-                                                    {u.username}
-                                                </span>
+
+                                                {/* Nombre + badge "tú" si es el usuario actual */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                                    <span style={{
+                                                        fontFamily:    'var(--font-display)',
+                                                        fontSize:      '13px',
+                                                        fontWeight:    600,
+                                                        letterSpacing: '0.04em',
+                                                        color:         'var(--text-primary)',
+                                                        lineHeight:    1.2,
+                                                    }}>
+                                                        {u.username}
+                                                    </span>
+                                                    {self && (
+                                                        <span style={{
+                                                            fontFamily:    'var(--font-mono)',
+                                                            fontSize:      '9px',
+                                                            fontWeight:    700,
+                                                            letterSpacing: '0.10em',
+                                                            color:         SELF_COLOR,
+                                                            opacity:       0.80,
+                                                        }}>
+                                                            ★ TÚ
+                                                        </span>
+                                                    )}
+                                                </div>
+
                                             </div>
                                         </td>
 

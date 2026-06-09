@@ -497,9 +497,9 @@ export function LoginPage(): JSX.Element {
     }
 
     const C = {
-        primary:  '#F0F6FC',
-        secondary:'#C9D1D9',
-        muted:    '#8B949E',
+        primary:  '#F1F5F9',
+        secondary:'#E6EDF3',
+        muted:    '#B0C4D8',
         accent:   '#3B82F6',
         surface:  '#0C1017',
         border:   'rgba(59,130,246,0.20)',

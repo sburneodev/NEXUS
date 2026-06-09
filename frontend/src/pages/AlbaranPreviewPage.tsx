@@ -113,7 +113,7 @@ export function AlbaranPreviewPage(): JSX.Element {
                         <div style={{
                             fontFamily:    'var(--font-mono, monospace)',
                             fontSize:      '9px',
-                            color:         '#8B949E',
+                            color:         'var(--text-muted)',
                             letterSpacing: '0.08em',
                             textTransform: 'uppercase',
                             marginTop:     '1px',

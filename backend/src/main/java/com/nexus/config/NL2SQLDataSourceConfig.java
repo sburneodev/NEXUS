@@ -22,7 +22,7 @@ public class NL2SQLDataSourceConfig {
     @Value("${nl2sql.datasource.password:nexus_readonly_2026}")
     private String readonlyPassword;
 
-    @Bean("readonlyDataSource")
+    @Bean("nl2sqlDataSource") 
     public DataSource readonlyDataSource() {
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(dbUrl);
@@ -37,7 +37,7 @@ public class NL2SQLDataSourceConfig {
 
     @Bean("readonlyJdbcTemplate")
     public JdbcTemplate readonlyJdbcTemplate(
-            @Qualifier("readonlyDataSource") DataSource readonlyDataSource) {
+            @Qualifier("nl2sqlDataSource") DataSource readonlyDataSource) {  // actualiza el qualifier
         return new JdbcTemplate(readonlyDataSource);
     }
 }

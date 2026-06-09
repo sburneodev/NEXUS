@@ -100,3 +100,8 @@ management:
 
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
+
+nl2sql:
+  datasource:
+    username: ${DB_READONLY_USER:nexus_readonly}
+    password: ${DB_READONLY_PASSWORD:nexus_readonly_2026}

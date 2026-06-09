@@ -172,27 +172,23 @@ public class SystemController {
         String adminEmail = getEmailActual();
 
         try {
-            // ── 1. Parsear JSON ────────────────────────────────────────
+            // ── 1. Validar archivo no vacío ────────────────────────────
             if (file.isEmpty()) {
                 return error("El archivo está vacío.");
             }
 
-            Map<String, Object> backup;
-            try {
-                backup = objectMapper.readValue(
-                    file.getBytes(),
-                    new TypeReference<>() {}
-                );
-            } catch (Exception e) {
-                return error("El archivo no es un JSON válido: " + e.getMessage());
+            // ── 2. Parsear JSON ────────────────────────────────────────
+            Map<String, Object> backup = parsearBackup(file);
+            if (backup == null) {
+                return error("El archivo no es un JSON válido.");
             }
 
-            // ── 2. Validar schema ──────────────────────────────────────
+            // ── 3. Validar schema ──────────────────────────────────────
             if (!BACKUP_SCHEMA.equals(backup.get("schema"))) {
                 return error("Archivo no reconocido. Solo se admiten backups generados por NEXUS ERP.");
             }
 
-            // ── 3. Validar presencia de tablas requeridas ──────────────
+            // ── 4. Extraer tablas ──────────────────────────────────────
             @SuppressWarnings("unchecked")
             Map<String, List<Map<String, Object>>> tables =
                 (Map<String, List<Map<String, Object>>>) backup.get("tables");
@@ -201,15 +197,11 @@ public class SystemController {
                 return error("El backup no contiene el bloque 'tables'.");
             }
 
-            List<String> missing = new ArrayList<>();
-            for (String required : TABLE_ORDER) {
-                if (!tables.containsKey(required)) missing.add(required);
-            }
-            if (!missing.isEmpty()) {
-                return error("Faltan tablas en el backup: " + String.join(", ", missing));
-            }
+            // ── 5. Validar presencia de tablas requeridas ──────────────
+            ResponseEntity<Map<String, Object>> tablasMissing = validarTablas(tables);
+            if (tablasMissing != null) return tablasMissing;
 
-            // ── 4. Salvaguarda: verificar que hay al menos un ADMIN ────
+            // ── 6. Salvaguarda: verificar que hay al menos un ADMIN ────
             if (!hasAdminInBackup(tables)) {
                 return error(
                     "Restauración abortada: el backup no contiene ningún usuario " +
@@ -217,31 +209,10 @@ public class SystemController {
                 );
             }
 
-            // ── 5. Restauración atómica ────────────────────────────────
-            // 5a. Vaciar tablas en orden inverso (respeta FKs)
-            List<String> reverseOrder = new ArrayList<>(TABLE_ORDER);
-            Collections.reverse(reverseOrder);
+            // ── 7. Restauración atómica ────────────────────────────────
+            int totalRows = restaurarTablas(tables);
 
-            for (String table : reverseOrder) {
-                jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
-            }
-
-            // 5b. Reinsertar en orden correcto
-            int totalRows = 0;
-            for (String table : TABLE_ORDER) {
-                List<Map<String, Object>> rows = tables.get(table);
-                if (rows == null || rows.isEmpty()) continue;
-
-                for (Map<String, Object> row : rows) {
-                    insertRow(table, row);
-                    totalRows++;
-                }
-
-                // Sincronizar secuencia SERIAL de PostgreSQL tras insertar con IDs explícitos
-                syncSequence(table);
-            }
-
-            // ── 6. Registrar en auditoría ──────────────────────────────
+            // ── 8. Registrar en auditoría ──────────────────────────────
             String exportedAt = backup.getOrDefault("exportedAt", "desconocido").toString();
             String exportedBy = backup.getOrDefault("exportedBy", "desconocido").toString();
 
@@ -251,26 +222,63 @@ public class SystemController {
                 + " el " + exportedAt
                 + " | filas restauradas: " + totalRows);
 
-            // ── 7. Respuesta ───────────────────────────────────────────
+            // ── 9. Respuesta ───────────────────────────────────────────
             Map<String, Object> resp = new LinkedHashMap<>();
-            resp.put("ok",           true);
-            resp.put("totalRows",    totalRows);
+            resp.put("ok",             true);
+            resp.put("totalRows",      totalRows);
             resp.put("tablesRestored", TABLE_ORDER.size());
-            resp.put("backupDate",   exportedAt);
-            resp.put("backupAuthor", exportedBy);
+            resp.put("backupDate",     exportedAt);
+            resp.put("backupAuthor",   exportedBy);
             return ResponseEntity.ok(resp);
 
         } catch (Exception e) {
-            // La anotación @Transactional hará rollback automático
             return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("ok", false, "error", "Error interno: " + e.getMessage()));
         }
     }
 
-    // ══════════════════════════════════════════════════════════════════
-    // Utilidades privadas
-    // ══════════════════════════════════════════════════════════════════
+    private Map<String, Object> parsearBackup(MultipartFile file) {
+        try {
+            return objectMapper.readValue(file.getBytes(), new TypeReference<>() {});
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private ResponseEntity<Map<String, Object>> validarTablas(
+            Map<String, List<Map<String, Object>>> tables) {
+        List<String> missing = new ArrayList<>();
+        for (String required : TABLE_ORDER) {
+            if (!tables.containsKey(required)) missing.add(required);
+        }
+        if (!missing.isEmpty()) {
+            return error("Faltan tablas en el backup: " + String.join(", ", missing));
+        }
+        return null;
+    }
+
+    private int restaurarTablas(Map<String, List<Map<String, Object>>> tables) {
+        List<String> reverseOrder = new ArrayList<>(TABLE_ORDER);
+        Collections.reverse(reverseOrder);
+
+        for (String table : reverseOrder) {
+            jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
+        }
+
+        int totalRows = 0;
+        for (String table : TABLE_ORDER) {
+            List<Map<String, Object>> rows = tables.get(table);
+            if (rows == null || rows.isEmpty()) continue;
+            for (Map<String, Object> row : rows) {
+                insertRow(table, row);
+                totalRows++;
+            }
+            syncSequence(table);
+        }
+        return totalRows;
+    }
+ 
 
     /**
      * Verifica que el backup contenga al menos un par (usuario, rol ADMIN).

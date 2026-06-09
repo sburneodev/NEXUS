@@ -154,7 +154,7 @@ public class AuthService {
         // Detectar primer acceso: el hash en BD coincide con la contraseña temporal
         boolean mustChangePassword = passwordEncoder.matches(TEMP_PASSWORD, usuario.getPassword());
 
-        log.info("[AUTH][LOGIN] Login exitoso user={} roles={} mustChangePassword={}",
+        log.info("[AUTH][LOGIN] Login exitoso user={} roles={} primerAcceso={}",
                 usuario.getEmail(), roles, mustChangePassword);
 
         auditService.logAuth(

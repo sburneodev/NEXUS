@@ -13,9 +13,12 @@ import java.util.*;
 @RequestMapping("/almacen")
 public class AlmacenController {
 
-    private static final String COL_PASILLO    = "pasillo";
-    private static final String COL_ESTANTERIA = "estanteria";
-    private static final String COL_NIVEL      = "nivel";
+    private static final String COL_PASILLO      = "pasillo";
+    private static final String COL_ESTANTERIA   = "estanteria";
+    private static final String COL_NIVEL        = "nivel";
+    private static final String COL_ID_PRODUCTO  = "id_producto";
+    private static final String COL_STOCK_ACTUAL = "stock_actual";
+    private static final String COL_STOCK_MINIMO = "stock_minimo";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -98,18 +101,18 @@ public class AlmacenController {
             @SuppressWarnings("unchecked")
             Map<String, Object> estanteriaMap = (Map<String, Object>) pasilloMap.get(estanteria);
 
-            if (fila.get("id_producto") != null) {
-                String prodKey = String.valueOf(fila.get("id_producto"));
+            if (fila.get(COL_ID_PRODUCTO) != null) {
+                String prodKey = String.valueOf(fila.get(COL_ID_PRODUCTO));
                 Map<String, Object> rack = new LinkedHashMap<>();
                 rack.put(COL_NIVEL,             nivelRack);
-                rack.put("id_producto",         ((Number) fila.get("id_producto")).longValue());
+                rack.put(COL_ID_PRODUCTO,       ((Number) fila.get(COL_ID_PRODUCTO)).longValue());
                 rack.put("sku",                 fila.get("sku"));
                 rack.put("nombre",              fila.get("nombre"));
-                rack.put("stock_actual",        fila.get("stock_actual") != null
-                                                    ? ((Number) fila.get("stock_actual")).intValue()
+                rack.put(COL_STOCK_ACTUAL,      fila.get(COL_STOCK_ACTUAL) != null
+                                                    ? ((Number) fila.get(COL_STOCK_ACTUAL)).intValue()
                                                     : null);
-                rack.put("stock_minimo",        fila.get("stock_minimo") != null
-                                                    ? ((Number) fila.get("stock_minimo")).intValue()
+                rack.put(COL_STOCK_MINIMO,      fila.get(COL_STOCK_MINIMO) != null
+                                                    ? ((Number) fila.get(COL_STOCK_MINIMO)).intValue()
                                                     : null);
                 rack.put("tipo_producto",       fila.get("tipo_producto"));
                 rack.put("estado_conservacion", fila.get("estado_conservacion"));

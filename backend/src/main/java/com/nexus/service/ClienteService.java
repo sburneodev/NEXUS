@@ -103,26 +103,8 @@ public class ClienteService {
         }
 
         ClienteDTO result = toDTO(clienteRepository.save(cliente));
-        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
-
-        List<String> cambios = new ArrayList<>();
-        if (!Objects.equals(nombreAnterior, dto.getNombre()))
-            cambios.add("nombre: " + strAudit(nombreAnterior) + "→" + strAudit(dto.getNombre()));
-        if (!Objects.equals(emailAnterior, dto.getEmail()))
-            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
-        if (!Objects.equals(telAnterior, dto.getTelefono()))
-            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
-        if (dto.getPuntosFidelidad() != null && !Objects.equals(puntosAnterior, dto.getPuntosFidelidad()))
-            cambios.add("puntos: " + strAudit(puntosAnterior) + "→" + strAudit(dto.getPuntosFidelidad()));
-        if (activoAnterior != activoNuevo)
-            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO") + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
-
-        String detalle = result.getNombre();
-        if (!cambios.isEmpty()) {
-            detalle += " | " + String.join(" | ", cambios);
-        } else {
-            detalle += " | sin cambios";
-        }
+        String detalle = construirDetalle(result, dto, nombreAnterior, emailAnterior,
+                telAnterior, puntosAnterior, activoAnterior);
         auditService.log(ENTIDAD, "UPDATE", id, detalle);
         return result;
     }
@@ -177,6 +159,29 @@ public class ClienteService {
         c.setPuntosFidelidad(dto.getPuntosFidelidad() != null ? dto.getPuntosFidelidad() : 0);
         c.setActivo(true);
         return c;
+    }
+    private String construirDetalle(ClienteDTO result, ClienteDTO dto,
+            String nombreAnterior, String emailAnterior, String telAnterior,
+            Integer puntosAnterior, boolean activoAnterior) {
+
+        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
+        List<String> cambios = new ArrayList<>();
+
+        if (!Objects.equals(nombreAnterior, dto.getNombre()))
+            cambios.add("nombre: " + strAudit(nombreAnterior) + "→" + strAudit(dto.getNombre()));
+        if (!Objects.equals(emailAnterior, dto.getEmail()))
+            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(telAnterior, dto.getTelefono()))
+            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
+        if (dto.getPuntosFidelidad() != null && !Objects.equals(puntosAnterior, dto.getPuntosFidelidad()))
+            cambios.add("puntos: " + strAudit(puntosAnterior) + "→" + strAudit(dto.getPuntosFidelidad()));
+        if (activoAnterior != activoNuevo)
+            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO")
+                      + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
+
+        String detalle = result.getNombre();
+        return cambios.isEmpty() ? detalle + " | sin cambios"
+                                 : detalle + " | " + String.join(" | ", cambios);
     }
 
     private static String strAudit(Object val) {

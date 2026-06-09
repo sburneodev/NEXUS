@@ -26,7 +26,7 @@ sibr.app {
 
 # SonarQube accesible en subdominio separado
 sonar.sibr.app {
-    reverse_proxy nexus-sonarqube:9000
+    reverse_proxy nexus_sonarqube:9000
 
     log {
         output file /var/log/caddy/sonar.log

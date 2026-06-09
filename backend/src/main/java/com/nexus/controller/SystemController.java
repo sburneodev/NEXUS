@@ -259,8 +259,9 @@ public class SystemController {
     }
 
     private int restaurarTablas(Map<String, List<Map<String, Object>>> tables) {
+       
 
-        for (String table : TABLE_ORDER.reversed()) { {
+        for (String table : TABLE_ORDER.reversed()) { 
             jdbcTemplate.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE");
         }
 

@@ -30,7 +30,7 @@ public class AuthService {
     private final String LoginString="LOGIN";
 
     /** Contraseña temporal asignada a todos los usuarios creados por el admin. */
-    static final String TEMP_PASSWORD = "NEXUS2026!";
+    static final String TEMP_PASSWORD = System.getenv().getOrDefault("TEMP_PASSWORD", "NEXUS2026!");
     private final UsuarioRepository  usuarioRepository;
     private final PasswordEncoder    passwordEncoder;
     private final EmailService       emailService;

@@ -1,5 +1,6 @@
 package com.nexus.auth;
 
+import org.springframework.security.core.Authentication;
 import com.nexus.audit.AuditService;
 import com.nexus.auth.dto.AuthResponse;
 import com.nexus.auth.dto.RegisterRequest;
@@ -175,7 +176,11 @@ public class AuthService {
 
     @Transactional
     public void changePassword(ChangePasswordRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    	if (auth == null || !auth.isAuthenticated()) {
+    	    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No autenticado");
+    	}
+    	String email = auth.getName();
 
         Usuario usuario = usuarioRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(

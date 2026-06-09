@@ -63,8 +63,9 @@ class ProveedorServiceTest {
     // ── TEST 1 — listar ───────────────────────────────────────────────
 
     @Test
-    void listar_devuelve_activos() {
-        when(proveedorRepository.findByActivoTrue())
+    void listar_devuelve_todos() {
+        // listar() ahora devuelve findAll() — activos e inactivos
+        when(proveedorRepository.findAll())
                 .thenReturn(List.of(proveedorValido()));
 
         List<ProveedorDTO> result = proveedorService.listar();
@@ -74,8 +75,8 @@ class ProveedorServiceTest {
     }
 
     @Test
-    void listar_sin_activos_devuelve_lista_vacia() {
-        when(proveedorRepository.findByActivoTrue()).thenReturn(List.of());
+    void listar_sin_proveedores_devuelve_lista_vacia() {
+        when(proveedorRepository.findAll()).thenReturn(List.of());
 
         assertTrue(proveedorService.listar().isEmpty());
     }

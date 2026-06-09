@@ -11,6 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 @Service
 public class ClienteService {
 
@@ -23,13 +27,33 @@ public class ClienteService {
         this.auditService      = auditService;
     }
 
-    public Page<ClienteDTO> listar(String buscar, Pageable pageable) {
-        if (buscar != null && !buscar.isBlank()) {
+    /**
+     * Lista clientes con filtros opcionales.
+     *
+     * @param buscar texto libre (nombre) — null o vacío para no filtrar
+     * @param activo true → solo activos | false → solo inactivos | null → todos
+     * @param pageable paginación y orden
+     */
+    public Page<ClienteDTO> listar(String buscar, Boolean activo, Pageable pageable) {
+        boolean hayBusqueda = buscar != null && !buscar.isBlank();
+
+        // Sin filtro de estado → mostrar todos
+        if (activo == null) {
+            if (hayBusqueda) {
+                return clienteRepository
+                        .findByNombreContainingIgnoreCase(buscar, pageable)
+                        .map(this::toDTO);
+            }
+            return clienteRepository.findAll(pageable).map(this::toDTO);
+        }
+
+        // Con filtro de estado (true = activos, false = inactivos)
+        if (hayBusqueda) {
             return clienteRepository
-                    .findByNombreContainingIgnoreCaseAndActivoTrue(buscar, pageable)
+                    .findByNombreContainingIgnoreCaseAndActivo(buscar, activo, pageable)
                     .map(this::toDTO);
         }
-        return clienteRepository.findByActivoTrue(pageable).map(this::toDTO);
+        return clienteRepository.findByActivo(activo, pageable).map(this::toDTO);
     }
 
     public ClienteDTO buscarPorId(Long id) {
@@ -67,14 +91,48 @@ public class ClienteService {
                         "Ya existe un cliente con el email: " + dto.getEmail());
             });
         }
+
+        // Capturar valores anteriores para el diff de auditoría
+        String  nombreAnterior = cliente.getNombre();
+        String  emailAnterior  = cliente.getEmail();
+        String  telAnterior    = cliente.getTelefono();
+        Integer puntosAnterior = cliente.getPuntosFidelidad();
+        boolean activoAnterior = Boolean.TRUE.equals(cliente.getActivo());
+
+        // Aplicar cambios
         cliente.setNombre(dto.getNombre());
         cliente.setEmail(dto.getEmail());
         cliente.setTelefono(dto.getTelefono());
         if (dto.getPuntosFidelidad() != null) {
             cliente.setPuntosFidelidad(dto.getPuntosFidelidad());
         }
+        if (dto.getActivo() != null) {
+            cliente.setActivo(dto.getActivo());
+        }
+
         ClienteDTO result = toDTO(clienteRepository.save(cliente));
-        auditService.log("CLIENTE", "UPDATE", id, result.getNombre());
+        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
+
+        // Construir diff completo de campos modificados
+        List<String> cambios = new ArrayList<>();
+        if (!Objects.equals(nombreAnterior, dto.getNombre()))
+            cambios.add("nombre: " + strAudit(nombreAnterior) + "→" + strAudit(dto.getNombre()));
+        if (!Objects.equals(emailAnterior, dto.getEmail()))
+            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(telAnterior, dto.getTelefono()))
+            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
+        if (dto.getPuntosFidelidad() != null && !Objects.equals(puntosAnterior, dto.getPuntosFidelidad()))
+            cambios.add("puntos: " + strAudit(puntosAnterior) + "→" + strAudit(dto.getPuntosFidelidad()));
+        if (activoAnterior != activoNuevo)
+            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO") + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
+
+        String detalle = result.getNombre();
+        if (!cambios.isEmpty()) {
+            detalle += " | " + String.join(" | ", cambios);
+        } else {
+            detalle += " | sin cambios";
+        }
+        auditService.log("CLIENTE", "UPDATE", id, detalle);
         return result;
     }
 
@@ -104,7 +162,7 @@ public class ClienteService {
         String nombre = cliente.getNombre();
         cliente.setActivo(false);
         clienteRepository.save(cliente);
-        auditService.log("CLIENTE", "DELETE", id, "Baja lógica | " + nombre);
+        auditService.log("CLIENTE", "DELETE", id, nombre + " | baja lógica");
     }
 
     public ClienteDTO toDTO(Cliente c) {
@@ -128,5 +186,10 @@ public class ClienteService {
         c.setPuntosFidelidad(dto.getPuntosFidelidad() != null ? dto.getPuntosFidelidad() : 0);
         c.setActivo(true);
         return c;
+    }
+
+    /** Devuelve el valor como string para el log de auditoría; null → "—" */
+    private static String strAudit(Object val) {
+        return val != null ? val.toString() : "—";
     }
 }

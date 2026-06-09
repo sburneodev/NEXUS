@@ -228,20 +228,22 @@ class ClienteServiceTest {
 
     @Test
     void listar_sin_busqueda_devuelve_pagina() {
-        when(clienteRepository.findByActivoTrue(any(Pageable.class)))
+        // activo=null → todos → findAll(Pageable)
+        when(clienteRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(clienteValido())));
 
-        var result = clienteService.listar(null, Pageable.unpaged());
+        var result = clienteService.listar(null, null, Pageable.unpaged());
         assertEquals(1, result.getTotalElements());
     }
 
     @Test
     void listar_con_busqueda_filtra_por_nombre() {
-        when(clienteRepository.findByNombreContainingIgnoreCaseAndActivoTrue(
+        // activo=null + buscar → findByNombreContainingIgnoreCase
+        when(clienteRepository.findByNombreContainingIgnoreCase(
                 eq("Carlos"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(clienteValido())));
 
-        var result = clienteService.listar("Carlos", Pageable.unpaged());
+        var result = clienteService.listar("Carlos", null, Pageable.unpaged());
         assertEquals(1, result.getTotalElements());
     }
 }

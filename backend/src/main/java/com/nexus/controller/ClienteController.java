@@ -20,13 +20,15 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    // GET /api/clientes?buscar=nombre&page=0&size=20
+    // GET /api/clientes?buscar=nombre&activo=true|false&page=0&size=20
+    // activo omitido → devuelve todos (activos e inactivos)
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN','MARKETING_ANALYST','CONTABLE')")
     public ResponseEntity<Page<ClienteDTO>> listar(
             @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Boolean activo,
             Pageable pageable) {
-        return ResponseEntity.ok(clienteService.listar(buscar, pageable));
+        return ResponseEntity.ok(clienteService.listar(buscar, activo, pageable));
     }
 
     // GET /api/clientes/{id}

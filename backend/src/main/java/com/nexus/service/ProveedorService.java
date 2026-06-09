@@ -6,7 +6,9 @@ import com.nexus.model.Proveedor;
 import com.nexus.repository.ProveedorRepository;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class ProveedorService {
@@ -21,7 +23,8 @@ public class ProveedorService {
     }
 
     public List<ProveedorDTO> listar() {
-        return proveedorRepository.findByActivoTrue()
+        // Devuelve TODOS (activos e inactivos) — el frontend filtra por estado
+        return proveedorRepository.findAll()
                 .stream().map(this::toDTO).toList();
     }
 
@@ -41,14 +44,54 @@ public class ProveedorService {
     public ProveedorDTO editar(Long id, ProveedorDTO dto) {
         Proveedor p = proveedorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Proveedor no encontrado: " + id));
+
+        // Capturar valores anteriores para el diff de auditoría
+        String  razonAnterior  = p.getRazonSocial();
+        String  cifAnterior    = p.getCif();
+        String  emailAnterior  = p.getEmail();
+        String  telAnterior    = p.getTelefono();
+        String  dirAnterior    = p.getDireccion();
+        Short   tiempoAnterior = p.getTiempoEntregaD();
+        boolean activoAnterior = Boolean.TRUE.equals(p.getActivo());
+
+        // Aplicar cambios
         p.setRazonSocial(dto.getRazonSocial());
         p.setCif(dto.getCif());
         p.setEmail(dto.getEmail());
         p.setTelefono(dto.getTelefono());
         p.setDireccion(dto.getDireccion());
         p.setTiempoEntregaD(dto.getTiempoEntregaD());
+        if (dto.getActivo() != null) {
+            p.setActivo(dto.getActivo());
+        }
+
         ProveedorDTO result = toDTO(proveedorRepository.save(p));
-        auditService.log("PROVEEDOR", "UPDATE", id, result.getRazonSocial());
+        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
+
+        // Construir diff completo de campos modificados
+        List<String> cambios = new ArrayList<>();
+        if (!Objects.equals(razonAnterior, dto.getRazonSocial()))
+            cambios.add("razón social: " + strAudit(razonAnterior) + "→" + strAudit(dto.getRazonSocial()));
+        if (!Objects.equals(cifAnterior, dto.getCif()))
+            cambios.add("CIF: " + strAudit(cifAnterior) + "→" + strAudit(dto.getCif()));
+        if (!Objects.equals(emailAnterior, dto.getEmail()))
+            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(telAnterior, dto.getTelefono()))
+            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
+        if (!Objects.equals(dirAnterior, dto.getDireccion()))
+            cambios.add("dirección: " + strAudit(dirAnterior) + "→" + strAudit(dto.getDireccion()));
+        if (!Objects.equals(tiempoAnterior, dto.getTiempoEntregaD()))
+            cambios.add("entrega: " + strAudit(tiempoAnterior) + "→" + strAudit(dto.getTiempoEntregaD()));
+        if (activoAnterior != activoNuevo)
+            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO") + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
+
+        String detalle = result.getRazonSocial();
+        if (!cambios.isEmpty()) {
+            detalle += " | " + String.join(" | ", cambios);
+        } else {
+            detalle += " | sin cambios";
+        }
+        auditService.log("PROVEEDOR", "UPDATE", id, detalle);
         return result;
     }
 
@@ -58,7 +101,7 @@ public class ProveedorService {
         String razon = p.getRazonSocial();
         p.setActivo(false);
         proveedorRepository.save(p);
-        auditService.log("PROVEEDOR", "DELETE", id, "Baja lógica | " + razon);
+        auditService.log("PROVEEDOR", "DELETE", id, razon + " | baja lógica");
     }
 
     private ProveedorDTO toDTO(Proveedor p) {
@@ -72,6 +115,11 @@ public class ProveedorService {
         dto.setTiempoEntregaD(p.getTiempoEntregaD());
         dto.setActivo(p.getActivo());
         return dto;
+    }
+
+    /** Devuelve el valor como string para el log de auditoría; null → "—" */
+    private static String strAudit(Object val) {
+        return val != null ? val.toString() : "—";
     }
 
     private Proveedor toEntity(ProveedorDTO dto) {

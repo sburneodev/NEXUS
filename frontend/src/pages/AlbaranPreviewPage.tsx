@@ -5,6 +5,7 @@
  */
 
 import { AlbaranTemplate } from '../components/albaran/AlbaranTemplate';
+import { Logo }            from '../components/brand/Logo';
 
 const DEMO_DATA = {
     numero:           'ALB-2025-0042',
@@ -16,7 +17,7 @@ const DEMO_DATA = {
     matricula:        '1234 ABC',
     notas:            'Pedido urgente. Revisar estado del embalaje antes de firmar el albarán. Conservar en lugar seco.',
     empresa: {
-        markUrl:   '/nexus-mark.svg',
+        markComponent: <Logo variant="mark" theme="brand" size={44} />,
         brandName: 'NEXUS',
         tagline:   'ERP · LEVELUP ARCADE',
         nombre:    'NEXUS Distribución S.L.',
@@ -96,11 +97,7 @@ export function AlbaranPreviewPage(): JSX.Element {
                     }}
                 >
                     {/* Logo + título */}
-                    <img
-                        src="/nexus-mark.svg"
-                        alt="NEXUS"
-                        style={{ height: '28px', width: 'auto', flexShrink: 0 }}
-                    />
+                    <Logo variant="mark" theme="brand" size={28} style={{ flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{
                             fontFamily:    'var(--font-display, Inter, sans-serif)',

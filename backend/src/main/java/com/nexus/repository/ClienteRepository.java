@@ -9,12 +9,17 @@ import java.util.Optional;
 
 public interface ClienteRepository extends JpaRepository<Cliente, Long> {
 
-    // Listar solo activos con paginación
+    // ── Listados solo-activos (comportamiento heredado) ───────────────
     Page<Cliente> findByActivoTrue(Pageable pageable);
-
-    // Buscar por email para comprobar duplicados
-    Optional<Cliente> findByEmail(String email);
-
-    // Buscar por nombre (contiene, sin distinguir mayúsculas)
     Page<Cliente> findByNombreContainingIgnoreCaseAndActivoTrue(String nombre, Pageable pageable);
+
+    // ── Listados filtrados por estado activo/inactivo ─────────────────
+    Page<Cliente> findByActivo(boolean activo, Pageable pageable);
+    Page<Cliente> findByNombreContainingIgnoreCaseAndActivo(String nombre, boolean activo, Pageable pageable);
+
+    // ── Búsqueda por nombre sin filtro de activo (para vista "Todos") ─
+    Page<Cliente> findByNombreContainingIgnoreCase(String nombre, Pageable pageable);
+
+    // ── Buscar por email para comprobar duplicados ────────────────────
+    Optional<Cliente> findByEmail(String email);
 }

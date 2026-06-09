@@ -135,22 +135,82 @@ function renderEntidad(e: AuditEntry): JSX.Element {
 }
 
 /**
- * Celda de detalles con renderizado especial para LOGIN:
- *   "Login exitoso | roles: ADMIN,GESTOR_INVENTARIO"
- * → status text + role badges dorados
+ * Renderiza un segmento de cambio con formato "campo: viejo→nuevo".
+ * El valor antiguo aparece tachado/muted, el nuevo en color acento.
+ */
+function renderSegmentoCambio(seg: string, key: number): JSX.Element {
+    const arrowIdx = seg.indexOf('→');
+    if (arrowIdx === -1) {
+        // Segmento sin flecha (p.ej. "sin cambios", "Baja lógica")
+        return (
+            <span key={key} style={{
+                fontFamily:    'var(--font-mono)',
+                fontSize:      '10px',
+                color:         'var(--text-muted)',
+                fontStyle:     'italic',
+            }}>
+                {seg}
+            </span>
+        );
+    }
+
+    const colonIdx = seg.indexOf(':');
+    const label    = colonIdx !== -1 ? seg.slice(0, colonIdx).trim()  : '';
+    const rest     = colonIdx !== -1 ? seg.slice(colonIdx + 1).trim() : seg;
+    const oldVal   = rest.slice(0, rest.indexOf('→')).trim();
+    const newVal   = rest.slice(rest.indexOf('→') + 1).trim();
+
+    // Color del valor nuevo: INACTIVO → rojo, ACTIVO → verde, resto → acento primario
+    const newColor = newVal === 'INACTIVO'
+        ? 'var(--accent-danger)'
+        : newVal === 'ACTIVO'
+            ? '#44cc88'
+            : 'var(--accent-primary)';
+
+    return (
+        <span key={key} style={{
+            display:       'inline-flex',
+            alignItems:    'center',
+            gap:           '3px',
+            fontFamily:    'var(--font-mono)',
+            fontSize:      '10px',
+            background:    'var(--bg-elevated)',
+            border:        '1px solid var(--border-subtle)',
+            borderRadius:  '3px',
+            padding:       '1px 6px',
+            whiteSpace:    'nowrap',
+        }}>
+            {label && (
+                <span style={{ color: 'var(--text-muted)', marginRight: '1px' }}>{label}:</span>
+            )}
+            <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', opacity: 0.6 }}>
+                {oldVal}
+            </span>
+            <span style={{ color: 'var(--text-muted)', margin: '0 1px' }}>→</span>
+            <span style={{ color: newColor, fontWeight: 600 }}>
+                {newVal}
+            </span>
+        </span>
+    );
+}
+
+/**
+ * Celda de detalles con renderizado inteligente:
+ * · LOGIN: status text + role badges dorados
+ * · UPDATE con pipes: nombre en negrita + pills de cambio campo viejo→nuevo
+ * · Resto: texto plano con color según contenido
  */
 function renderDetalles(e: AuditEntry): JSX.Element | string {
     if (!e.detalles) return '—';
 
     const isFailed = e.detalles.toLowerCase().includes('fallido');
 
-    // LOGIN exitoso: extrae roles del campo detalles — todo en línea, misma altura que el resto
+    // LOGIN exitoso: extrae roles del campo detalles
     if (e.accion === 'LOGIN' && e.detalles.includes('| roles:')) {
         const sepIdx    = e.detalles.indexOf('| roles:');
         const status    = e.detalles.slice(0, sepIdx).trim();
-        const rolesPart = e.detalles.slice(sepIdx + 8).trim(); // skip "| roles:"
+        const rolesPart = e.detalles.slice(sepIdx + 8).trim();
         const allRoles  = rolesPart.split(',').map(r => r.trim()).filter(Boolean);
-        // Si el usuario tiene ADMIN, solo mostramos ADMIN (oculta roles secundarios)
         const roles     = allRoles.includes('ADMIN') ? ['ADMIN'] : allRoles;
         return (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
@@ -177,7 +237,33 @@ function renderDetalles(e: AuditEntry): JSX.Element | string {
         );
     }
 
-    // Resto de eventos (incluidos intentos fallidos)
+    // Formato con pipes: "Nombre Entidad | campo: viejo→nuevo | campo2: ..."
+    // Generado por ClienteService.editar() y ProveedorService.editar()
+    if (e.detalles.includes(' | ')) {
+        const partes     = e.detalles.split(' | ');
+        const nombre     = partes[0];
+        const segmentos  = partes.slice(1);
+
+        return (
+            <span style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* Nombre de la entidad */}
+                <span style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize:   '12px',
+                    fontWeight: 500,
+                    color:      'var(--text-primary)',
+                }}>
+                    {nombre}
+                </span>
+                {/* Pills de cambios */}
+                <span style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {segmentos.map((seg, i) => renderSegmentoCambio(seg, i))}
+                </span>
+            </span>
+        );
+    }
+
+    // Texto plano (fallback / otros eventos)
     return (
         <span style={{
             fontFamily: 'var(--font-body)',

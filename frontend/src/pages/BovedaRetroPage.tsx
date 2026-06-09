@@ -6,6 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { Pencil }              from 'lucide-react';
 import type { Producto, EstadoConservacion, PaginatedResponse } from '../types/models';
 import { MOCK_PRODUCTOS }      from '../mocks/mockProductos';
 import { TasadorIA }           from '../components/boveda/TasadorIA';
@@ -15,6 +16,7 @@ import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
 import { productoService }     from '../services/productoService';
 import api from '../services/api';
+import { ActionIconBtn }       from '../components/ui/ActionIconBtn';
 
 // ── Constantes de estado de conservación ─────────────────────────────────────
 
@@ -150,38 +152,12 @@ function DetailRow({ p, onEdit }: { p: Producto; onEdit: () => void }) {
 
                     {/* Botón editar — esquina derecha del panel */}
                     <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'flex-end', marginTop: '4px' }}>
-                        <button
+                        <ActionIconBtn
+                            icon={Pencil}
+                            color="gold"
+                            title="Editar pieza retro"
                             onClick={e => { e.stopPropagation(); onEdit(); }}
-                            style={{
-                                fontFamily:    'var(--font-display)',
-                                fontSize:      '10px',
-                                fontWeight:    700,
-                                letterSpacing: '0.10em',
-                                textTransform: 'uppercase',
-                                padding:       '6px 16px',
-                                background:    'transparent',
-                                color:         'var(--accent-gold)',
-                                border:        '1px solid rgba(251,191,36,0.45)',
-                                borderRadius:  'var(--radius-base)',
-                                cursor:        'pointer',
-                                transition:    'all 150ms var(--ease-out)',
-                                display:       'flex',
-                                alignItems:    'center',
-                                gap:           '6px',
-                            }}
-                            onMouseEnter={e => {
-                                const b = e.currentTarget as HTMLButtonElement;
-                                b.style.background = 'rgba(251,191,36,0.10)';
-                                b.style.borderColor = 'rgba(251,191,36,0.75)';
-                            }}
-                            onMouseLeave={e => {
-                                const b = e.currentTarget as HTMLButtonElement;
-                                b.style.background = 'transparent';
-                                b.style.borderColor = 'rgba(251,191,36,0.45)';
-                            }}
-                        >
-                            ✎ EDITAR PIEZA
-                        </button>
+                        />
                     </div>
                 </div>
             </td>

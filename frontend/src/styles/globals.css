@@ -5,7 +5,7 @@
     Legible, moderna y sin distracciones visuales.
    ═══════════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
 /* ══════════════════════════════════════════════════════════════════
    VARIABLES
@@ -56,10 +56,14 @@
     --border-strong:  rgba(255, 255, 255, 0.44);
     --border-accent:  rgba(59, 130, 246, 0.70);
 
-    /* ── Tipografía — pila Apple-first ────────────────────────── */
-    --font-display: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif;
-    --font-body:    -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif;
-    --font-mono:    'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
+    /* ── Tipografía — pila Apple SF Pro ──────────────────────────
+       Una sola familia para toda la UI, igual que iOS / macOS.
+       -apple-system → SF Pro en Apple  |  'Inter' → resto.
+       --font-code reservado solo para bloques de código real.   */
+    --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --font-body:    'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono:    'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+    --font-code:    'JetBrains Mono', 'SF Mono', ui-monospace, 'Cascadia Code', monospace;
 
     /* Escala — base 17px */
     --text-xs:   0.6875rem;  /* ~12px */
@@ -149,6 +153,9 @@ body {
     min-height: 100dvh;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Números tabulares y ligaduras tipográficas — estilo SF Pro */
+    font-feature-settings: "tnum" 1, "ss01" 1;
+    font-variant-numeric: tabular-nums;
     /* Ambiente: halo azul superior potente + focos secundarios + retícula */
     background-image:
         radial-gradient(ellipse 160% 80% at 50% -15%,  rgba(59, 130, 246, 0.30) 0%, transparent 58%),
@@ -207,8 +214,9 @@ a:focus-visible {
     border-radius:  var(--radius-sm);
 }
 
-code, pre, .mono {
-    font-family: var(--font-mono);
+/* Solo para código fuente real — el resto de la UI usa --font-mono = Inter */
+code, pre, .code-block {
+    font-family: var(--font-code);
     font-size:   0.9em;
 }
 

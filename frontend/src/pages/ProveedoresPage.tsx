@@ -11,10 +11,12 @@
 
 import { useState, useEffect } from 'react';
 import type { CSSProperties }  from 'react';
+import { Pencil, Trash2 }      from 'lucide-react';
 import { FormModal, FieldConfig }           from '../components/common/FormModal';
 import { proveedorService, Proveedor, ProveedorForm } from '../services/entidadService';
 import { useTableFilters, calculateAutoLimit }  from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }      from '../components/table/TableControls';
+import { ActionIconBtn }                    from '../components/ui/ActionIconBtn';
 
 // ── Campos del formulario ─────────────────────────────────────────────────────
 
@@ -282,8 +284,10 @@ export function ProveedoresPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                        <button onClick={() => handleEdit(p)} style={actionBtnStyle('#0088cc')} title="Editar proveedor">EDITAR</button>
-                                        <button onClick={() => handleDelete(p)} style={actionBtnStyle('#cc2244')} title="Eliminar proveedor">ELIMINAR</button>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <ActionIconBtn icon={Pencil} color="cyan"   title="Editar proveedor"   onClick={() => handleEdit(p)} />
+                                            <ActionIconBtn icon={Trash2} color="danger"                 title="Eliminar proveedor" onClick={() => handleDelete(p)} />
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

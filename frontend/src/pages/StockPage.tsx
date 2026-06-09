@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { PackagePlus, PackageMinus, SlidersHorizontal } from 'lucide-react';
 import { productoService }        from '../services/productoService';
 import { calculateAutoLimit }     from '../hooks/useTableFilters';
 import type { Producto, TipoMovimiento } from '../types/models';
@@ -18,6 +19,7 @@ import {
     TIPO_COLOR,
 } from '../components/stock/MovimientoDrawer';
 import type { StockEstado } from '../components/stock/MovimientoDrawer';
+import { ActionIconBtn }          from '../components/ui/ActionIconBtn';
 
 // ── Estilos reutilizables ─────────────────────────────────────────────────────
 
@@ -325,25 +327,26 @@ export function StockPage(): JSX.Element {
                                             </td>
                                             {/* Acciones */}
                                             <td style={{ padding: '12px 14px', whiteSpace: 'nowrap' }}>
-                                                <ActionBtn
-                                                    label="↓ Entrada"
-                                                    color="var(--accent-primary)"
-                                                    onClick={() => openDrawer(p, 'ENTRADA')}
-                                                    title="Registrar entrada de stock"
-                                                />
-                                                <ActionBtn
-                                                    label="↑ Salida"
-                                                    color="var(--accent-danger)"
-                                                    onClick={() => openDrawer(p, 'SALIDA')}
-                                                    title="Registrar salida de stock"
-                                                />
-                                                <ActionBtn
-                                                    label="⚙ Ajuste"
-                                                    color="var(--accent-gold)"
-                                                    onClick={() => openDrawer(p, 'AJUSTE')}
-                                                    title="Ajustar stock manualmente"
-                                                    last
-                                                />
+                                                <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                    <ActionIconBtn
+                                                        icon={PackagePlus}
+                                                        color="primary"
+                                                        title="Registrar entrada de stock"
+                                                        onClick={() => openDrawer(p, 'ENTRADA')}
+                                                    />
+                                                    <ActionIconBtn
+                                                        icon={PackageMinus}
+                                                        color="danger"
+                                                        title="Registrar salida de stock"
+                                                        onClick={() => openDrawer(p, 'SALIDA')}
+                                                    />
+                                                    <ActionIconBtn
+                                                        icon={SlidersHorizontal}
+                                                        color="gold"
+                                                        title="Ajustar stock manualmente"
+                                                        onClick={() => openDrawer(p, 'AJUSTE')}
+                                                    />
+                                                </div>
                                             </td>
                                         </tr>
                                     );
@@ -365,52 +368,6 @@ export function StockPage(): JSX.Element {
             onSaved={handleMovimientoSaved}
         />
         </>
-    );
-}
-
-// ── Botón de acción de tabla ───────────────────────────────────────────────────
-
-function ActionBtn({ label, color, onClick, title, last = false }: {
-    label:   string;
-    color:   string;
-    onClick: () => void;
-    title?:  string;
-    last?:   boolean;
-}): JSX.Element {
-    return (
-        <button
-            onClick={onClick}
-            title={title}
-            style={{
-                fontFamily:    'var(--font-display)',
-                fontSize:      '11px',
-                fontWeight:    700,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                padding:       '5px 10px',
-                background:    'transparent',
-                color,
-                border:        `1px solid ${color}`,
-                borderRadius:  '4px',
-                cursor:        'pointer',
-                marginRight:   last ? 0 : '5px',
-                opacity:       0.75,
-                transition:    'opacity 120ms ease, background 120ms ease',
-                whiteSpace:    'nowrap',
-            }}
-            onMouseEnter={e => {
-                const btn = e.currentTarget as HTMLButtonElement;
-                btn.style.opacity    = '1';
-                btn.style.background = `${color}18`;
-            }}
-            onMouseLeave={e => {
-                const btn = e.currentTarget as HTMLButtonElement;
-                btn.style.opacity    = '0.75';
-                btn.style.background = 'transparent';
-            }}
-        >
-            {label}
-        </button>
     );
 }
 

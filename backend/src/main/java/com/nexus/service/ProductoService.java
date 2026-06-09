@@ -22,6 +22,7 @@ public class ProductoService {
     private final CategoriaRepository        categoriaRepository;
     private final UbicacionAlmacenRepository ubicacionRepository;
     private final AuditService               auditService;
+    private static final String PRODSTRING ="PRODUCTO";
 
     public ProductoService(ProductoRepository productoRepository,
                            ProveedorRepository proveedorRepository,
@@ -41,7 +42,7 @@ public class ProductoService {
         }
         Producto p = toEntity(dto);
         ProductoDTO saved = toDTO(productoRepository.save(p));
-        auditService.log("PRODUCTO", "CREATE", saved.getId(),
+        auditService.log(PRODSTRING, "CREATE", saved.getId(),
                 "SKU: " + saved.getSku() + " | " + saved.getNombre());
         return saved;
     }
@@ -86,7 +87,7 @@ public class ProductoService {
             p.setUbicacion(null);
         }
         ProductoDTO result = toDTO(productoRepository.save(p));
-        auditService.log("PRODUCTO", "UPDATE", id,
+        auditService.log(PRODSTRING, "UPDATE", id,
                 "SKU: " + result.getSku() + " | " + result.getNombre());
         return result;
     }
@@ -112,7 +113,7 @@ public class ProductoService {
                 .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
         p.setActivo(false);
         productoRepository.save(p);
-        auditService.log("PRODUCTO", "DELETE", id,
+        auditService.log(PRODSTRING, "DELETE", id,
                 "Baja lógica | SKU: " + p.getSku() + " | " + p.getNombre());
     }
 

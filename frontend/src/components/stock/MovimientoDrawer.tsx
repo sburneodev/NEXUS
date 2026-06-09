@@ -316,7 +316,14 @@ export function MovimientoDrawer({
     // ── Resetear form cada vez que el drawer se abre ──────────────────────────
     useEffect(() => {
         if (open) {
-            setForm(makeEmptyForm(initialTipo));
+            // Si es RETRO con stock ≥ 1 y se abre con ENTRADA, cambiamos a SALIDA
+            // automáticamente — no tiene sentido hacer entrada de una pieza en stock
+            const esRetroConStock = producto?.tipoProducto === 'RETRO'
+                && (producto?.stockActual ?? 0) >= 1;
+            const tipoEfectivo: TipoMovimiento = esRetroConStock && initialTipo === 'ENTRADA'
+                ? 'SALIDA'
+                : initialTipo;
+            setForm(makeEmptyForm(tipoEfectivo));
             setResult(null);
             setSelectedCliente(null);
             setSelectedProveedor(null);
@@ -432,6 +439,11 @@ export function MovimientoDrawer({
     // Retro: unidad única — no se puede añadir stock si ya tiene ≥1 unidad
     const retroConflicto    = producto?.tipoProducto === 'RETRO'
         && form.tipoMovimiento === 'ENTRADA'
+        && (producto?.stockActual ?? 0) >= 1;
+    // Función para saber si un tipo está bloqueado para este producto
+    const tipoEsBloqueado = (t: TipoMovimiento): boolean =>
+        t === 'ENTRADA'
+        && producto?.tipoProducto === 'RETRO'
         && (producto?.stockActual ?? 0) >= 1;
     const canSubmit = !isSaving && !stockInsuficiente && !retroConflicto;
 
@@ -604,10 +616,18 @@ export function MovimientoDrawer({
                         <label style={labelStyle}>Tipo de movimiento</label>
                         <div style={{ display: 'flex', gap: '6px' }}>
                             {(['ENTRADA', 'SALIDA', 'AJUSTE'] as TipoMovimiento[]).map(t => {
-                                const active = form.tipoMovimiento === t;
+                                const active   = form.tipoMovimiento === t;
+                                const bloqueado = tipoEsBloqueado(t);
                                 return (
                                     <button key={t}
-                                        onClick={() => { setField('tipoMovimiento', t); setSelectedCliente(null); setSelectedProveedor(null); }}
+                                        disabled={bloqueado}
+                                        onClick={() => {
+                                            if (bloqueado) return;
+                                            setField('tipoMovimiento', t);
+                                            setSelectedCliente(null);
+                                            setSelectedProveedor(null);
+                                        }}
+                                        title={bloqueado ? 'No disponible — pieza retro ya en stock' : undefined}
                                         style={{
                                             flex:          1,
                                             fontFamily:    'var(--font-display)',
@@ -619,25 +639,27 @@ export function MovimientoDrawer({
                                             background: active
                                                 ? `color-mix(in srgb, ${TIPO_COLOR[t]} 14%, transparent)`
                                                 : 'transparent',
-                                            color:         active ? TIPO_COLOR[t] : 'var(--text-muted)',
-                                            border:        `1px solid ${active ? TIPO_COLOR[t] : 'var(--border-default)'}`,
+                                            color:    bloqueado ? 'var(--text-muted)'
+                                                    : active    ? TIPO_COLOR[t]
+                                                    : 'var(--text-muted)',
+                                            border:        `1px solid ${active ? TIPO_COLOR[t] : 'var(--border-subtle)'}`,
                                             borderRadius:  '5px',
-                                            cursor:        'pointer',
+                                            cursor:        bloqueado ? 'not-allowed' : 'pointer',
                                             transition:    'all 140ms ease',
-                                            opacity:       active ? 1 : 0.7,
+                                            opacity:       bloqueado ? 0.3 : active ? 1 : 0.7,
                                         }}
                                         onMouseEnter={e => {
-                                            if (!active) {
+                                            if (!active && !bloqueado) {
                                                 (e.currentTarget as HTMLButtonElement).style.opacity = '1';
                                                 (e.currentTarget as HTMLButtonElement).style.color = TIPO_COLOR[t];
                                                 (e.currentTarget as HTMLButtonElement).style.borderColor = TIPO_COLOR[t];
                                             }
                                         }}
                                         onMouseLeave={e => {
-                                            if (!active) {
+                                            if (!active && !bloqueado) {
                                                 (e.currentTarget as HTMLButtonElement).style.opacity = '0.7';
                                                 (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)';
-                                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)';
+                                                (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-subtle)';
                                             }
                                         }}
                                     >
@@ -648,6 +670,32 @@ export function MovimientoDrawer({
                         </div>
                     </div>
 
+                    {/* ── Campos del formulario (ocultos si retro bloqueado) ── */}
+                    {retroConflicto ? (
+                        /* Pieza retro con stock ≥ 1: no se puede hacer ENTRADA */
+                        <div style={{
+                            display: 'flex', flexDirection: 'column', alignItems: 'center',
+                            gap: '12px', padding: '24px 16px', textAlign: 'center',
+                            background:   'rgba(251,191,36,0.06)',
+                            border:       '1px solid rgba(251,191,36,0.30)',
+                            borderRadius: '8px',
+                        }}>
+                            <span style={{ fontSize: '32px', lineHeight: 1 }}>⚠</span>
+                            <div>
+                                <p style={{ fontFamily: 'var(--font-display)', fontSize: '12px', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--accent-gold)', margin: '0 0 6px' }}>
+                                    Pieza retro — unidad única
+                                </p>
+                                <p style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
+                                    Este artículo ya tiene{' '}
+                                    <strong style={{ color: 'var(--text-primary)' }}>1 unidad</strong>{' '}
+                                    en stock.<br />Solo puede existir una unidad de cada pieza retro.<br />
+                                    Para registrar la venta usa{' '}
+                                    <strong style={{ color: 'var(--accent-danger)' }}>↑ Salida</strong>.
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
                     {/* Cantidad */}
                     <div>
                         <label style={labelStyle}>Cantidad *</label>
@@ -679,25 +727,6 @@ export function MovimientoDrawer({
                                     <strong>Stock insuficiente</strong> — Disponible:{' '}
                                     <strong style={{ color: 'var(--text-primary)' }}>{producto?.stockActual}</strong>{' '}
                                     · Pedido: <strong style={{ color: 'var(--text-primary)' }}>{cantidadNum}</strong>
-                                </span>
-                            </div>
-                        )}
-                        {retroConflicto && (
-                            <div style={{
-                                display:      'flex', alignItems: 'center', gap: '7px',
-                                marginTop:    '7px', padding: '8px 12px',
-                                background:   'rgba(251,191,36,0.08)',
-                                border:       '1px solid rgba(251,191,36,0.35)',
-                                borderRadius: '6px',
-                                fontFamily:   'var(--font-mono)', fontSize: '12px',
-                                color:        'var(--accent-gold)', lineHeight: 1.5,
-                            }}>
-                                <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠</span>
-                                <span>
-                                    <strong>Pieza retro — unidad única.</strong>{' '}
-                                    Este artículo ya tiene{' '}
-                                    <strong style={{ color: 'var(--text-primary)' }}>1 unidad</strong>{' '}
-                                    en stock. Solo puede haber una unidad de cada pieza retro.
                                 </span>
                             </div>
                         )}
@@ -776,6 +805,9 @@ export function MovimientoDrawer({
                             onFocus={onFI} onBlur={onBI}
                         />
                     </div>
+                        </>
+                    )}
+                    {/* ────────────────────────────────────────────────── */}
 
                     {/* Resultado */}
                     {result && (

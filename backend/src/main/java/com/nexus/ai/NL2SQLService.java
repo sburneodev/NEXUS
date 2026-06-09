@@ -1,5 +1,6 @@
 package com.nexus.ai;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,10 +20,11 @@ public class NL2SQLService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String KEY_DESCRIPCION = "descripcion";
     
-    public NL2SQLService(GeminiService geminiService, JdbcTemplate jdbcTemplate) {
-        this.geminiService = geminiService;
-        this.jdbcTemplate  = jdbcTemplate;
-    }
+    public NL2SQLService(GeminiService geminiService,
+            @Qualifier("readonlyJdbcTemplate") JdbcTemplate jdbcTemplate) {
+			this.geminiService = geminiService;
+			this.jdbcTemplate  = jdbcTemplate;
+			}
 
     private static final String SCHEMA = """
         Tablas disponibles (PostgreSQL):

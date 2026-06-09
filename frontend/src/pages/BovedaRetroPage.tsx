@@ -38,8 +38,11 @@ function simulateFilter(
     const filtered = data.filter(p => {
         const matchSearch = !q || p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
         const matchEstado = estado === 'TODOS' || p.estadoConservacion === estado;
+        // Usamos stockActual como fuente de verdad para retro vendido (stock=0),
+        // en lugar de p.activo que puede no estar actualizado tras un movimiento.
+        const esVendido   = p.stockActual === 0;
         const matchActivo = activo === 'TODOS'
-            || (activo === 'ACTIVOS' ? p.activo === true : p.activo === false);
+            || (activo === 'ACTIVOS' ? !esVendido : esVendido);
         return matchSearch && matchEstado && matchActivo;
     });
     return {
@@ -209,16 +212,18 @@ export function BovedaRetroPage(): JSX.Element {
         const params = buildParams();
         params.set('tipo', 'RETRO');
         if (filterEstado !== 'TODOS') params.set('estado', filterEstado);
-        if (filterActivo === 'ACTIVOS')  params.set('activo', 'true');
-        if (filterActivo === 'VENDIDOS') params.set('activo', 'false');
+        // No enviamos ?activo al backend porque el backend puede no actualizar
+        // ese campo al hacer movimientos de stock. La distinción DISPONIBLE/VENDIDO
+        // se hace client-side mediante stockActual === 0.
 
         api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
             .then(({ data }) => {
                 if (!cancelled) {
                     const filtered = data.content.filter(p => {
                         const matchEstado = filterEstado === 'TODOS' || p.estadoConservacion === filterEstado;
+                        const esVendido   = p.stockActual === 0;
                         const matchActivo = filterActivo === 'TODOS'
-                            || (filterActivo === 'ACTIVOS' ? p.activo === true : p.activo === false);
+                            || (filterActivo === 'ACTIVOS' ? !esVendido : esVendido);
                         return matchEstado && matchActivo;
                     });
                     const hasFilter = filterEstado !== 'TODOS' || filterActivo !== 'TODOS';
@@ -502,8 +507,8 @@ export function BovedaRetroPage(): JSX.Element {
 
                                             {/* Disponibilidad */}
                                             <td style={{ padding: '12px 16px' }}>
-                                                <span className={p.activo ? 'badge badge-green' : 'badge badge-danger'} style={{ fontSize: '9px' }}>
-                                                    {p.activo ? '● DISPONIBLE' : '✕ VENDIDO'}
+                                                <span className={p.stockActual === 0 ? 'badge badge-danger' : 'badge badge-green'} style={{ fontSize: '9px' }}>
+                                                    {p.stockActual === 0 ? '✕ VENDIDO' : '● DISPONIBLE'}
                                                 </span>
                                             </td>
 

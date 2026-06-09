@@ -36,14 +36,20 @@ export function getEstado(p: Producto): StockEstado {
 }
 
 export function getStockColor(p: Producto): string {
-    return p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : ESTADO_COLOR[getEstado(p)];
+    if (p.tipoProducto === 'RETRO') {
+        // Retro vendido (stock 0) → rojo; disponible → dorado
+        return p.stockActual === 0 ? 'var(--accent-danger)' : 'var(--accent-gold)';
+    }
+    return ESTADO_COLOR[getEstado(p)];
 }
 
 export function getEstadoBadge(p: Producto): { text: string; color: string } {
     if (p.tipoProducto === 'RETRO') {
-        return p.activo
-            ? { text: '● OK',    color: 'var(--accent-primary)' }
-            : { text: 'VENDIDO', color: 'var(--accent-danger)'  };
+        // Usamos stockActual como fuente de verdad: retro con stock 0 = VENDIDO,
+        // independientemente del flag activo (que puede no actualizarse en tiempo real).
+        return p.stockActual === 0
+            ? { text: 'VENDIDO', color: 'var(--accent-danger)'  }
+            : { text: '● OK',    color: 'var(--accent-primary)' };
     }
     const e = getEstado(p);
     return {

@@ -8,7 +8,7 @@
  *   En mobile el panel visual se renderiza como overlay fijo encima del contenido.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Outlet, useLocation }  from 'react-router-dom';
 import { Sidebar }              from './Sidebar';
 import { Navbar }               from './Navbar';
@@ -51,6 +51,7 @@ export function Layout(): JSX.Element {
     const [isMobile,   setIsMobile]   = useState(initMobile);
     const [collapsed,  setCollapsed]  = useState(initTablet);   // tablet arranca colapsado
     const [mobileOpen, setMobileOpen] = useState(false);
+    const mainRef = useRef<HTMLElement>(null);
 
     const location                    = useLocation();
     const { logout, isAuthenticated } = useAuth();
@@ -71,8 +72,11 @@ export function Layout(): JSX.Element {
         return () => { window.removeEventListener('resize', handle); cancelAnimationFrame(frame); };
     }, []);
 
-    // Cerrar sidebar mobile al navegar
-    useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+    // Cerrar sidebar mobile al navegar + scroll al tope de página
+    useEffect(() => {
+        setMobileOpen(false);
+        mainRef.current?.scrollTo(0, 0);
+    }, [location.pathname]);
 
     // CSS var para centrado de modales
     useEffect(() => {
@@ -134,7 +138,7 @@ export function Layout(): JSX.Element {
                     onMenuToggle={isMobile ? toggleMobile : undefined}
                     isMobile={isMobile}
                 />
-                <main style={{
+                <main ref={mainRef} style={{
                     flex:      1,
                     padding:   isMobile ? '12px' : 'clamp(16px, 2vw, 24px)',
                     overflowY: 'auto',

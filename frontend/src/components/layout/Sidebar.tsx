@@ -19,10 +19,11 @@
  * (sin saltos de React) → el contenido se adapta de forma casi imperceptible.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { Logo } from '../brand/Logo';
+import { CookiePreferences } from '../cookies/CookiePreferences';
 
 interface NavItem {
     path:     string;
@@ -66,8 +67,9 @@ interface SidebarProps {
 }
 
 export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClose }: SidebarProps): JSX.Element {
-    const location       = useLocation();
-    const { hasAnyRole } = useAuth();
+    const location          = useLocation();
+    const { hasAnyRole }    = useAuth();
+    const [showPrivacy, setShowPrivacy] = useState(false);
 
     const isActive = useCallback(
         (path: string) => location.pathname.startsWith(path),
@@ -316,9 +318,39 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
                 ))}
             </nav>
 
-            {/* ── Footer COLAPSAR — solo desktop ── */}
+            {/* ── Footer: enlace de privacidad + botón colapsar — solo desktop ── */}
             {!isMobile && (
-                <div style={{ borderTop: '1px solid var(--sidebar-border)', padding: '10px 8px' }}>
+                <div style={{ borderTop: '1px solid var(--sidebar-border)', padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+
+                    {/* Enlace discreto de privacidad — solo cuando hay etiquetas */}
+                    {showLabels && (
+                        <button
+                            onClick={() => setShowPrivacy(true)}
+                            style={{
+                                width:         '100%',
+                                background:    'transparent',
+                                border:        'none',
+                                textAlign:     'left',
+                                fontFamily:    'var(--font-mono)',
+                                fontSize:      '9px',
+                                letterSpacing: '0.06em',
+                                color:         'var(--sidebar-text-muted)',
+                                cursor:        'pointer',
+                                padding:       '3px 12px',
+                                opacity:       0.45,
+                                transition:    'opacity 160ms ease',
+                                display:       'flex',
+                                alignItems:    'center',
+                                gap:           '5px',
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.9'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.45'; }}
+                        >
+                            <span style={{ fontSize: '10px' }}>🔒</span>
+                            Privacidad y Cookies
+                        </button>
+                    )}
+
                     <button
                         onClick={onToggle}
                         title={collapsed ? 'Expandir' : 'Colapsar'}
@@ -358,15 +390,22 @@ export function Sidebar({ collapsed, onToggle, isMobile, mobileOpen, onMobileClo
          * Cuando layoutWidth pasa de 64→0 (al cruzar el breakpoint mobile),
          * el área de contenido se expande de forma imperceptible en 320ms.
          */
-        <aside style={{
-            width:      `${layoutWidth}px`,
-            flexShrink: 0,
-            transition: `width ${TRANSITION}`,
-            overflow:   'visible',    // el panel visual puede desbordarse (fixed)
-            position:   'relative',
-            zIndex:     20,
-        }}>
-            {panel}
-        </aside>
+        <>
+            <aside style={{
+                width:      `${layoutWidth}px`,
+                flexShrink: 0,
+                transition: `width ${TRANSITION}`,
+                overflow:   'visible',    // el panel visual puede desbordarse (fixed)
+                position:   'relative',
+                zIndex:     20,
+            }}>
+                {panel}
+            </aside>
+
+            {/* Panel de privacidad — montado fuera del aside para evitar overflow */}
+            {showPrivacy && (
+                <CookiePreferences onClose={() => setShowPrivacy(false)} />
+            )}
+        </>
     );
 }

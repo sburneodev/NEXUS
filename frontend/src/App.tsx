@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LoginPage }              from './pages/LoginPage';
 import { DashboardPage }          from './pages/DashboardPage';
 import { ProductosPage }          from './pages/ProductosPage';
+import { ProductosNuevoPage }     from './pages/ProductosNuevoPage';
 import { StockPage }              from './pages/StockPage';
 import { BovedaRetroPage }        from './pages/BovedaRetroPage';
 import { AlmacenPage }            from './pages/AlmacenPage';
@@ -18,7 +19,6 @@ import { AiPanelProvider }        from './context/AiPanelContext';
 import { AiPage }                 from './pages/AiPage';
 import './styles/ia-avatar.css';
 import { AuthProvider }           from './context/AuthContext';
-import { CookieBanner }          from './components/cookies/CookieBanner';
 
 function ComingSoon({ name }: { name: string }): JSX.Element {
     return (
@@ -35,7 +35,6 @@ function ComingSoon({ name }: { name: string }): JSX.Element {
 function App(): JSX.Element {
     return (
         <AiPanelProvider>
-        <CookieBanner />
         <BrowserRouter>
             <AuthProvider>
             <Routes>
@@ -46,7 +45,8 @@ function App(): JSX.Element {
                 <Route element={<ProtectedRoute />}>
                     <Route element={<Layout />}>
                         <Route path="/dashboard"   element={<DashboardPage />} />
-                        <Route path="/productos"   element={<ProductosPage />} />
+                        <Route path="/productos"       element={<ProductosPage />} />
+                        <Route path="/productos/nuevo" element={<ProductosNuevoPage />} />
                         <Route path="/clientes"    element={<ClientesPage />} />
                         <Route path="/proveedores" element={<ProveedoresPage />} />
                         <Route path="/stock"       element={<StockPage />} />

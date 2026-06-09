@@ -4,6 +4,7 @@ import com.nexus.ai.InformeStockService;
 import com.nexus.ai.NL2SQLService;
 import com.nexus.ai.RecompraService;
 import com.nexus.ai.TasadorService;
+import com.nexus.audit.AuditService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -14,19 +15,22 @@ import java.util.Map;
 @RequestMapping("/ai")
 public class AiController {
 
-    private final TasadorService tasadorService;
-    private final RecompraService recompraService;
+    private final TasadorService     tasadorService;
+    private final RecompraService    recompraService;
     private final InformeStockService informeStockService;
-    private final NL2SQLService nl2SQLService;
+    private final NL2SQLService      nl2SQLService;
+    private final AuditService       auditService;
 
     public AiController(TasadorService tasadorService,
                         RecompraService recompraService,
                         InformeStockService informeStockService,
-                        NL2SQLService nl2SQLService) {
+                        NL2SQLService nl2SQLService,
+                        AuditService auditService) {
         this.tasadorService      = tasadorService;
         this.recompraService     = recompraService;
         this.informeStockService = informeStockService;
         this.nl2SQLService       = nl2SQLService;
+        this.auditService        = auditService;
     }
 
     // AI-04 — POST /api/ai/tasar
@@ -59,6 +63,7 @@ public class AiController {
     public ResponseEntity<Map<String, Object>> nl2sql(
             @RequestBody Map<String, String> body) {
         String pregunta = body.getOrDefault("pregunta", "");
+        auditService.log("AI", "AI_QUERY", null, "NL2SQL: " + pregunta);
         return ResponseEntity.ok(nl2SQLService.ejecutarConsulta(pregunta));
     }
 }

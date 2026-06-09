@@ -9,10 +9,11 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Producto, EstadoConservacion, PaginatedResponse } from '../types/models';
 import { MOCK_PRODUCTOS }      from '../mocks/mockProductos';
 import { TasadorIA }           from '../components/boveda/TasadorIA';
-import { ProductModal }        from '../components/productos/ProductModal';
+import { ProductFormPanel }    from '../components/productos/ProductFormPanel';
 import type { ProductForm }    from '../components/productos/ProductModal';
 import { useTableFilters, calculateAutoLimit } from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows } from '../components/table/TableControls';
+import { productoService }     from '../services/productoService';
 import api from '../services/api';
 
 // ── Constantes de estado de conservación ─────────────────────────────────────
@@ -197,9 +198,8 @@ export function BovedaRetroPage(): JSX.Element {
     const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
     const [expandedId,      setExpandedId]      = useState<number | null>(null);
     const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
-    const [modalOpen,    setModalOpen]    = useState(false);
-    const [prefill,      setPrefill]      = useState<Partial<ProductForm> | undefined>(undefined);
-    const [editProduct,  setEditProduct]  = useState<Producto | null>(null);
+    const [editOpen,     setEditOpen]     = useState(false);
+    const [selected,     setSelected]     = useState<Producto | null>(null);
     const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
     useEffect(() => {
@@ -242,51 +242,55 @@ export function BovedaRetroPage(): JSX.Element {
         return () => { cancelled = true; };
     }, [filters.querySignal, filterEstado, filterActivo, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
-    function handleRegistrar(data: Partial<ProductForm>): void { setPrefill(data); setEditProduct(null); setModalOpen(true); }
-    function handleOpenNew(): void { setEditProduct(null); setPrefill(undefined); setModalOpen(true); }
-    function handleOpenEdit(p: Producto): void { setEditProduct(p); setPrefill(undefined); setModalOpen(true); }
-    function handleCloseModal(): void { setModalOpen(false); setPrefill(undefined); setEditProduct(null); }
+    function handleRegistrar(_data: Partial<ProductForm>): void {
+        // Desde el Tasador IA: abre el panel vacío en modo creación RETRO
+        setSelected(null);
+        setEditOpen(true);
+    }
+    function handleOpenNew(): void  { setSelected(null); setEditOpen(true); }
+    function handleOpenEdit(p: Producto): void { setSelected(p); setEditOpen(true); }
+    function closeEdit(): void { setEditOpen(false); setSelected(null); }
 
-    const handleSave = useCallback((data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>): void => {
-        if (editProduct) {
-            // Modo edición — PUT al backend
-            api.put(`/productos/${editProduct.id}`, data)
-                .then(() => {
-                    setRows(prev => prev.map(r =>
-                        r.id === editProduct.id
-                            ? { ...r, ...data, id: editProduct.id }
-                            : r
-                    ));
-                    setExpandedId(null);
-                })
-                .catch(() => {
-                    filters.setPage(filters.page);
-                });
-        } else {
-            // Modo creación — POST al backend
-            api.post<Producto>('/productos', data)
-                .then(({ data: nuevo }) => {
-                    // Añade la nueva pieza al principio de la tabla sin recargar
-                    setRows(prev => [nuevo, ...prev]);
-                })
-                .catch(() => {
-                    // Si falla, recarga la página actual para reflejar el estado real
-                    filters.setPage(0);
-                });
+    const handleSave = useCallback(async (
+        data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
+    ): Promise<void> => {
+        try {
+            if (selected) {
+                await productoService.editar(selected.id, data as any);
+                setRows(prev => prev.map(r =>
+                    r.id === selected.id ? { ...r, ...data, id: selected.id } : r
+                ));
+                setExpandedId(null);
+            } else {
+                const { data: nuevo } = await api.post<Producto>('/productos', data);
+                setRows(prev => [nuevo, ...prev]);
+            }
+            closeEdit();
+        } catch (err) {
+            console.error('Error guardando pieza retro:', err);
         }
-        handleCloseModal();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [editProduct]);
+    }, [selected]);
 
     return (
         <div>
+        {editOpen ? (
+            /* ── Panel de alta/edición RETRO a pantalla completa ── */
+            <ProductFormPanel
+                producto={selected}
+                modoRetro={true}
+                onCancel={closeEdit}
+                onSave={handleSave}
+            />
+        ) : (
+            <>
             {/* ── Cabecera ── */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <h1 style={{
                     fontFamily:    'var(--font-display)',
-                    fontSize:      'var(--text-3xl)',
+                    fontSize:      'clamp(16px, 2vw, 22px)',
                     fontWeight:    700,
-                    letterSpacing: '-0.02em',
+                    letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     color:         'var(--text-primary)',
                     lineHeight:    1.1,
@@ -525,14 +529,8 @@ export function BovedaRetroPage(): JSX.Element {
                 </div>
             </div>
 
-            <ProductModal
-                producto={editProduct}
-                isOpen={modalOpen}
-                onClose={handleCloseModal}
-                onSave={handleSave}
-                initialValues={prefill}
-                modoCreacion={editProduct ? undefined : 'RETRO'}
-            />
+            </>
+        )}
         </div>
     );
 }

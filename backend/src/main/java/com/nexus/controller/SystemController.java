@@ -44,7 +44,7 @@ public class SystemController {
 
     private final JdbcTemplate  jdbcTemplate;
     private final AuditService  auditService;
-    private final ObjectMapper  objectMapper;
+    private final ObjectMapper  objectMapper = new ObjectMapper().findAndRegisterModules();
 
     /** Tablas en orden de inserción (respeta FK constraints) */
     private static final List<String> TABLE_ORDER = List.of(
@@ -58,12 +58,18 @@ public class SystemController {
         "clientes"
     );
 
+    /**
+     * Tablas que NO tienen columna 'id' (PK compuesta u otro esquema).
+     * Se usa su clave primaria real para el ORDER BY del SELECT.
+     */
+    private static final Map<String, String> TABLE_ORDER_BY = Map.of(
+        "usuarios_roles", "id_usuario, id_rol"
+    );
+
     public SystemController(JdbcTemplate jdbcTemplate,
-                            AuditService auditService,
-                            ObjectMapper objectMapper) {
+                            AuditService auditService) {
         this.jdbcTemplate = jdbcTemplate;
         this.auditService = auditService;
-        this.objectMapper = objectMapper;
     }
 
     // ══════════════════════════════════════════════════════════════════
@@ -97,8 +103,9 @@ public class SystemController {
             StringBuilder checksum = new StringBuilder();
 
             for (String table : TABLE_ORDER) {
+                String orderBy = TABLE_ORDER_BY.getOrDefault(table, "id");
                 List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                    "SELECT * FROM " + table + " ORDER BY id"
+                    "SELECT * FROM " + table + " ORDER BY " + orderBy
                 );
                 tables.put(table, rows);
                 checksum.append(table).append(":").append(rows.size()).append(" ");

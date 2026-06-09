@@ -45,6 +45,11 @@ export function SystemPage(): JSX.Element {
     const [confirmOpen,   setConfirmOpen]   = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    // ── Hover state para efectos de card ──────────────────────────────
+    const [backupHover,  setBackupHover]  = useState(false);
+    const [restoreHover, setRestoreHover] = useState(false);
+    const [btnHover,     setBtnHover]     = useState(false);
+
     // ── Backup ────────────────────────────────────────────────────────
 
     async function handleBackup(): Promise<void> {
@@ -52,12 +57,10 @@ export function SystemPage(): JSX.Element {
         try {
             const response = await api.get('/system/backup', { responseType: 'blob' });
 
-            // Extraer nombre de archivo del header Content-Disposition
             const disposition = response.headers['content-disposition'] as string | undefined;
             const match = disposition?.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
             const filename = match?.[1]?.replace(/['"]/g, '') ?? 'nexus_backup.json';
 
-            // Forzar descarga en el navegador
             const url  = window.URL.createObjectURL(new Blob([response.data as BlobPart]));
             const link = document.createElement('a');
             link.href     = url;
@@ -124,19 +127,26 @@ export function SystemPage(): JSX.Element {
     return (
         <div>
             {/* ── Cabecera ─────────────────────────────────────────── */}
-            <div style={{ marginBottom: '28px' }}>
+            <div style={{ marginBottom: '28px', animation: 'fadeInDown 0.4s cubic-bezier(0.23,1,0.32,1) both' }}>
                 <h1 style={{
                     fontFamily:    'var(--font-display)',
-                    fontSize:      'var(--text-3xl)',
+                    fontSize:      'clamp(16px, 2vw, 22px)',
                     fontWeight:    700,
-                    letterSpacing: '-0.02em',
+                    letterSpacing: '0.06em',
                     textTransform: 'uppercase',
                     color:         'var(--text-primary)',
                     margin:        0,
                     lineHeight:    1.1,
                 }}>
-                    Sistema{' '}
-                    <span style={{ color: PURPLE }}>& Backup</span>
+                    SISTEMA{' '}
+                    <span style={{
+                        background:           'linear-gradient(125deg, #A78BFA 0%, #8B5CF6 50%, #7C3AED 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor:  'transparent',
+                        backgroundClip:       'text',
+                        filter:               'drop-shadow(0 0 8px rgba(139,92,246,0.22))',
+                        display:              'inline-block',
+                    }}>&amp; BACKUP</span>
                 </h1>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
                     <span style={{
@@ -160,29 +170,44 @@ export function SystemPage(): JSX.Element {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '20px' }}>
 
                 {/* ══ PANEL EXPORTACIÓN ══════════════════════════════ */}
-                <div style={{
-                    background:    'var(--bg-surface)',
-                    border:        `1px solid ${PURPLE_BORDER}`,
-                    borderTop:     `2px solid ${PURPLE}`,
-                    borderRadius:  'var(--radius-xl)',
-                    padding:       '28px',
-                    display:       'flex',
-                    flexDirection: 'column',
-                    gap:           '20px',
-                }}>
+                <div
+                    onMouseEnter={() => setBackupHover(true)}
+                    onMouseLeave={() => setBackupHover(false)}
+                    style={{
+                        background:    'var(--bg-surface)',
+                        border:        `1px solid ${backupHover ? PURPLE : PURPLE_BORDER}`,
+                        borderTop:     `2px solid ${PURPLE}`,
+                        borderRadius:  'var(--radius-xl)',
+                        padding:       '28px',
+                        display:       'flex',
+                        flexDirection: 'column',
+                        gap:           '20px',
+                        /* Lift + glow */
+                        transform:     backupHover ? 'translateY(-5px)' : 'translateY(0)',
+                        boxShadow:     backupHover
+                            ? `0 20px 56px rgba(139,92,246,0.22), 0 4px 16px rgba(0,0,0,0.30)`
+                            : '0 2px 8px rgba(0,0,0,0.15)',
+                        transition:    'transform 280ms cubic-bezier(0.23,1,0.32,1), box-shadow 280ms cubic-bezier(0.23,1,0.32,1), border-color 200ms ease',
+                        /* Entrada */
+                        animation:     'sys-slide-up 0.45s cubic-bezier(0.23,1,0.32,1) both',
+                    }}
+                >
                     {/* Header */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                         <div style={{
-                            width:         '44px',
-                            height:        '44px',
-                            borderRadius:  '10px',
-                            background:    PURPLE_GLOW,
-                            border:        `1px solid ${PURPLE_BORDER}`,
-                            display:       'flex',
-                            alignItems:    'center',
-                            justifyContent:'center',
-                            fontSize:      '20px',
-                            flexShrink:    0,
+                            width:          '44px',
+                            height:         '44px',
+                            borderRadius:   '10px',
+                            background:     backupHover
+                                ? `rgba(139,92,246,0.22)`
+                                : PURPLE_GLOW,
+                            border:         `1px solid ${backupHover ? PURPLE : PURPLE_BORDER}`,
+                            display:        'flex',
+                            alignItems:     'center',
+                            justifyContent: 'center',
+                            fontSize:       '20px',
+                            flexShrink:     0,
+                            transition:     'background 200ms ease, border-color 200ms ease',
                         }}>
                             ⬇
                         </div>
@@ -193,8 +218,9 @@ export function SystemPage(): JSX.Element {
                                 fontWeight:    700,
                                 letterSpacing: '0.10em',
                                 textTransform: 'uppercase',
-                                color:         'var(--text-primary)',
+                                color:         backupHover ? '#fff' : 'var(--text-primary)',
                                 marginBottom:  '4px',
+                                transition:    'color 200ms ease',
                             }}>
                                 Copia de Seguridad
                             </div>
@@ -212,10 +238,11 @@ export function SystemPage(): JSX.Element {
 
                     {/* Qué incluye */}
                     <div style={{
-                        background:   'var(--bg-elevated)',
-                        border:       '1px solid var(--border-subtle)',
+                        background:   backupHover ? 'rgba(139,92,246,0.07)' : 'var(--bg-elevated)',
+                        border:       `1px solid ${backupHover ? PURPLE_BORDER : 'var(--border-subtle)'}`,
                         borderRadius: '8px',
                         padding:      '14px 16px',
+                        transition:   'background 200ms ease, border-color 200ms ease',
                     }}>
                         <div style={{
                             fontFamily:    'var(--font-display)',
@@ -236,7 +263,7 @@ export function SystemPage(): JSX.Element {
                                 ['◎', 'Proveedores'],
                                 ['▤', 'Almacén & Ubicaciones'],
                                 ['▦', 'Categorías'],
-                            ].map(([icon, label]) => (
+                            ].map(([icon, label], i) => (
                                 <div key={label} style={{
                                     display:    'flex',
                                     alignItems: 'center',
@@ -244,8 +271,15 @@ export function SystemPage(): JSX.Element {
                                     fontFamily: 'var(--font-mono)',
                                     fontSize:   '10px',
                                     color:      'var(--text-secondary)',
+                                    animation:  `stagger-in 0.3s cubic-bezier(0.23,1,0.32,1) ${120 + i * 40}ms both`,
                                 }}>
-                                    <span style={{ color: PURPLE, fontSize: '10px' }}>{icon}</span>
+                                    <span style={{
+                                        color:      PURPLE,
+                                        fontSize:   '10px',
+                                        transition: 'transform 200ms ease',
+                                        transform:  backupHover ? 'scale(1.25)' : 'scale(1)',
+                                        display:    'inline-block',
+                                    }}>{icon}</span>
                                     {label}
                                 </div>
                             ))}
@@ -289,71 +323,102 @@ export function SystemPage(): JSX.Element {
                         </div>
                     )}
 
-                    {/* Botón */}
-                    <button
-                        onClick={handleBackup}
-                        disabled={backupPhase === 'loading'}
-                        style={{
-                            marginTop:     'auto',
-                            width:         '100%',
-                            padding:       '12px 20px',
-                            background:    backupPhase === 'loading' ? 'var(--bg-overlay)' : PURPLE,
-                            color:         '#fff',
-                            border:        'none',
-                            borderRadius:  'var(--radius-base)',
-                            fontFamily:    'var(--font-display)',
-                            fontSize:      '12px',
-                            fontWeight:    700,
-                            letterSpacing: '0.12em',
-                            textTransform: 'uppercase',
-                            cursor:        backupPhase === 'loading' ? 'wait' : 'pointer',
-                            transition:    'all 160ms ease',
-                            display:       'flex',
-                            alignItems:    'center',
-                            justifyContent:'center',
-                            gap:           '8px',
-                            boxShadow:     backupPhase !== 'loading'
-                                ? `0 4px 16px ${PURPLE_GLOW}, 0 2px 6px rgba(0,0,0,0.20)`
-                                : 'none',
-                        }}
-                        onMouseEnter={e => { if (backupPhase !== 'loading') (e.currentTarget as HTMLButtonElement).style.background = PURPLE_DIM; }}
-                        onMouseLeave={e => { if (backupPhase !== 'loading') (e.currentTarget as HTMLButtonElement).style.background = PURPLE; }}
-                    >
-                        {backupPhase === 'loading' ? (
-                            <>
-                                <span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>◌</span>
-                                Generando…
-                            </>
-                        ) : (
-                            <>⬇ Descargar Copia de Seguridad</>
+                    {/* Botón con shimmer */}
+                    <div style={{ marginTop: 'auto', position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-base)' }}>
+                        {/* Shimmer sweep — visible solo en hover */}
+                        {btnHover && backupPhase !== 'loading' && (
+                            <div style={{
+                                position:   'absolute',
+                                top:        0, bottom: 0,
+                                width:      '60%',
+                                background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)',
+                                animation:  'shimmer-sweep 0.6s ease forwards',
+                                pointerEvents: 'none',
+                                zIndex:     1,
+                            }} />
                         )}
-                    </button>
+                        <button
+                            onClick={handleBackup}
+                            disabled={backupPhase === 'loading'}
+                            onMouseEnter={() => { setBtnHover(true); }}
+                            onMouseLeave={() => { setBtnHover(false); }}
+                            style={{
+                                width:         '100%',
+                                padding:       '12px 20px',
+                                background:    backupPhase === 'loading' ? 'var(--bg-overlay)' : PURPLE,
+                                color:         '#fff',
+                                border:        'none',
+                                borderRadius:  'var(--radius-base)',
+                                fontFamily:    'var(--font-display)',
+                                fontSize:      '12px',
+                                fontWeight:    700,
+                                letterSpacing: '0.12em',
+                                textTransform: 'uppercase',
+                                cursor:        backupPhase === 'loading' ? 'wait' : 'pointer',
+                                transition:    'background 160ms ease, transform 120ms ease, box-shadow 160ms ease',
+                                display:       'flex',
+                                alignItems:    'center',
+                                justifyContent:'center',
+                                gap:           '8px',
+                                boxShadow:     backupPhase !== 'loading'
+                                    ? btnHover
+                                        ? `0 6px 24px rgba(139,92,246,0.45), 0 2px 6px rgba(0,0,0,0.20)`
+                                        : `0 4px 16px ${PURPLE_GLOW}, 0 2px 6px rgba(0,0,0,0.20)`
+                                    : 'none',
+                                transform:     'scale(1)',
+                            }}
+                            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+                            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
+                        >
+                            {backupPhase === 'loading' ? (
+                                <>
+                                    <span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>◌</span>
+                                    Generando…
+                                </>
+                            ) : (
+                                <>⬇ Descargar Copia de Seguridad</>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 {/* ══ PANEL RESTAURACIÓN ══════════════════════════════ */}
-                <div style={{
-                    background:    'var(--bg-surface)',
-                    border:        '1px solid var(--border-default)',
-                    borderTop:     '2px solid var(--accent-danger)',
-                    borderRadius:  'var(--radius-xl)',
-                    padding:       '28px',
-                    display:       'flex',
-                    flexDirection: 'column',
-                    gap:           '20px',
-                }}>
+                <div
+                    onMouseEnter={() => setRestoreHover(true)}
+                    onMouseLeave={() => setRestoreHover(false)}
+                    style={{
+                        background:    'var(--bg-surface)',
+                        border:        `1px solid ${restoreHover ? 'rgba(248,113,113,0.55)' : 'var(--border-default)'}`,
+                        borderTop:     '2px solid var(--accent-danger)',
+                        borderRadius:  'var(--radius-xl)',
+                        padding:       '28px',
+                        display:       'flex',
+                        flexDirection: 'column',
+                        gap:           '20px',
+                        /* Lift + glow */
+                        transform:     restoreHover ? 'translateY(-5px)' : 'translateY(0)',
+                        boxShadow:     restoreHover
+                            ? `0 20px 56px rgba(248,113,113,0.14), 0 4px 16px rgba(0,0,0,0.30)`
+                            : '0 2px 8px rgba(0,0,0,0.15)',
+                        transition:    'transform 280ms cubic-bezier(0.23,1,0.32,1), box-shadow 280ms cubic-bezier(0.23,1,0.32,1), border-color 200ms ease',
+                        /* Entrada con stagger */
+                        animation:     'sys-slide-up 0.45s cubic-bezier(0.23,1,0.32,1) 0.08s both',
+                    }}
+                >
                     {/* Header */}
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
                         <div style={{
                             width:          '44px',
                             height:         '44px',
                             borderRadius:   '10px',
-                            background:     'var(--accent-danger-glow)',
-                            border:         '1px solid var(--accent-danger)',
+                            background:     restoreHover ? 'rgba(248,113,113,0.16)' : 'var(--accent-danger-glow)',
+                            border:         `1px solid ${restoreHover ? 'rgba(248,113,113,0.70)' : 'var(--accent-danger)'}`,
                             display:        'flex',
                             alignItems:     'center',
                             justifyContent: 'center',
                             fontSize:       '20px',
                             flexShrink:     0,
+                            transition:     'background 200ms ease, border-color 200ms ease',
                         }}>
                             ⬆
                         </div>
@@ -364,8 +429,9 @@ export function SystemPage(): JSX.Element {
                                 fontWeight:    700,
                                 letterSpacing: '0.10em',
                                 textTransform: 'uppercase',
-                                color:         'var(--text-primary)',
+                                color:         restoreHover ? '#fff' : 'var(--text-primary)',
                                 marginBottom:  '4px',
+                                transition:    'color 200ms ease',
                             }}>
                                 Restaurar Sistema
                             </div>
@@ -390,6 +456,7 @@ export function SystemPage(): JSX.Element {
                         border:        '1px solid rgba(248,113,113,0.25)',
                         borderRadius:  '8px',
                         padding:       '12px 14px',
+                        animation:     'stagger-in 0.35s cubic-bezier(0.23,1,0.32,1) 0.2s both',
                     }}>
                         <span style={{ color: 'var(--accent-danger)', fontSize: '14px', flexShrink: 0, lineHeight: 1.4 }}>⚠</span>
                         <span style={{
@@ -424,14 +491,24 @@ export function SystemPage(): JSX.Element {
                                 textAlign:     'center',
                                 cursor:        'pointer',
                                 background:    selectedFile ? PURPLE_GLOW : 'var(--bg-elevated)',
-                                transition:    'all 160ms ease',
+                                transition:    'all 200ms ease',
                             }}
-                            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = PURPLE_BORDER; }}
-                            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = selectedFile ? PURPLE_BORDER : 'var(--border-default)'; }}
+                            onMouseEnter={e => {
+                                const el = e.currentTarget as HTMLDivElement;
+                                el.style.borderColor = PURPLE_BORDER;
+                                el.style.background  = selectedFile ? 'rgba(139,92,246,0.18)' : 'rgba(139,92,246,0.06)';
+                                el.style.transform   = 'scale(1.01)';
+                            }}
+                            onMouseLeave={e => {
+                                const el = e.currentTarget as HTMLDivElement;
+                                el.style.borderColor = selectedFile ? PURPLE_BORDER : 'var(--border-default)';
+                                el.style.background  = selectedFile ? PURPLE_GLOW : 'var(--bg-elevated)';
+                                el.style.transform   = 'scale(1)';
+                            }}
                         >
                             {selectedFile ? (
                                 <div>
-                                    <div style={{ fontSize: '20px', marginBottom: '6px' }}>📄</div>
+                                    <div style={{ fontSize: '20px', marginBottom: '6px', animation: 'scaleIn 0.25s ease both' }}>📄</div>
                                     <div style={{
                                         fontFamily:    'var(--font-display)',
                                         fontSize:      '12px',
@@ -547,24 +624,24 @@ export function SystemPage(): JSX.Element {
                             letterSpacing: '0.12em',
                             textTransform: 'uppercase',
                             cursor:        !selectedFile || restorePhase === 'loading' ? 'not-allowed' : 'pointer',
-                            transition:    'all 160ms ease',
-                            display:       'flex',
-                            alignItems:    'center',
-                            justifyContent:'center',
-                            gap:           '8px',
+                            transition:    'all 160ms ease, transform 120ms ease',
                         }}
                         onMouseEnter={e => {
                             if (selectedFile && restorePhase !== 'loading') {
                                 const b = e.currentTarget as HTMLButtonElement;
-                                b.style.background = 'rgba(248,113,113,0.08)';
+                                b.style.background = 'rgba(248,113,113,0.10)';
+                                b.style.boxShadow  = '0 4px 16px rgba(248,113,113,0.18)';
                             }
                         }}
                         onMouseLeave={e => {
                             if (selectedFile && restorePhase !== 'loading') {
                                 const b = e.currentTarget as HTMLButtonElement;
                                 b.style.background = 'transparent';
+                                b.style.boxShadow  = 'none';
                             }
                         }}
+                        onMouseDown={e => { if (selectedFile) (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+                        onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
                     >
                         {restorePhase === 'loading' ? (
                             <>
@@ -583,6 +660,30 @@ export function SystemPage(): JSX.Element {
                 @keyframes spin {
                     from { transform: rotate(0deg); }
                     to   { transform: rotate(360deg); }
+                }
+
+                /* Entrada suave de las cards desde abajo */
+                @keyframes sys-slide-up {
+                    from {
+                        opacity:   0;
+                        transform: translateY(20px) scale(0.98);
+                    }
+                    to {
+                        opacity:   1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+
+                /* Items de contenido: entran deslizando desde la izquierda */
+                @keyframes stagger-in {
+                    from { opacity: 0; transform: translateX(-10px); }
+                    to   { opacity: 1; transform: translateX(0); }
+                }
+
+                /* Shimmer sweep del botón de descarga */
+                @keyframes shimmer-sweep {
+                    from { transform: translateX(-120%); }
+                    to   { transform: translateX(300%); }
                 }
             `}</style>
 
@@ -619,6 +720,7 @@ function ConfirmRestoreModal({
                     background:           'rgba(0,0,0,0.60)',
                     backdropFilter:       'blur(4px)',
                     WebkitBackdropFilter: 'blur(4px)',
+                    animation:            'fadeIn 0.18s ease both',
                 }}
             />
             {/* Modal centrado */}
@@ -724,6 +826,10 @@ function ConfirmRestoreModal({
                                 cursor:        'pointer',
                                 transition:    'all 160ms ease',
                             }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-accent)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-default)'; }}
+                            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+                            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
                         >
                             Cancelar
                         </button>
@@ -747,6 +853,8 @@ function ConfirmRestoreModal({
                             }}
                             onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '0.85'; }}
                             onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.opacity = '1'; }}
+                            onMouseDown={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(0.97)'; }}
+                            onMouseUp={e => { (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
                         >
                             Sí, Restaurar
                         </button>

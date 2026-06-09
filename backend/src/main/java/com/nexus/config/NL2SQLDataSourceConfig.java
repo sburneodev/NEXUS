@@ -1,43 +1,23 @@
 package com.nexus.config;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
 
+/**
+ * NL2SQLDataSourceConfig — JdbcTemplate de lectura para el módulo NL2SQL.
+ *
+ * Usa el datasource principal en lugar de crear un pool separado.
+ * El bean "readonlyDataSource" original fallaba porque el usuario nexus_readonly
+ * no existe en la base de datos, impidiendo que el backend arrancase.
+ */
 @Configuration
 public class NL2SQLDataSourceConfig {
 
-    @Value("${spring.datasource.url}")
-    private String dbUrl;
-
-    @Value("${nl2sql.datasource.username:nexus_readonly}")
-    private String readonlyUser;
-
-    @Value("${nl2sql.datasource.password:nexus_readonly_2026}")
-    private String readonlyPassword;
-
-    @Bean("nl2sqlDataSource") 
-    public DataSource readonlyDataSource() {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(dbUrl);
-        config.setUsername(readonlyUser);
-        config.setPassword(readonlyPassword);
-        config.setPoolName("HikariReadOnly-NL2SQL");
-        config.setMaximumPoolSize(3);
-        config.setMinimumIdle(1);
-        config.setReadOnly(true);
-        return new HikariDataSource(config);
-    }
-
     @Bean("readonlyJdbcTemplate")
-    public JdbcTemplate readonlyJdbcTemplate(
-            @Qualifier("nl2sqlDataSource") DataSource readonlyDataSource) {  // actualiza el qualifier
-        return new JdbcTemplate(readonlyDataSource);
+    public JdbcTemplate readonlyJdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

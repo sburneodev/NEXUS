@@ -293,6 +293,13 @@ export function MovimientoDrawer({
     const [selectedProveedor, setSelectedProveedor] = useState<EntidadOpcion | null>(null);
     const [albaranOpen,       setAlbaranOpen]       = useState(false);
     const [albaranInfo,       setAlbaranInfo]       = useState<AlbaranInfo | null>(null);
+    // Flag explícito: evita race condition entre setAlbaranInfo y setResult en React 18.
+    // Se fija a true en el mismo batch que setAlbaranInfo, garantizando que el botón
+    // aparece siempre que hay albarán disponible, sin depender del orden de renders.
+    const [hasAlbaran,        setHasAlbaran]        = useState(false);
+    // Ref al contenedor scrollable y al panel de resultado — para scroll automático
+    const scrollBodyRef = useRef<HTMLDivElement>(null);
+    const resultRef     = useRef<HTMLDivElement>(null);
 
     // ── Cargar clientes y proveedores una vez al montar ───────────────────────
     useEffect(() => {
@@ -313,6 +320,8 @@ export function MovimientoDrawer({
             setResult(null);
             setSelectedCliente(null);
             setSelectedProveedor(null);
+            setAlbaranInfo(null);
+            setHasAlbaran(false);
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
@@ -324,6 +333,17 @@ export function MovimientoDrawer({
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [open, onClose]);
+
+    // ── Scroll automático al resultado ────────────────────────────────────────
+    // Cuando aparece el panel de resultado (éxito o error), se hace scroll
+    // para que sea visible aunque el formulario sea largo.
+    useEffect(() => {
+        if (!result) return;
+        const id = setTimeout(() => {
+            resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 80);
+        return () => clearTimeout(id);
+    }, [result]);
 
     // ── Helpers de form ───────────────────────────────────────────────────────
     function setField<K extends keyof MovimientoForm>(k: K, v: MovimientoForm[K]) {
@@ -376,8 +396,8 @@ export function MovimientoDrawer({
                     notas:          form.notas.trim(),
                     stockNuevo:     data.stockNuevo,
                 });
-                // El albarán NO se abre automáticamente — el usuario lo abre
-                // manualmente desde el botón que aparece en el panel de resultado.
+                // Flag explícito en el mismo batch — inmune a race conditions React 18
+                setHasAlbaran(true);
             }
 
             setResult({ ok: true, mensaje: data.resultado, stockNuevo: data.stockNuevo });
@@ -409,7 +429,11 @@ export function MovimientoDrawer({
         && !isNaN(cantidadNum) && cantidadNum > 0
         && producto !== null
         && cantidadNum > producto.stockActual;
-    const canSubmit = !isSaving && !stockInsuficiente;
+    // Retro: unidad única — no se puede añadir stock si ya tiene ≥1 unidad
+    const retroConflicto    = producto?.tipoProducto === 'RETRO'
+        && form.tipoMovimiento === 'ENTRADA'
+        && (producto?.stockActual ?? 0) >= 1;
+    const canSubmit = !isSaving && !stockInsuficiente && !retroConflicto;
 
     const tipoLabel: Record<TipoMovimiento, string> = {
         ENTRADA: '↓ Entrada',
@@ -573,7 +597,7 @@ export function MovimientoDrawer({
                 </div>
 
                 {/* ── Cuerpo scrollable ── */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div ref={scrollBodyRef} style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
                     {/* Selector de tipo */}
                     <div>
@@ -658,6 +682,25 @@ export function MovimientoDrawer({
                                 </span>
                             </div>
                         )}
+                        {retroConflicto && (
+                            <div style={{
+                                display:      'flex', alignItems: 'center', gap: '7px',
+                                marginTop:    '7px', padding: '8px 12px',
+                                background:   'rgba(251,191,36,0.08)',
+                                border:       '1px solid rgba(251,191,36,0.35)',
+                                borderRadius: '6px',
+                                fontFamily:   'var(--font-mono)', fontSize: '12px',
+                                color:        'var(--accent-gold)', lineHeight: 1.5,
+                            }}>
+                                <span style={{ fontSize: '14px', flexShrink: 0 }}>⚠</span>
+                                <span>
+                                    <strong>Pieza retro — unidad única.</strong>{' '}
+                                    Este artículo ya tiene{' '}
+                                    <strong style={{ color: 'var(--text-primary)' }}>1 unidad</strong>{' '}
+                                    en stock. Solo puede haber una unidad de cada pieza retro.
+                                </span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Precio unitario */}
@@ -736,10 +779,12 @@ export function MovimientoDrawer({
 
                     {/* Resultado */}
                     {result && (
-                        <ResultPanel
-                            result={result}
-                            onVerAlbaran={albaranInfo ? () => setAlbaranOpen(true) : undefined}
-                        />
+                        <div ref={resultRef}>
+                            <ResultPanel
+                                result={result}
+                                onVerAlbaran={hasAlbaran ? () => setAlbaranOpen(true) : undefined}
+                            />
+                        </div>
                     )}
                 </div>
 
@@ -790,7 +835,9 @@ export function MovimientoDrawer({
                             ? '· Procesando…'
                             : stockInsuficiente
                                 ? '⛔ Stock insuficiente'
-                                : `✓ Confirmar ${form.tipoMovimiento}`}
+                                : retroConflicto
+                                    ? '⚠ Unidad única — stock ya a 1'
+                                    : `✓ Confirmar ${form.tipoMovimiento}`}
                     </button>
                     <div style={{
                         marginTop:  '8px', textAlign: 'center',

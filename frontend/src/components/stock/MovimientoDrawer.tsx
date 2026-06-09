@@ -196,14 +196,20 @@ function SelectorPredictivo({
 
 // ── ResultPanel (privado) ─────────────────────────────────────────────────────
 
-function ResultPanel({ result }: { result: OpResult }): JSX.Element {
+function ResultPanel({
+    result,
+    onVerAlbaran,
+}: {
+    result:        OpResult;
+    onVerAlbaran?: () => void;
+}): JSX.Element {
     const isOk  = result.ok;
     const color = isOk ? 'var(--accent-primary)' : 'var(--accent-danger)';
     const bg    = isOk ? 'rgba(59,130,246,0.08)' : 'rgba(248,113,113,0.08)';
 
     return (
         <div style={{ borderRadius: '8px', border: `1px solid ${color}`, background: bg, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: result.stockNuevo !== undefined ? `1px solid ${color}30` : 'none', background: `${color}12` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderBottom: `1px solid ${color}30`, background: `${color}12` }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '18px', fontWeight: 700, color, lineHeight: 1 }}>
                     {isOk ? '✓' : '✕'}
                 </span>
@@ -224,6 +230,34 @@ function ResultPanel({ result }: { result: OpResult }): JSX.Element {
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '20px', fontWeight: 700, color, lineHeight: 1 }}>
                         {result.stockNuevo}
                     </span>
+                </div>
+            )}
+            {/* Botón opcional para ver/imprimir el albarán — solo si hay uno */}
+            {isOk && onVerAlbaran && (
+                <div style={{ padding: '8px 14px', borderTop: `1px solid ${color}20` }}>
+                    <button
+                        type="button"
+                        onClick={onVerAlbaran}
+                        style={{
+                            width:         '100%',
+                            fontFamily:    'var(--font-display)',
+                            fontSize:      '10px',
+                            fontWeight:    700,
+                            letterSpacing: '0.10em',
+                            textTransform: 'uppercase',
+                            padding:       '7px 12px',
+                            borderRadius:  '5px',
+                            border:        '1px solid rgba(59,130,246,0.35)',
+                            background:    'transparent',
+                            color:         'var(--accent-cyan)',
+                            cursor:        'pointer',
+                            transition:    'background 140ms ease, border-color 140ms ease',
+                        }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(56,189,248,0.08)'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(56,189,248,0.55)'; }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(59,130,246,0.35)'; }}
+                    >
+                        ↗ Ver / Imprimir Albarán
+                    </button>
                 </div>
             )}
         </div>
@@ -336,7 +370,8 @@ export function MovimientoDrawer({
                     notas:          form.notas.trim(),
                     stockNuevo:     data.stockNuevo,
                 });
-                setAlbaranOpen(true);
+                // El albarán NO se abre automáticamente — el usuario lo abre
+                // manualmente desde el botón que aparece en el panel de resultado.
             }
 
             setResult({ ok: true, mensaje: data.resultado, stockNuevo: data.stockNuevo });
@@ -694,7 +729,12 @@ export function MovimientoDrawer({
                     </div>
 
                     {/* Resultado */}
-                    {result && <ResultPanel result={result} />}
+                    {result && (
+                        <ResultPanel
+                            result={result}
+                            onVerAlbaran={albaranInfo ? () => setAlbaranOpen(true) : undefined}
+                        />
+                    )}
                 </div>
 
                 {/* ── Footer con botón principal ── */}

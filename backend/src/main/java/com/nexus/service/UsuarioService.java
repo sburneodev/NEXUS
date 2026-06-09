@@ -14,7 +14,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-
+import org.springframework.security.core.Authentication;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
@@ -37,7 +37,11 @@ public class UsuarioService {
     }
 
     private Long getUsuarioActualId() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+    	if (auth == null || !auth.isAuthenticated()) {
+    	    throw new RuntimeException("Usuario actual no encontrado");
+    	}
+    	String email = auth.getName();
         return usuarioRepository.findByEmail(email)
                 .map(Usuario::getId)
                 .orElseThrow(() -> new RuntimeException("Usuario actual no encontrado"));

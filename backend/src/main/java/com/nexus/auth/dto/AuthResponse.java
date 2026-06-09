@@ -18,6 +18,12 @@ public class AuthResponse {
     // Resumen del usuario. Solo presente en el login.
     private UsuarioResumen usuario;
 
+    /**
+     * true cuando el usuario está accediendo con la contraseña temporal (NEXUS2026!).
+     * El frontend redirige a /setup-password para que establezca su contraseña definitiva.
+     */
+    private boolean mustChangePassword = false;
+
     // --- CONSTRUCTOR MANUAL ---
     public AuthResponse(String message, String token, UsuarioResumen usuario) {
         this.message = message;
@@ -49,6 +55,14 @@ public class AuthResponse {
 
     public void setUsuario(UsuarioResumen usuario) {
         this.usuario = usuario;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
     // --- Factory methods para no tener que recordar el orden de argumentos ---

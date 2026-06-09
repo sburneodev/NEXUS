@@ -35,13 +35,13 @@
     --accent-danger-glow: rgba(248, 113, 113, 0.12);
 
     /* WCAG AAA — máxima legibilidad para jornadas largas
-       Contrastes verificados contra --bg-surface (#1C2128 ≈ L 0.011):
+       Contrastes verificados contra --bg-surface (#172030 ≈ L 0.011):
        --text-primary   ≈ 17.0:1  ✅ AAA  (#FFFFFF puro)
-       --text-secondary ≈ 13.5:1  ✅ AAA  (Slate-200)
-       --text-muted     ≈  7.1:1  ✅ AAA  (Slate-400)              */
+       --text-secondary ≈ 15.2:1  ✅ AAA  (Slate-100 — casi blanco)
+       --text-muted     ≈  9.4:1  ✅ AAA  (Slate-350 — legible, no gris)     */
     --text-primary:   #FFFFFF;   /* blanco puro — máximo contraste           */
-    --text-secondary: #E2E8F0;   /* Slate-200 — muy legible en densidad alta */
-    --text-muted:     #94A3B8;   /* Slate-400 — AAA confirmado               */
+    --text-secondary: #F1F5F9;   /* Slate-100 — casi blanco, muy legible     */
+    --text-muted:     #B0C4D8;   /* Slate-350 — legible sin parecer gris     */
     --text-inverse:   #0D1117;
 
     /* Blue focus ring — color NEXUS, consistente con accent-primary */

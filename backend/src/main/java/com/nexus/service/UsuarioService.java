@@ -105,9 +105,14 @@ public class UsuarioService {
         return result;
     }
 
+    /** Contraseña temporal asignada automáticamente a todos los usuarios creados por el admin. */
+    private static final String TEMP_PASSWORD = "NEXUS2026!";
+
     /**
      * Crea un usuario nuevo desde el panel de administración.
      * La cuenta se marca como activa y verificada (el admin la crea directamente).
+     * Siempre se asigna la contraseña temporal NEXUS2026! — el usuario deberá
+     * cambiarla en su primer acceso (flujo /setup-password).
      */
     public UsuarioDTO invitar(InvitarUsuarioRequest req) {
         if (usuarioRepository.existsByEmail(req.getEmail())) {
@@ -122,7 +127,7 @@ public class UsuarioService {
         Usuario u = new Usuario();
         u.setEmail(req.getEmail());
         u.setUsername(req.getUsername());
-        u.setPassword(passwordEncoder.encode(req.getPassword()));
+        u.setPassword(passwordEncoder.encode(TEMP_PASSWORD)); // siempre contraseña temporal
         u.setActive(true);
         u.setVerified(true);   // cuenta creada por admin → no necesita verificar email
         u.setRoles(new HashSet<>());

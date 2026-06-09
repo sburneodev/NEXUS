@@ -9,6 +9,7 @@ import { AlmacenPage }            from './pages/AlmacenPage';
 import { ClientesPage }           from './pages/ClientesPage';
 import { ProveedoresPage }        from './pages/ProveedoresPage';
 import { UsuariosPage }           from './pages/UsuariosPage';
+import { SetupPasswordPage }      from './pages/SetupPasswordPage';
 import { AuditoriaPage }          from './pages/AuditoriaPage';
 import { SystemPage }            from './pages/SystemPage';
 import { AlbaranPreviewPage }     from './pages/AlbaranPreviewPage';
@@ -40,6 +41,11 @@ function App(): JSX.Element {
             <Routes>
                 <Route path="/" element={<Navigate to="/login" replace />} />
                 <Route path="/login" element={<LoginPage />} />
+
+                {/* Primer acceso — establecer contraseña (sin layout, solo autenticado) */}
+                <Route element={<ProtectedRoute />}>
+                    <Route path="/setup-password" element={<SetupPasswordPage />} />
+                </Route>
 
                 {/* Rutas para todos los usuarios autenticados */}
                 <Route element={<ProtectedRoute />}>

@@ -41,13 +41,13 @@
     --accent-purple-glow:  rgba(167, 139, 250, 0.12);
 
     /* ── Texto — jerarquía clara de 3 niveles ─────────────────── */
-    /* WCAG AAA vs --bg-surface (#1C2128):                         */
+    /* WCAG AAA vs --bg-surface (#172030):                         */
     /*   #FFFFFF   → 17.0:1  ✅ AAA                                */
-    /*   #E2E8F0   → 13.5:1  ✅ AAA  (Slate-200)                   */
-    /*   #94A3B8   →  7.1:1  ✅ AAA  (Slate-400)                   */
+    /*   #F1F5F9   → 15.2:1  ✅ AAA  (Slate-100)                   */
+    /*   #B0C4D8   →  9.4:1  ✅ AAA  (Slate-350 aprox.)            */
     --text-primary:   #FFFFFF;   /* blanco puro — máximo contraste  */
-    --text-secondary: #E2E8F0;   /* Slate-200 — muy legible         */
-    --text-muted:     #94A3B8;   /* Slate-400 — AAA confirmado      */
+    --text-secondary: #F1F5F9;   /* Slate-100 — casi blanco         */
+    --text-muted:     #B0C4D8;   /* Slate-350 — legible, no gris    */
     --text-inverse:   #0D1117;
 
     /* ── Bordes — blanco puro + mayor opacidad = más nítidos ─── */

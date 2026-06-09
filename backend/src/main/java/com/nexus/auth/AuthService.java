@@ -28,6 +28,9 @@ public class AuthService {
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
 
     private final String LoginString="LOGIN";
+
+    /** Contraseña temporal asignada a todos los usuarios creados por el admin. */
+    static final String TEMP_PASSWORD = "NEXUS2026!";
     private final UsuarioRepository  usuarioRepository;
     private final PasswordEncoder    passwordEncoder;
     private final EmailService       emailService;
@@ -148,15 +151,22 @@ public class AuthService {
                 usuario.getNombreCompleto()
         );
 
-        log.info("[AUTH][LOGIN] Login exitoso user={} roles={}", usuario.getEmail(), roles);
+        // Detectar primer acceso: el hash en BD coincide con la contraseña temporal
+        boolean mustChangePassword = passwordEncoder.matches(TEMP_PASSWORD, usuario.getPassword());
+
+        log.info("[AUTH][LOGIN] Login exitoso user={} roles={} mustChangePassword={}",
+                usuario.getEmail(), roles, mustChangePassword);
 
         auditService.logAuth(
                 usuario.getEmail(),
                 LoginString,
                 "Login exitoso | roles: " + (roles.isBlank() ? "ninguno" : roles)
+                        + (mustChangePassword ? " | PRIMER ACCESO — contraseña temporal" : "")
         );
 
-        return AuthResponse.ofLogin("Login exitoso", token, resumen);
+        AuthResponse response = AuthResponse.ofLogin("Login exitoso", token, resumen);
+        response.setMustChangePassword(mustChangePassword);
+        return response;
     }
 
     // ══════════════════════════════════════════════════════════════════

@@ -472,7 +472,11 @@ export function LoginPage(): JSX.Element {
             });
             if (data.token) {
                 login(data.token);
-                navigate('/dashboard', { replace: true });
+                if (data.mustChangePassword) {
+                    navigate('/setup-password', { replace: true });
+                } else {
+                    navigate('/dashboard', { replace: true });
+                }
             } else {
                 setStatus('error');
                 setErrorMsg('El servidor no devolvió un token. Inténtalo de nuevo.');

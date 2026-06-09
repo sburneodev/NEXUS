@@ -37,7 +37,6 @@ interface InviteForm {
     email:    string;
     username: string;
     rol:      string;
-    password: string;
 }
 
 const SELF_COLOR = '#F59E0B';
@@ -50,12 +49,8 @@ const ROLES_INVITAR = [
     { value: 'ADMIN',             label: '★ Administrador'      },
 ] as const;
 
-function generateTempPassword(): string {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-    let pwd = 'Nx';
-    for (let i = 0; i < 7; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
-    return pwd + '!';
-}
+/** Contraseña temporal fija asignada por el sistema a todos los usuarios nuevos. */
+const TEMP_PASSWORD_INFO = 'NEXUS2026!';
 
 // ── Página ────────────────────────────────────────────────────────────────────
 
@@ -81,12 +76,12 @@ export function UsuariosPage(): JSX.Element {
     const [inviteLoading, setInviteLoading] = useState(false);
     const [pwdCopied,     setPwdCopied]     = useState(false);
     const [inviteForm,    setInviteForm]    = useState<InviteForm>({
-        email: '', username: '', rol: 'CAJERO', password: '',
+        email: '', username: '', rol: 'CAJERO',
     });
     const emailRef = useRef<HTMLInputElement>(null);
 
     function openInviteModal(): void {
-        setInviteForm({ email: '', username: '', rol: 'CAJERO', password: generateTempPassword() });
+        setInviteForm({ email: '', username: '', rol: 'CAJERO' });
         setPwdCopied(false);
         setInviteOpen(true);
         setTimeout(() => emailRef.current?.focus(), 60);
@@ -103,7 +98,7 @@ export function UsuariosPage(): JSX.Element {
         try {
             await api.post('/usuarios/invitar', inviteForm);
             setInviteOpen(false);
-            showToast('Invitación enviada correctamente');
+            showToast('Usuario creado correctamente');
             setRefreshKey(k => k + 1);
         } catch (err: unknown) {
             const status = (err as { response?: { status?: number } })?.response?.status;
@@ -485,20 +480,20 @@ export function UsuariosPage(): JSX.Element {
                                 </select>
                             </div>
 
-                            {/* Contraseña temporal */}
+                            {/* Contraseña temporal — copiable */}
                             <div>
                                 <label style={invLabelStyle}>Contraseña temporal</label>
                                 <div style={{ display: 'flex', gap: '6px' }}>
                                     <input
                                         type="text"
                                         readOnly
-                                        value={inviteForm.password}
-                                        style={{ ...invInputStyle, flex: 1, color: 'var(--text-muted)', cursor: 'default', letterSpacing: '0.05em' }}
+                                        value={TEMP_PASSWORD_INFO}
+                                        style={{ ...invInputStyle, flex: 1, color: 'var(--text-muted)', cursor: 'default', letterSpacing: '0.08em', fontWeight: 700 }}
                                     />
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            void navigator.clipboard.writeText(inviteForm.password);
+                                            void navigator.clipboard.writeText(TEMP_PASSWORD_INFO);
                                             setPwdCopied(true);
                                             setTimeout(() => setPwdCopied(false), 2000);
                                         }}
@@ -506,10 +501,11 @@ export function UsuariosPage(): JSX.Element {
                                             background:    pwdCopied ? 'rgba(34,197,94,0.12)' : 'var(--bg-elevated)',
                                             border:        `1px solid ${pwdCopied ? 'rgba(34,197,94,0.35)' : 'var(--border-default)'}`,
                                             borderRadius:  '6px',
-                                            padding:       '0 12px',
+                                            padding:       '0 14px',
                                             cursor:        'pointer',
                                             fontFamily:    'var(--font-mono)',
                                             fontSize:      '10px',
+                                            fontWeight:    700,
                                             color:         pwdCopied ? '#22C55E' : 'var(--text-muted)',
                                             letterSpacing: '0.04em',
                                             flexShrink:    0,
@@ -521,7 +517,7 @@ export function UsuariosPage(): JSX.Element {
                                     </button>
                                 </div>
                                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-muted)', margin: '5px 0 0', letterSpacing: '0.02em', lineHeight: 1.4 }}>
-                                    Comparte esta contraseña con el usuario. Podrá cambiarla tras iniciar sesión.
+                                    El usuario deberá cambiarla en su primer acceso.
                                 </p>
                             </div>
 
@@ -573,12 +569,7 @@ export function UsuariosPage(): JSX.Element {
                                         transition:    'opacity 160ms, box-shadow 160ms',
                                     }}
                                 >
-                                    {inviteLoading ? '···' : (
-                                        <>
-                                            <span style={{ fontSize: '13px' }}>✉</span>
-                                            Enviar Invitación
-                                        </>
-                                    )}
+                                    {inviteLoading ? '···' : 'Crear Usuario'}
                                 </button>
                             </div>
                         </div>

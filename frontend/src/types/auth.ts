@@ -50,6 +50,8 @@ export interface AuthBackendResponse {
         email: string;
         nombreCompleto: string;
     } | null;
+    /** true cuando el usuario entra con la contraseña temporal NEXUS2026! */
+    mustChangePassword?: boolean;
 }
 
 /** @deprecated — usar AuthBackendResponse. Mantenido por compatibilidad. */

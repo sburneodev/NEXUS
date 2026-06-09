@@ -10,9 +10,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { CSSProperties }               from 'react';
+import { Pencil, Trash2 }                   from 'lucide-react';
 import type { PaginatedResponse }           from '../types/models';
 import { FormModal, FieldConfig }           from '../components/common/FormModal';
 import { clienteService, Cliente, ClienteForm } from '../services/entidadService';
+import { ActionIconBtn }                    from '../components/ui/ActionIconBtn';
 import { useTableFilters, calculateAutoLimit }  from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }      from '../components/table/TableControls';
 import api                                  from '../services/api';
@@ -320,16 +322,10 @@ export function ClientesPage(): JSX.Element {
                                         </span>
                                     </td>
                                     <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                                        <button
-                                            onClick={() => handleEdit(c)}
-                                            style={actionBtnStyle('#0088cc')}
-                                            title="Editar cliente"
-                                        >EDITAR</button>
-                                        <button
-                                            onClick={() => handleDelete(c)}
-                                            style={actionBtnStyle('#cc2244')}
-                                            title="Eliminar cliente"
-                                        >ELIMINAR</button>
+                                        <div style={{ display: 'flex', gap: '5px' }}>
+                                            <ActionIconBtn icon={Pencil}  color="cyan"   title="Editar cliente"    onClick={() => handleEdit(c)} />
+                                            <ActionIconBtn icon={Trash2}  color="danger"                   title="Eliminar cliente"  onClick={() => handleDelete(c)} />
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
 import { useLocation }                                                     from 'react-router-dom';
+import { Boxes, Pencil, Trash2 }                                           from 'lucide-react';
 import type { Producto, TipoProducto, PaginatedResponse }                  from '../types/models';
 import { ProductFormPanel }                                                 from '../components/productos/ProductFormPanel';
 import { useTableFilters, calculateAutoLimit }                              from '../hooks/useTableFilters';
@@ -18,6 +19,7 @@ import { TableControls, SkeletonRows }                                     from 
 import { productoService }                                                  from '../services/productoService';
 import api                                                                  from '../services/api';
 import { MovimientoDrawer }                                                 from '../components/stock/MovimientoDrawer';
+import { ActionIconBtn }                                                    from '../components/ui/ActionIconBtn';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -555,29 +557,26 @@ export function ProductosPage(): JSX.Element {
                                                     </div>
                                                 ) : (
                                                     /* ── Botones normales ── */
-                                                    <>
-                                                        <button
-                                                            onClick={() => openStockDrawer(p)}
-                                                            style={actionBtn('var(--accent-primary)')}
+                                                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                                                        <ActionIconBtn
+                                                            icon={Boxes}
+                                                            color="primary"
                                                             title="Gestionar stock"
-                                                        >
-                                                            ⊕ Stock
-                                                        </button>
-                                                        <button
+                                                            onClick={() => openStockDrawer(p)}
+                                                        />
+                                                        <ActionIconBtn
+                                                            icon={Pencil}
+                                                            color="cyan"
+                                                            title={`Editar ${p.nombre}`}
                                                             onClick={() => openEdit(p)}
-                                                            style={actionBtn('var(--accent-cyan)')}
-                                                            aria-label={`Editar ${p.nombre}`}
-                                                        >
-                                                            ✎ Editar
-                                                        </button>
-                                                        <button
+                                                        />
+                                                        <ActionIconBtn
+                                                            icon={Trash2}
+                                                            color="danger"
+                                                            title={`Inactivar ${p.nombre}`}
                                                             onClick={() => setConfirmId(p.id)}
-                                                            style={actionBtn('#cc2244', 0.55)}
-                                                            aria-label={`Inactivar ${p.nombre}`}
-                                                        >
-                                                            ✕
-                                                        </button>
-                                                    </>
+                                                        />
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>

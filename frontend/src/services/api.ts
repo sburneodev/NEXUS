@@ -42,7 +42,7 @@ export const AUTH_EXPIRED_EVENT = 'nexus:auth:expired';
 
 const api = axios.create({
     baseURL: import.meta.env['VITE_API_URL'] ?? 'http://localhost:8080/api',
-    timeout: 15_000,
+    timeout: 45_000,
     headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',

@@ -47,10 +47,11 @@ public class GeminiService {
                   }],
                   "generationConfig": {
                     "temperature": 0.3,
-                    "maxOutputTokens": 1024
+                    "maxOutputTokens": 2048
                   }
                 }
                 """.formatted(objectMapper.writeValueAsString(prompt));
+            log.info("[GEMINI] API Key presente: {}", apiKey != null && !apiKey.isBlank() ? "SÍ (" + apiKey.substring(0,8) + "...)" : "NO");
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(urlConKey))
@@ -62,12 +63,17 @@ public class GeminiService {
             HttpResponse<String> response = httpClient.send(
                     request, HttpResponse.BodyHandlers.ofString());
 
+            if (response.statusCode() == 503) {
+                Thread.sleep(2000);
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            }
+
             if (response.statusCode() != 200) {
                 log.error("[GEMINI] Error HTTP {}: {}", response.statusCode(), response.body());
                 throw new ResponseStatusException(
-                	    org.springframework.http.HttpStatus.BAD_GATEWAY,
-                	    "Error llamando a Gemini: HTTP " + response.statusCode()
-                	);
+                    HttpStatus.BAD_GATEWAY,
+                    "Error llamando a Gemini: HTTP " + response.statusCode()
+                );
             }
 
             JsonNode root = objectMapper.readTree(response.body());

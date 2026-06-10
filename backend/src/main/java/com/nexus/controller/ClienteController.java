@@ -20,8 +20,6 @@ public class ClienteController {
         this.clienteService = clienteService;
     }
 
-    // GET /api/clientes?buscar=nombre&activo=true|false&page=0&size=20
-    // activo omitido → devuelve todos (activos e inactivos)
     @GetMapping
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN','MARKETING_ANALYST','CONTABLE')")
     public ResponseEntity<Page<ClienteDTO>> listar(
@@ -31,21 +29,18 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.listar(buscar, activo, pageable));
     }
 
-    // GET /api/clientes/{id}
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN','MARKETING_ANALYST','CONTABLE')")
     public ResponseEntity<ClienteDTO> buscarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(clienteService.buscarPorId(id));
     }
 
-    // POST /api/clientes
     @PostMapping
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<ClienteDTO> crear(@Valid @RequestBody ClienteDTO dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(clienteService.crear(dto));
     }
 
-    // PUT /api/clientes/{id}
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<ClienteDTO> editar(
@@ -54,8 +49,6 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.editar(id, dto));
     }
 
-    // PATCH /api/clientes/{id}/puntos?cantidad=50
-    // Suma o resta puntos de fidelidad sin tener que enviar todos los datos del cliente
     @PatchMapping("/{id}/puntos")
     @PreAuthorize("hasAnyAuthority('CAJERO','GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<ClienteDTO> sumarPuntos(
@@ -64,7 +57,6 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.sumarPuntos(id, cantidad));
     }
 
-    // DELETE /api/clientes/{id}
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyAuthority('GESTOR_INVENTARIO','ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {

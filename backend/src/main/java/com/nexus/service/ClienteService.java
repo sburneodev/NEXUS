@@ -18,6 +18,9 @@ import java.util.Objects;
 @Service
 public class ClienteService {
 
+    private static final String ENTIDAD       = "CLIENTE";
+    private static final String NOT_FOUND_MSG = "Cliente no encontrado: ";
+
     private final ClienteRepository clienteRepository;
     private final AuditService      auditService;
 
@@ -27,17 +30,9 @@ public class ClienteService {
         this.auditService      = auditService;
     }
 
-    /**
-     * Lista clientes con filtros opcionales.
-     *
-     * @param buscar texto libre (nombre) — null o vacío para no filtrar
-     * @param activo true → solo activos | false → solo inactivos | null → todos
-     * @param pageable paginación y orden
-     */
     public Page<ClienteDTO> listar(String buscar, Boolean activo, Pageable pageable) {
         boolean hayBusqueda = buscar != null && !buscar.isBlank();
 
-        // Sin filtro de estado → mostrar todos
         if (activo == null) {
             if (hayBusqueda) {
                 return clienteRepository
@@ -47,7 +42,6 @@ public class ClienteService {
             return clienteRepository.findAll(pageable).map(this::toDTO);
         }
 
-        // Con filtro de estado (true = activos, false = inactivos)
         if (hayBusqueda) {
             return clienteRepository
                     .findByNombreContainingIgnoreCaseAndActivo(buscar, activo, pageable)
@@ -59,7 +53,7 @@ public class ClienteService {
     public ClienteDTO buscarPorId(Long id) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Cliente no encontrado: " + id));
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         return toDTO(cliente);
     }
 
@@ -74,7 +68,7 @@ public class ClienteService {
         }
         Cliente cliente = toEntity(dto);
         ClienteDTO saved = toDTO(clienteRepository.save(cliente));
-        auditService.log("CLIENTE", "CREATE", saved.getId(),
+        auditService.log(ENTIDAD, "CREATE", saved.getId(),
                 saved.getNombre() + (saved.getEmail() != null ? " | " + saved.getEmail() : ""));
         return saved;
     }
@@ -83,7 +77,7 @@ public class ClienteService {
     public ClienteDTO editar(Long id, ClienteDTO dto) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Cliente no encontrado: " + id));
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         if (dto.getEmail() != null && !dto.getEmail().equals(cliente.getEmail())) {
             clienteRepository.findByEmail(dto.getEmail()).ifPresent(c -> {
                 throw new ResponseStatusException(
@@ -92,14 +86,12 @@ public class ClienteService {
             });
         }
 
-        // Capturar valores anteriores para el diff de auditoría
         String  nombreAnterior = cliente.getNombre();
         String  emailAnterior  = cliente.getEmail();
         String  telAnterior    = cliente.getTelefono();
         Integer puntosAnterior = cliente.getPuntosFidelidad();
         boolean activoAnterior = Boolean.TRUE.equals(cliente.getActivo());
 
-        // Aplicar cambios
         cliente.setNombre(dto.getNombre());
         cliente.setEmail(dto.getEmail());
         cliente.setTelefono(dto.getTelefono());
@@ -111,28 +103,9 @@ public class ClienteService {
         }
 
         ClienteDTO result = toDTO(clienteRepository.save(cliente));
-        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
-
-        // Construir diff completo de campos modificados
-        List<String> cambios = new ArrayList<>();
-        if (!Objects.equals(nombreAnterior, dto.getNombre()))
-            cambios.add("nombre: " + strAudit(nombreAnterior) + "→" + strAudit(dto.getNombre()));
-        if (!Objects.equals(emailAnterior, dto.getEmail()))
-            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
-        if (!Objects.equals(telAnterior, dto.getTelefono()))
-            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
-        if (dto.getPuntosFidelidad() != null && !Objects.equals(puntosAnterior, dto.getPuntosFidelidad()))
-            cambios.add("puntos: " + strAudit(puntosAnterior) + "→" + strAudit(dto.getPuntosFidelidad()));
-        if (activoAnterior != activoNuevo)
-            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO") + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
-
-        String detalle = result.getNombre();
-        if (!cambios.isEmpty()) {
-            detalle += " | " + String.join(" | ", cambios);
-        } else {
-            detalle += " | sin cambios";
-        }
-        auditService.log("CLIENTE", "UPDATE", id, detalle);
+        String detalle = construirDetalle(result, dto, nombreAnterior, emailAnterior,
+                telAnterior, puntosAnterior, activoAnterior);
+        auditService.log(ENTIDAD, "UPDATE", id, detalle);
         return result;
     }
 
@@ -140,7 +113,7 @@ public class ClienteService {
     public ClienteDTO sumarPuntos(Long id, int puntos) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Cliente no encontrado: " + id));
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         int nuevoPuntos = cliente.getPuntosFidelidad() + puntos;
         if (nuevoPuntos < 0) {
             throw new ResponseStatusException(
@@ -148,7 +121,7 @@ public class ClienteService {
         }
         cliente.setPuntosFidelidad(nuevoPuntos);
         ClienteDTO result = toDTO(clienteRepository.save(cliente));
-        auditService.log("CLIENTE", "UPDATE", id,
+        auditService.log(ENTIDAD, "UPDATE", id,
             "Puntos de fidelidad: " + (nuevoPuntos - puntos) + " → " + nuevoPuntos
             + " (delta: " + (puntos >= 0 ? "+" : "") + puntos + ")");
         return result;
@@ -158,11 +131,11 @@ public class ClienteService {
     public void softDelete(Long id) {
         Cliente cliente = clienteRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "Cliente no encontrado: " + id));
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         String nombre = cliente.getNombre();
         cliente.setActivo(false);
         clienteRepository.save(cliente);
-        auditService.log("CLIENTE", "DELETE", id, nombre + " | baja lógica");
+        auditService.log(ENTIDAD, "DELETE", id, nombre + " | baja lógica");
     }
 
     public ClienteDTO toDTO(Cliente c) {
@@ -187,8 +160,30 @@ public class ClienteService {
         c.setActivo(true);
         return c;
     }
+    private String construirDetalle(ClienteDTO result, ClienteDTO dto,
+            String nombreAnterior, String emailAnterior, String telAnterior,
+            Integer puntosAnterior, boolean activoAnterior) {
 
-    /** Devuelve el valor como string para el log de auditoría; null → "—" */
+        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
+        List<String> cambios = new ArrayList<>();
+
+        if (!Objects.equals(nombreAnterior, dto.getNombre()))
+            cambios.add("nombre: " + strAudit(nombreAnterior) + "→" + strAudit(dto.getNombre()));
+        if (!Objects.equals(emailAnterior, dto.getEmail()))
+            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(telAnterior, dto.getTelefono()))
+            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
+        if (dto.getPuntosFidelidad() != null && !Objects.equals(puntosAnterior, dto.getPuntosFidelidad()))
+            cambios.add("puntos: " + strAudit(puntosAnterior) + "→" + strAudit(dto.getPuntosFidelidad()));
+        if (activoAnterior != activoNuevo)
+            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO")
+                      + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
+
+        String detalle = result.getNombre();
+        return cambios.isEmpty() ? detalle + " | sin cambios"
+                                 : detalle + " | " + String.join(" | ", cambios);
+    }
+
     private static String strAudit(Object val) {
         return val != null ? val.toString() : "—";
     }

@@ -13,6 +13,9 @@ import java.util.Objects;
 @Service
 public class ProveedorService {
 
+    private static final String ENTIDAD       = "PROVEEDOR";
+    private static final String NOT_FOUND_MSG = "Proveedor no encontrado: ";
+
     private final ProveedorRepository proveedorRepository;
     private final AuditService        auditService;
 
@@ -23,38 +26,33 @@ public class ProveedorService {
     }
 
     public List<ProveedorDTO> listar() {
-        // Devuelve TODOS (activos e inactivos) — el frontend filtra por estado
         return proveedorRepository.findAll()
                 .stream().map(this::toDTO).toList();
     }
 
     public ProveedorDTO buscarPorId(Long id) {
         return toDTO(proveedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado: " + id)));
+                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id)));
     }
 
     public ProveedorDTO crear(ProveedorDTO dto) {
         Proveedor p = toEntity(dto);
         ProveedorDTO saved = toDTO(proveedorRepository.save(p));
-        auditService.log("PROVEEDOR", "CREATE", saved.getId(),
+        auditService.log(ENTIDAD, "CREATE", saved.getId(),
                 saved.getRazonSocial() + (saved.getCif() != null ? " | CIF: " + saved.getCif() : ""));
         return saved;
     }
 
     public ProveedorDTO editar(Long id, ProveedorDTO dto) {
         Proveedor p = proveedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado: " + id));
+                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
 
-        // Capturar valores anteriores para el diff de auditoría
-        String  razonAnterior  = p.getRazonSocial();
-        String  cifAnterior    = p.getCif();
-        String  emailAnterior  = p.getEmail();
-        String  telAnterior    = p.getTelefono();
-        String  dirAnterior    = p.getDireccion();
-        Short   tiempoAnterior = p.getTiempoEntregaD();
-        boolean activoAnterior = Boolean.TRUE.equals(p.getActivo());
+        EstadoAnterior anterior = new EstadoAnterior(
+                p.getRazonSocial(), p.getCif(), p.getEmail(),
+                p.getTelefono(), p.getDireccion(), p.getTiempoEntregaD(),
+                Boolean.TRUE.equals(p.getActivo())
+        );
 
-        // Aplicar cambios
         p.setRazonSocial(dto.getRazonSocial());
         p.setCif(dto.getCif());
         p.setEmail(dto.getEmail());
@@ -66,42 +64,42 @@ public class ProveedorService {
         }
 
         ProveedorDTO result = toDTO(proveedorRepository.save(p));
-        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
-
-        // Construir diff completo de campos modificados
-        List<String> cambios = new ArrayList<>();
-        if (!Objects.equals(razonAnterior, dto.getRazonSocial()))
-            cambios.add("razón social: " + strAudit(razonAnterior) + "→" + strAudit(dto.getRazonSocial()));
-        if (!Objects.equals(cifAnterior, dto.getCif()))
-            cambios.add("CIF: " + strAudit(cifAnterior) + "→" + strAudit(dto.getCif()));
-        if (!Objects.equals(emailAnterior, dto.getEmail()))
-            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
-        if (!Objects.equals(telAnterior, dto.getTelefono()))
-            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
-        if (!Objects.equals(dirAnterior, dto.getDireccion()))
-            cambios.add("dirección: " + strAudit(dirAnterior) + "→" + strAudit(dto.getDireccion()));
-        if (!Objects.equals(tiempoAnterior, dto.getTiempoEntregaD()))
-            cambios.add("entrega: " + strAudit(tiempoAnterior) + "→" + strAudit(dto.getTiempoEntregaD()));
-        if (activoAnterior != activoNuevo)
-            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO") + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
-
-        String detalle = result.getRazonSocial();
-        if (!cambios.isEmpty()) {
-            detalle += " | " + String.join(" | ", cambios);
-        } else {
-            detalle += " | sin cambios";
-        }
-        auditService.log("PROVEEDOR", "UPDATE", id, detalle);
+        String detalle = construirDetalle(result, dto, anterior);
+        auditService.log(ENTIDAD, "UPDATE", id, detalle);
         return result;
     }
-
     public void softDelete(Long id) {
         Proveedor p = proveedorRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Proveedor no encontrado: " + id));
+                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
         String razon = p.getRazonSocial();
         p.setActivo(false);
         proveedorRepository.save(p);
-        auditService.log("PROVEEDOR", "DELETE", id, razon + " | baja lógica");
+        auditService.log(ENTIDAD, "DELETE", id, razon + " | baja lógica");
+    }
+
+    private String construirDetalle(ProveedorDTO result, ProveedorDTO dto, EstadoAnterior ant) {
+        boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
+        List<String> cambios = new ArrayList<>();
+
+        if (!Objects.equals(ant.razonSocial(), dto.getRazonSocial()))
+            cambios.add("razón social: " + strAudit(ant.razonSocial()) + "→" + strAudit(dto.getRazonSocial()));
+        if (!Objects.equals(ant.cif(), dto.getCif()))
+            cambios.add("CIF: " + strAudit(ant.cif()) + "→" + strAudit(dto.getCif()));
+        if (!Objects.equals(ant.email(), dto.getEmail()))
+            cambios.add("email: " + strAudit(ant.email()) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(ant.telefono(), dto.getTelefono()))
+            cambios.add("tel: " + strAudit(ant.telefono()) + "→" + strAudit(dto.getTelefono()));
+        if (!Objects.equals(ant.direccion(), dto.getDireccion()))
+            cambios.add("dirección: " + strAudit(ant.direccion()) + "→" + strAudit(dto.getDireccion()));
+        if (!Objects.equals(ant.tiempoEntrega(), dto.getTiempoEntregaD()))
+            cambios.add("entrega: " + strAudit(ant.tiempoEntrega()) + "→" + strAudit(dto.getTiempoEntregaD()));
+        if (ant.activo() != activoNuevo)
+            cambios.add("estado: " + (ant.activo() ? "ACTIVO" : "INACTIVO")
+                      + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
+
+        String detalle = result.getRazonSocial();
+        return cambios.isEmpty() ? detalle + " | sin cambios"
+                                 : detalle + " | " + String.join(" | ", cambios);
     }
 
     private ProveedorDTO toDTO(Proveedor p) {
@@ -117,7 +115,6 @@ public class ProveedorService {
         return dto;
     }
 
-    /** Devuelve el valor como string para el log de auditoría; null → "—" */
     private static String strAudit(Object val) {
         return val != null ? val.toString() : "—";
     }
@@ -133,4 +130,9 @@ public class ProveedorService {
         p.setActivo(true);
         return p;
     }
+    private record EstadoAnterior(
+    	    String razonSocial, String cif, String email,
+    	    String telefono, String direccion, Short tiempoEntrega,
+    	    boolean activo
+    	) {}
 }

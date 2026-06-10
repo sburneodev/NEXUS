@@ -1,6 +1,5 @@
 package com.nexus.service;
 
-
 import com.nexus.audit.AuditService;
 import com.nexus.dto.StockMovimientoRequest;
 import com.nexus.model.Cliente;
@@ -45,8 +44,6 @@ class StockServiceTest {
 
     @BeforeEach
     void setUp() { SecurityContextHolder.clearContext(); }
-
-    // ── Helpers ───────────────────────────────────────────────────────
 
     private void mockUsuarioAutenticado(String email, Long id) {
         Authentication auth = mock(Authentication.class);
@@ -111,8 +108,6 @@ class StockServiceTest {
         return r;
     }
 
-    // ── TEST 1 — Operaciones exitosas ─────────────────────────────────
-
     @Test
     void registrarMovimiento_ventaExitosa_devuelveOkYStockNuevo() throws Exception {
         mockClienteActivo(1L);
@@ -144,16 +139,14 @@ class StockServiceTest {
         mockUsuarioAutenticado("gestor@levelupnexus.es", 2L);
         mockJdbcSp("OK: 8 → 10", 10);
 
-        StockMovimientoRequest r = new StockMovimientoRequest();
-        r.setIdProducto(3L); r.setTipoMovimiento("AJUSTE");
-        r.setCantidad(2); r.setNotas("Corrección tras recuento");
+        StockMovimientoRequest req = new StockMovimientoRequest();
+        req.setIdProducto(3L); req.setTipoMovimiento("AJUSTE");
+        req.setCantidad(2); req.setNotas("Corrección tras recuento");
 
-        assertTrue(stockService.registrarMovimiento(r).getResultado().startsWith("OK"));
+        assertTrue(stockService.registrarMovimiento(req).getResultado().startsWith("OK"));
         verifyNoInteractions(clienteRepository);
         verifyNoInteractions(proveedorRepository);
     }
-
-    // ── TEST 2 — Errores del SP ───────────────────────────────────────
 
     @Test
     void registrarMovimiento_stockInsuficiente_lanza409() throws Exception {
@@ -161,8 +154,9 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0", 0);
 
+        var req = requestSalida(1L, 5);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(1L, 5)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(409, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("Stock insuficiente"));
@@ -174,8 +168,9 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 
+        var req = requestSalida(99L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(99L, 1)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(409, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("RETRO"));
@@ -187,8 +182,9 @@ class StockServiceTest {
         mockUsuarioAutenticado("cajero@levelupnexus.es", 3L);
         mockJdbcSp("ERROR: Producto no encontrado id=999", -1);
 
+        var req = requestSalida(999L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(999L, 1)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(409, ex.getStatusCode().value());
     }
@@ -200,21 +196,21 @@ class StockServiceTest {
         when(ctx.getAuthentication()).thenReturn(null);
         SecurityContextHolder.setContext(ctx);
 
+        var req = requestSalida(1L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(401, ex.getStatusCode().value());
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ── TEST 3 — Validación de cliente inválido ───────────────────────
-
     @Test
     void registrarMovimiento_clienteNoExistente_lanza422() {
         when(clienteRepository.findById(1L)).thenReturn(Optional.empty());
 
+        var req = requestSalida(1L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(422, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("cliente"));
@@ -227,22 +223,22 @@ class StockServiceTest {
         Cliente c = new Cliente(); c.setActivo(false);
         when(clienteRepository.findById(1L)).thenReturn(Optional.of(c));
 
+        var req = requestSalida(1L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(1L, 1)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(422, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("cliente"));
         verifyNoInteractions(jdbcTemplate);
     }
 
-    // ── TEST 4 — Validación de proveedor inválido ─────────────────────
-
     @Test
     void registrarMovimiento_proveedorNoExistente_lanza422() {
         when(proveedorRepository.findById(1L)).thenReturn(Optional.empty());
 
+        var req = requestEntrada(1L, 5);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestEntrada(1L, 5)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(422, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("proveedor"));
@@ -255,15 +251,14 @@ class StockServiceTest {
         Proveedor p = new Proveedor(); p.setActivo(false);
         when(proveedorRepository.findById(1L)).thenReturn(Optional.of(p));
 
+        var req = requestEntrada(1L, 5);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestEntrada(1L, 5)));
+                () -> stockService.registrarMovimiento(req));
 
         assertEquals(422, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("proveedor"));
         verifyNoInteractions(jdbcTemplate);
     }
-
-    // ── TEST 5 — Concurrencia ─────────────────────────────────────────
 
     @Test
     void registrarMovimiento_concurrencia_primeraVentaExitosaSegundaFalla() throws Exception {
@@ -278,8 +273,9 @@ class StockServiceTest {
         reset(jdbcTemplate);
         mockJdbcSp("ERROR: Stock insuficiente. Disponible: 0 | Pieza RETRO única: ya fue vendida.", 0);
 
+        var req2 = requestSalida(99L, 1);
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> stockService.registrarMovimiento(requestSalida(99L, 1)));
+                () -> stockService.registrarMovimiento(req2));
 
         assertEquals(409, ex.getStatusCode().value());
         assertTrue(ex.getReason().contains("RETRO"));

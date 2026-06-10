@@ -48,31 +48,8 @@ public class StockService {
 
     public StockMovimientoResponse registrarMovimiento(StockMovimientoRequest request) {
 
-        if (request.getIdCliente() != null) {
-            boolean existeYActivo = clienteRepository.findById(request.getIdCliente())
-                    .map(c -> Boolean.TRUE.equals(c.getActivo()))
-                    .orElse(false);
-            if (!existeYActivo) {
-                log.warn("[STOCK] id_cliente={} no existente o inactivo", request.getIdCliente());
-                throw new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "ID de cliente no existente o inactivo. Comprueba que existe o habla con soporte."
-                );
-            }
-        }
-
-        if (request.getIdProveedor() != null) {
-            boolean existeYActivo = proveedorRepository.findById(request.getIdProveedor())
-                    .map(p -> Boolean.TRUE.equals(p.getActivo()))
-                    .orElse(false);
-            if (!existeYActivo) {
-                log.warn("[STOCK] id_proveedor={} no existente o inactivo", request.getIdProveedor());
-                throw new ResponseStatusException(
-                        HttpStatus.UNPROCESSABLE_ENTITY,
-                        "ID de proveedor no existente o inactivo. Comprueba que existe o habla con soporte."
-                );
-            }
-        }
+        validarCliente(request.getIdCliente());
+        validarProveedor(request.getIdProveedor());
 
         Long idUsuario = getUsuarioAutenticadoId();
 
@@ -139,7 +116,6 @@ public class StockService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, resultado);
         }
 
-        // Auditoría del movimiento de stock
         auditService.log(
                 "STOCK",
                 "STOCK_MOVEMENT",
@@ -156,6 +132,34 @@ public class StockService {
                                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
 
         return new StockMovimientoResponse(resultado, stockNuevo, albaranCodigo, albaranFecha);
+    }
+
+    private void validarCliente(Long idCliente) {
+        if (idCliente == null) return;
+        boolean existeYActivo = clienteRepository.findById(idCliente)
+                .map(c -> Boolean.TRUE.equals(c.getActivo()))
+                .orElse(false);
+        if (!existeYActivo) {
+            log.warn("[STOCK] id_cliente={} no existente o inactivo", idCliente);
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "ID de cliente no existente o inactivo. Comprueba que existe o habla con soporte."
+            );
+        }
+    }
+
+    private void validarProveedor(Long idProveedor) {
+        if (idProveedor == null) return;
+        boolean existeYActivo = proveedorRepository.findById(idProveedor)
+                .map(p -> Boolean.TRUE.equals(p.getActivo()))
+                .orElse(false);
+        if (!existeYActivo) {
+            log.warn("[STOCK] id_proveedor={} no existente o inactivo", idProveedor);
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "ID de proveedor no existente o inactivo. Comprueba que existe o habla con soporte."
+            );
+        }
     }
 
     private Long getUsuarioAutenticadoId() {

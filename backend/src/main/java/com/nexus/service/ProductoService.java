@@ -12,7 +12,9 @@ import com.nexus.repository.ProveedorRepository;
 import com.nexus.repository.UbicacionAlmacenRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProductoService {
@@ -22,6 +24,7 @@ public class ProductoService {
     private final CategoriaRepository        categoriaRepository;
     private final UbicacionAlmacenRepository ubicacionRepository;
     private final AuditService               auditService;
+    private static final String ENTIDAD = "PRODUCTO";
 
     public ProductoService(ProductoRepository productoRepository,
                            ProveedorRepository proveedorRepository,
@@ -37,18 +40,20 @@ public class ProductoService {
 
     public ProductoDTO crear(ProductoDTO dto) {
         if (productoRepository.findBySkuAndActivoTrue(dto.getSku()).isPresent()) {
-            throw new RuntimeException("Ya existe un producto con SKU: " + dto.getSku());
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ya existe un producto con SKU: " + dto.getSku());
         }
         Producto p = toEntity(dto);
         ProductoDTO saved = toDTO(productoRepository.save(p));
-        auditService.log("PRODUCTO", "CREATE", saved.getId(),
+        auditService.log(ENTIDAD, "CREATE", saved.getId(),
                 "SKU: " + saved.getSku() + " | " + saved.getNombre());
         return saved;
     }
 
     public ProductoDTO editar(Long id, ProductoDTO dto) {
         Producto p = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Producto no encontrado: " + id));
         p.setSku(dto.getSku());
         p.setNombre(dto.getNombre());
         p.setDescripcion(dto.getDescripcion());
@@ -63,30 +68,30 @@ public class ProductoService {
         p.setActivo(dto.getActivo() != null ? dto.getActivo() : true);
         if (dto.getIdProveedor() != null) {
             Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Proveedor no encontrado con id: " + dto.getIdProveedor()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Proveedor no encontrado con id: " + dto.getIdProveedor()));
             p.setProveedor(prov);
         } else {
             p.setProveedor(null);
         }
         if (dto.getIdCategoria() != null) {
             Categoria cat = categoriaRepository.findById(dto.getIdCategoria())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Categoría no encontrada con id: " + dto.getIdCategoria()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Categoría no encontrada con id: " + dto.getIdCategoria()));
             p.setCategoria(cat);
         } else {
             p.setCategoria(null);
         }
         if (dto.getIdUbicacion() != null) {
             UbicacionAlmacen ubic = ubicacionRepository.findById(dto.getIdUbicacion())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
             p.setUbicacion(ubic);
         } else {
             p.setUbicacion(null);
         }
         ProductoDTO result = toDTO(productoRepository.save(p));
-        auditService.log("PRODUCTO", "UPDATE", id,
+        auditService.log(ENTIDAD, "UPDATE", id,
                 "SKU: " + result.getSku() + " | " + result.getNombre());
         return result;
     }
@@ -109,10 +114,11 @@ public class ProductoService {
 
     public void softDelete(Long id) {
         Producto p = productoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Producto no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Producto no encontrado: " + id));
         p.setActivo(false);
         productoRepository.save(p);
-        auditService.log("PRODUCTO", "DELETE", id,
+        auditService.log(ENTIDAD, "DELETE", id,
                 "Baja lógica | SKU: " + p.getSku() + " | " + p.getNombre());
     }
 
@@ -161,20 +167,20 @@ public class ProductoService {
         p.setActivo(true);
         if (dto.getIdProveedor() != null) {
             Proveedor prov = proveedorRepository.findById(dto.getIdProveedor())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Proveedor no encontrado con id: " + dto.getIdProveedor()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Proveedor no encontrado con id: " + dto.getIdProveedor()));
             p.setProveedor(prov);
         }
         if (dto.getIdCategoria() != null) {
             Categoria cat = categoriaRepository.findById(dto.getIdCategoria())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Categoría no encontrada con id: " + dto.getIdCategoria()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Categoría no encontrada con id: " + dto.getIdCategoria()));
             p.setCategoria(cat);
         }
         if (dto.getIdUbicacion() != null) {
             UbicacionAlmacen ubic = ubicacionRepository.findById(dto.getIdUbicacion())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Ubicación no encontrada con id: " + dto.getIdUbicacion()));
             p.setUbicacion(ubic);
         }
         return p;

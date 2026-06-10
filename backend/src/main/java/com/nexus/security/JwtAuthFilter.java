@@ -52,7 +52,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 if (currentAuth == null || currentAuth instanceof AnonymousAuthenticationToken) {
                     UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
 
-                    if (userDetails != null && jwtUtil.isTokenValid(jwt, userDetails)) {
+                    if (jwtUtil.isTokenValid(jwt, userDetails)) {
                         UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                                 userDetails, null, userDetails.getAuthorities()
                         );
@@ -61,7 +61,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                     }
                 }
             }
-        } catch (Throwable t) {
+        } catch (Exception e) {
             // Token inválido o expirado — la petición continúa como no autenticada
         }
 

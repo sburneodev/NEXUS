@@ -41,6 +41,7 @@ export interface ProductForm {
     // ── Atributos retro (almacenados en atributosEspecificos) ─────────
     plataforma:         string;
     anio:               string;
+    tasacionIaEur?:     string;   // precio recomendado IA → se guarda en atributosEspecificos
 }
 
 export interface ProductModalProps {

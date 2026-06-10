@@ -194,6 +194,7 @@ export function BovedaRetroPage(): JSX.Element {
     };
     const [editOpen,     setEditOpen]     = useState(false);
     const [selected,     setSelected]     = useState<Producto | null>(null);
+    const [prefillData,  setPrefillData]  = useState<Partial<ProductForm> | null>(null);
     const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
     useEffect(() => {
@@ -239,14 +240,15 @@ export function BovedaRetroPage(): JSX.Element {
         return () => { cancelled = true; };
     }, [filters.querySignal, filterEstado, filterActivo, sortField, sortDir, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
-    function handleRegistrar(_data: Partial<ProductForm>): void {
-        // Desde el Tasador IA: abre el panel vacío en modo creación RETRO
+    function handleRegistrar(data: Partial<ProductForm>): void {
+        // Tasador IA: pre-rellena el formulario con los datos de la tasación
+        setPrefillData(data);
         setSelected(null);
         setEditOpen(true);
     }
-    function handleOpenNew(): void  { setSelected(null); setEditOpen(true); }
-    function handleOpenEdit(p: Producto): void { setSelected(p); setEditOpen(true); }
-    function closeEdit(): void { setEditOpen(false); setSelected(null); }
+    function handleOpenNew(): void  { setPrefillData(null); setSelected(null); setEditOpen(true); }
+    function handleOpenEdit(p: Producto): void { setPrefillData(null); setSelected(p); setEditOpen(true); }
+    function closeEdit(): void { setEditOpen(false); setSelected(null); setPrefillData(null); }
 
     const handleSave = useCallback(async (
         data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
@@ -278,6 +280,7 @@ export function BovedaRetroPage(): JSX.Element {
                 modoRetro={true}
                 onCancel={closeEdit}
                 onSave={handleSave}
+                initialValues={prefillData ?? undefined}
             />
         ) : (
             <>

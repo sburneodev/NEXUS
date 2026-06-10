@@ -5,13 +5,16 @@ import type { EstadoConservacion } from '../../types/models';
 import type { ProductForm } from '../productos/ProductModal';
 
 // ── Tipos ─────────────────────────────────────────────────────────────
+// Campos tal como los devuelve el backend (snake_case + confianza en mayúsculas)
 interface TasacionResult {
-    precioMin:       number;
-    precioPropuesto: number;
-    precioMax:       number;
-    descripcion:     string;
-    skuSugerido?:    string;
-    confianza?:      'alta' | 'media' | 'baja';
+    precio_minimo:      number;
+    precio_recomendado: number;
+    precio_maximo:      number;
+    justificacion:      string;
+    confianza:          'ALTA' | 'MEDIA' | 'BAJA';
+    factores_clave?:    string[];
+    // Caso de error del parser del backend
+    error?:             string;
 }
 
 type TasadorState = 'idle' | 'loading' | 'done' | 'error';
@@ -24,9 +27,9 @@ const ESTADOS: { value: EstadoConservacion; label: string }[] = [
 ];
 
 const CONFIANZA_STYLE: Record<string, { label: string; color: string }> = {
-    alta:  { label: 'CONFIANZA ALTA',  color: 'var(--accent-primary)' },
-    media: { label: 'CONFIANZA MEDIA', color: 'var(--accent-gold)'    },
-    baja:  { label: 'CONFIANZA BAJA',  color: 'var(--accent-danger)'  },
+    ALTA:  { label: 'CONFIANZA ALTA',  color: 'var(--accent-primary)' },
+    MEDIA: { label: 'CONFIANZA MEDIA', color: 'var(--accent-gold)'    },
+    BAJA:  { label: 'CONFIANZA BAJA',  color: 'var(--accent-danger)'  },
 };
 
 // ── Props ─────────────────────────────────────────────────────────────
@@ -58,6 +61,12 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
                 estado,
                 anio:       anio ? Number(anio) : undefined,
             });
+            // Si el backend devolvió un error de parseo en lugar de la tasación
+            if (data.error) {
+                setErrorMsg('La IA no pudo generar una tasación válida. Intenta con más detalles.');
+                setTasState('error');
+                return;
+            }
             setResult(data);
             setTasState('done');
         } catch {
@@ -68,21 +77,23 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
 
     function handleRegistrar(): void {
         if (!result) return;
-        const sku = result.skuSugerido
-            ?? `RET-${plataforma.replace(/\s+/g, '').toUpperCase().slice(0, 4) || 'GEN'}-${String(Date.now()).slice(-4)}`;
+        const sku = `RET-${plataforma.replace(/\s+/g, '').toUpperCase().slice(0, 4) || 'GEN'}-${String(Date.now()).slice(-4)}`;
 
         onRegistrar({
             sku,
             nombre:             nombre.trim(),
-            descripcion:        result.descripcion,
-            precioVenta:        String(result.precioPropuesto),
-            precioCoste:        String(Math.round(result.precioPropuesto * 0.55)),
+            descripcion:        result.justificacion,
+            precioVenta:        String(result.precio_recomendado),
+            precioCoste:        String(Math.round(result.precio_recomendado * 0.55)),
             stockActual:        '1',
             stockMinimo:        '1',
             stockMaximo:        '1',
             tipoProducto:       'RETRO',
             estadoConservacion: estado,
             activo:             true,
+            plataforma:         plataforma.trim() || '',
+            anio:               anio || '',
+            tasacionIaEur:      String(result.precio_recomendado),
         });
     }
 
@@ -317,13 +328,13 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
                         gap:                 '12px',
                         marginBottom:        'var(--space-4)',
                     }}>
-                        <PriceBox label="MÍNIMO"       value={result.precioMin}       variant="muted"   />
-                        <PriceBox label="RECOMENDADO"  value={result.precioPropuesto} variant="primary" />
-                        <PriceBox label="MÁXIMO"       value={result.precioMax}       variant="muted"   />
+                        <PriceBox label="MÍNIMO"       value={result.precio_minimo}      variant="muted"   />
+                        <PriceBox label="RECOMENDADO"  value={result.precio_recomendado} variant="primary" />
+                        <PriceBox label="MÁXIMO"       value={result.precio_maximo}      variant="muted"   />
                     </div>
 
-                    {/* Descripción generada */}
-                    {result.descripcion && (
+                    {/* Justificación generada por la IA */}
+                    {result.justificacion && (
                         <p style={{
                             fontFamily:   'var(--font-body)',
                             fontSize:     '13px',
@@ -335,7 +346,7 @@ export function TasadorIA({ onRegistrar }: TasadorIAProps): JSX.Element {
                             border:       '1px solid var(--border-subtle)',
                             borderRadius: 'var(--radius-base)',
                         }}>
-                            {result.descripcion}
+                            {result.justificacion}
                         </p>
                     )}
 
@@ -409,7 +420,7 @@ function PriceBox({ label, value, variant }: {
                 letterSpacing: '-0.02em',
                 textShadow:    'none',
             }}>
-                €{value.toFixed(2)}
+                €{typeof value === 'number' ? value.toFixed(2) : '—'}
             </div>
         </div>
     );

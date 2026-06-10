@@ -361,7 +361,9 @@ public class SystemController {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             if (auth != null && auth.isAuthenticated()) return auth.getName();
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // Ignorado intencionalmente: si no hay contexto de seguridad, devolvemos "system"
+        }
         return "system";
     }
 }

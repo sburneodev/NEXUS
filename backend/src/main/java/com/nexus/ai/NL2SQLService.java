@@ -4,8 +4,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
@@ -19,12 +21,12 @@ public class NL2SQLService {
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final String KEY_DESCRIPCION = "descripcion";
-    
+
     public NL2SQLService(GeminiService geminiService,
             @Qualifier("readonlyJdbcTemplate") JdbcTemplate jdbcTemplate) {
-			this.geminiService = geminiService;
-			this.jdbcTemplate  = jdbcTemplate;
-			}
+        this.geminiService = geminiService;
+        this.jdbcTemplate  = jdbcTemplate;
+    }
 
     private static final String SCHEMA = """
         Tablas disponibles (PostgreSQL):
@@ -48,10 +50,10 @@ public class NL2SQLService {
         String prompt = """
             Eres un experto en SQL para PostgreSQL. Convierte la pregunta en español
             a una consulta SQL válida.
-            
+
             ESQUEMA DE LA BASE DE DATOS:
             %s
-            
+
             REGLAS CRÍTICAS:
             1. Genera ÚNICAMENTE una consulta SELECT — NUNCA INSERT, UPDATE, DELETE, DROP, ALTER.
             2. Devuelve SOLO un JSON con esta estructura exacta, sin markdown:
@@ -60,16 +62,16 @@ public class NL2SQLService {
             4. Limita siempre con LIMIT 100 máximo.
             5. Si la pregunta no es consultable, devuelve:
                {"sql": null, "descripcion": "No es posible responder esta pregunta"}
-            
+
             Pregunta: "%s"
             """.formatted(SCHEMA, preguntaEnEspanol);
 
         String respuesta = geminiService.llamar(prompt);
-        return procesarYEjecutar(respuesta, preguntaEnEspanol);
+        return procesarYEjecutar(respuesta);
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> procesarYEjecutar(String respuesta, String pregunta) {
+    private Map<String, Object> procesarYEjecutar(String respuesta) {
         try {
             String limpio = respuesta
                 .replace("```json", "")
@@ -86,19 +88,19 @@ public class NL2SQLService {
                 );
             }
 
-            // Validación de seguridad — solo SELECT permitido
             String sqlUpper = sql.trim().toUpperCase();
             if (!sqlUpper.startsWith("SELECT")) {
                 log.warn("[NL2SQL] Intento de SQL no-SELECT bloqueado: {}", sql);
-                throw new RuntimeException("Solo se permiten consultas SELECT");
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Solo se permiten consultas SELECT");
             }
 
-            // Palabras clave peligrosas bloqueadas
             for (String keyword : List.of("INSERT", "UPDATE", "DELETE", "DROP",
                                            "ALTER", "TRUNCATE", "CREATE", "GRANT")) {
                 if (sqlUpper.contains(keyword)) {
                     log.warn("[NL2SQL] Keyword peligrosa detectada: {}", keyword);
-                    throw new RuntimeException("Consulta no permitida: contiene " + keyword);
+                    throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "Consulta no permitida: contiene " + keyword);
                 }
             }
 
@@ -114,7 +116,7 @@ public class NL2SQLService {
                 "total_filas", resultados.size()
             );
 
-        } catch (RuntimeException e) {
+        } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
             log.error("[NL2SQL] Error: {}", e.getMessage());

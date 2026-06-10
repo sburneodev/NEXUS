@@ -56,7 +56,7 @@ public class ProductoService {
                         HttpStatus.NOT_FOUND, "Producto no encontrado: " + id));
         // Capturar estado anterior para el log de auditoría
         boolean activoAntes    = Boolean.TRUE.equals(p.getActivo());
-        double  precioAntes    = p.getPrecioVenta() != null ? p.getPrecioVenta() : 0;
+        double  precioAntes    = p.getPrecioVenta() != null ? p.getPrecioVenta().doubleValue() : 0.0;
         int     stockAntes     = p.getStockActual()  != null ? p.getStockActual()  : 0;
 
         p.setSku(dto.getSku());
@@ -109,7 +109,7 @@ public class ProductoService {
                     .append(activoDespues ? "ACTIVO" : "INACTIVO");
         }
 
-        double precioAhora = result.getPrecioVenta() != null ? result.getPrecioVenta() : 0;
+        double precioAhora = result.getPrecioVenta() != null ? result.getPrecioVenta().doubleValue() : 0.0;
         if (Math.abs(precioAntes - precioAhora) > 0.001) {
             detalles.append(String.format(" | precio: %.2f€ → %.2f€", precioAntes, precioAhora));
         }

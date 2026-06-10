@@ -45,6 +45,7 @@ export function ProductosPage(): JSX.Element {
     const [selected,    setSelected]    = useState<Producto | null>(null);
     const [refreshTick, setRefreshTick] = useState(0);
     const [confirmId,      setConfirmId]      = useState<number | null>(null);
+    const [saveError,      setSaveError]      = useState<string | null>(null);
 
     // Mensaje de éxito tras crear producto desde /productos/nuevo
     const [successMsg, setSuccessMsg] = useState<string | null>(
@@ -137,6 +138,7 @@ export function ProductosPage(): JSX.Element {
     const handleSave = useCallback(async (
         data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
     ): Promise<void> => {
+        setSaveError(null);
         try {
             if (selected) {
                 await productoService.editar(selected.id, data as any);
@@ -146,8 +148,11 @@ export function ProductosPage(): JSX.Element {
             setEditOpen(false);
             setSelected(null);
             refresh();
-        } catch (err) {
-            console.error('Error guardando producto:', err);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message
+                ?? err?.response?.data
+                ?? 'Error al guardar. Comprueba que el SKU no esté duplicado.';
+            setSaveError(String(msg));
         }
     }, [selected, refresh]);
 
@@ -171,7 +176,7 @@ export function ProductosPage(): JSX.Element {
     }, [confirmId]);
 
     const openEdit = (p: Producto): void => { setSelected(p); setEditOpen(true); };
-    const closeEdit = (): void => { setEditOpen(false); setSelected(null); };
+    const closeEdit = (): void => { setEditOpen(false); setSelected(null); setSaveError(null); };
 
     // ── Chips de filtro ───────────────────────────────────────────────────────
     const CHIPS: { key: ChipFilter; label: string; icon?: string; danger?: boolean; muted?: boolean; color?: string }[] = [
@@ -194,6 +199,7 @@ export function ProductosPage(): JSX.Element {
                     producto={selected}
                     onCancel={closeEdit}
                     onSave={handleSave}
+                    serverError={saveError}
                 />
 
             ) : (

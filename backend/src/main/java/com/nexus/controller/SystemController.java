@@ -179,7 +179,7 @@ public class SystemController {
 
             // ── 2. Parsear JSON ────────────────────────────────────────
             Map<String, Object> backup = parsearBackup(file);
-            if (backup == null) {
+            if (backup.isEmpty()) {
                 return error("El archivo no es un JSON válido.");
             }
 
@@ -242,7 +242,7 @@ public class SystemController {
         try {
             return objectMapper.readValue(file.getBytes(), new TypeReference<>() {});
         } catch (Exception e) {
-            return null;
+            return Map.of();
         }
     }
 

@@ -109,7 +109,7 @@ public class AuditController {
             entry.put("timestamp",    fila.get("creado_en"));
             entry.put("ip",           fila.get("ip"));
             return entry;
-        }).collect(Collectors.toList());
+        }).toList();
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("totalElements", totalElements);

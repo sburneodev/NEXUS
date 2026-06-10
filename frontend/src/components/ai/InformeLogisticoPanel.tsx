@@ -15,8 +15,10 @@ interface InformeResponse {
     alertas_criticas:    string;
     plan_pedidos:        string;
     prevision_ingresos:  string;
+    prevision_impacto?:  string;
     productos_afectados: number;
     generado_en:         string;
+    resumen_ejecutivo?:  string;
 }
 
 type PanelState = 'idle' | 'loading' | 'done' | 'error';
@@ -187,27 +189,33 @@ export function InformeLogisticoPanel(): JSX.Element {
 
             {/* Estado: resultado */}
             {state === 'done' && informe && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <SectionCard
-                        title="Alertas Críticas"
-                        icon="⛔"
-                        content={informe.alertas_criticas}
-                        accent="var(--accent-danger)"
-                    />
-                    <SectionCard
-                        title="Plan de Pedidos"
-                        icon="▤"
-                        content={informe.plan_pedidos}
-                        accent="var(--accent-cyan)"
-                    />
-                    <SectionCard
-                        title="Previsión de Impacto en Ingresos"
-                        icon="€"
-                        content={informe.prevision_ingresos}
-                        accent="var(--accent-primary)"
-                    />
-                </div>
-            )}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <SectionCard
+            title="Alertas Críticas"
+            icon="⛔"
+            content={Array.isArray(informe.alertas_criticas)
+                ? (informe.alertas_criticas as string[]).join('\n')
+                : String(informe.alertas_criticas ?? '')}
+            accent="var(--accent-danger)"
+        />
+        <SectionCard
+            title="Plan de Pedidos"
+            icon="▤"
+            content={Array.isArray(informe.plan_pedidos)
+                ? (informe.plan_pedidos as Array<{proveedor: string; productos: string[]; urgencia: string}>)
+                    .map(p => `${p.proveedor} [${p.urgencia}]\n${p.productos.join(', ')}`)
+                    .join('\n\n')
+                : String(informe.plan_pedidos ?? '')}
+            accent="var(--accent-cyan)"
+        />
+        <SectionCard
+            title="Previsión de Impacto en Ingresos"
+            icon="€"
+            content={String(informe.prevision_ingresos ?? informe.prevision_impacto ?? '')}
+            accent="var(--accent-primary)"
+        />
+    </div>
+)}
 
             {/* Estado: idle */}
             {state === 'idle' && (

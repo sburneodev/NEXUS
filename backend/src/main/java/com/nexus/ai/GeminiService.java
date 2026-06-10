@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -45,10 +47,11 @@ public class GeminiService {
                   }],
                   "generationConfig": {
                     "temperature": 0.3,
-                    "maxOutputTokens": 1024
+                    "maxOutputTokens": 8192
                   }
                 }
                 """.formatted(objectMapper.writeValueAsString(prompt));
+            log.info("[GEMINI] API Key presente: {}", apiKey != null && !apiKey.isBlank() ? "SÍ (" + apiKey.substring(0,8) + "...)" : "NO");
 
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(urlConKey))
@@ -60,9 +63,17 @@ public class GeminiService {
             HttpResponse<String> response = httpClient.send(
                     request, HttpResponse.BodyHandlers.ofString());
 
+            if (response.statusCode() == 503) {
+                Thread.sleep(2000);
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            }
+
             if (response.statusCode() != 200) {
                 log.error("[GEMINI] Error HTTP {}: {}", response.statusCode(), response.body());
-                throw new RuntimeException("Error llamando a Gemini: HTTP " + response.statusCode());
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Error llamando a Gemini: HTTP " + response.statusCode()
+                );
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -76,10 +87,16 @@ public class GeminiService {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Error en GeminiService: hilo interrumpido", e);
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Error en GeminiService: hilo interrumpido"
+            );
         } catch (Exception e) {
             log.error("[GEMINI] Excepción: {}", e.getMessage());
-            throw new RuntimeException("Error en GeminiService: " + e.getMessage(), e);
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error en GeminiService: " + e.getMessage()
+            );
         }
     }
 }

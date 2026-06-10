@@ -55,7 +55,7 @@ function DecisionBadge({ decision }: { decision: 'ACEPTAR' | 'NEGOCIAR' | 'RECHA
         NEGOCIAR: { cls: 'badge badge-gold', icon: '↕' },
         RECHAZAR: { cls: 'badge badge-danger', icon: '✗' },
     };
-    const { cls, icon } = map[decision];
+    const { cls, icon } = map[decision] ?? map['NEGOCIAR'];
     return <span className={cls} style={{ fontSize: 'var(--text-sm)', padding: '4px 12px' }}>{icon} {decision}</span>;
 }
 
@@ -101,7 +101,12 @@ export function AsistenteRecompraPanel(): JSX.Element {
 
             addLog('ANÁLISIS COMPLETADO. PROCESANDO RESPUESTA...');
 
-            setIaResult(data);
+           setIaResult({
+                ...data,
+                decision: (['ACEPTAR', 'NEGOCIAR', 'RECHAZAR'].includes(data.decision?.toUpperCase())
+                    ? data.decision.toUpperCase()
+                    : 'NEGOCIAR') as 'ACEPTAR' | 'NEGOCIAR' | 'RECHAZAR',
+            });
             setForm({
                 nombreProducto: descripcion.trim(),
                 plataforma: '',

@@ -47,13 +47,11 @@ public class ProveedorService {
         Proveedor p = proveedorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
 
-        String  razonAnterior  = p.getRazonSocial();
-        String  cifAnterior    = p.getCif();
-        String  emailAnterior  = p.getEmail();
-        String  telAnterior    = p.getTelefono();
-        String  dirAnterior    = p.getDireccion();
-        Short   tiempoAnterior = p.getTiempoEntregaD();
-        boolean activoAnterior = Boolean.TRUE.equals(p.getActivo());
+        EstadoAnterior anterior = new EstadoAnterior(
+                p.getRazonSocial(), p.getCif(), p.getEmail(),
+                p.getTelefono(), p.getDireccion(), p.getTiempoEntregaD(),
+                Boolean.TRUE.equals(p.getActivo())
+        );
 
         p.setRazonSocial(dto.getRazonSocial());
         p.setCif(dto.getCif());
@@ -66,12 +64,10 @@ public class ProveedorService {
         }
 
         ProveedorDTO result = toDTO(proveedorRepository.save(p));
-        String detalle = construirDetalle(result, dto, razonAnterior, cifAnterior,
-                emailAnterior, telAnterior, dirAnterior, tiempoAnterior, activoAnterior);
+        String detalle = construirDetalle(result, dto, anterior);
         auditService.log(ENTIDAD, "UPDATE", id, detalle);
         return result;
     }
-
     public void softDelete(Long id) {
         Proveedor p = proveedorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
@@ -81,28 +77,24 @@ public class ProveedorService {
         auditService.log(ENTIDAD, "DELETE", id, razon + " | baja lógica");
     }
 
-    private String construirDetalle(ProveedorDTO result, ProveedorDTO dto,
-            String razonAnterior, String cifAnterior, String emailAnterior,
-            String telAnterior, String dirAnterior, Short tiempoAnterior,
-            boolean activoAnterior) {
-
+    private String construirDetalle(ProveedorDTO result, ProveedorDTO dto, EstadoAnterior ant) {
         boolean activoNuevo = Boolean.TRUE.equals(result.getActivo());
         List<String> cambios = new ArrayList<>();
 
-        if (!Objects.equals(razonAnterior, dto.getRazonSocial()))
-            cambios.add("razón social: " + strAudit(razonAnterior) + "→" + strAudit(dto.getRazonSocial()));
-        if (!Objects.equals(cifAnterior, dto.getCif()))
-            cambios.add("CIF: " + strAudit(cifAnterior) + "→" + strAudit(dto.getCif()));
-        if (!Objects.equals(emailAnterior, dto.getEmail()))
-            cambios.add("email: " + strAudit(emailAnterior) + "→" + strAudit(dto.getEmail()));
-        if (!Objects.equals(telAnterior, dto.getTelefono()))
-            cambios.add("tel: " + strAudit(telAnterior) + "→" + strAudit(dto.getTelefono()));
-        if (!Objects.equals(dirAnterior, dto.getDireccion()))
-            cambios.add("dirección: " + strAudit(dirAnterior) + "→" + strAudit(dto.getDireccion()));
-        if (!Objects.equals(tiempoAnterior, dto.getTiempoEntregaD()))
-            cambios.add("entrega: " + strAudit(tiempoAnterior) + "→" + strAudit(dto.getTiempoEntregaD()));
-        if (activoAnterior != activoNuevo)
-            cambios.add("estado: " + (activoAnterior ? "ACTIVO" : "INACTIVO")
+        if (!Objects.equals(ant.razonSocial(), dto.getRazonSocial()))
+            cambios.add("razón social: " + strAudit(ant.razonSocial()) + "→" + strAudit(dto.getRazonSocial()));
+        if (!Objects.equals(ant.cif(), dto.getCif()))
+            cambios.add("CIF: " + strAudit(ant.cif()) + "→" + strAudit(dto.getCif()));
+        if (!Objects.equals(ant.email(), dto.getEmail()))
+            cambios.add("email: " + strAudit(ant.email()) + "→" + strAudit(dto.getEmail()));
+        if (!Objects.equals(ant.telefono(), dto.getTelefono()))
+            cambios.add("tel: " + strAudit(ant.telefono()) + "→" + strAudit(dto.getTelefono()));
+        if (!Objects.equals(ant.direccion(), dto.getDireccion()))
+            cambios.add("dirección: " + strAudit(ant.direccion()) + "→" + strAudit(dto.getDireccion()));
+        if (!Objects.equals(ant.tiempoEntrega(), dto.getTiempoEntregaD()))
+            cambios.add("entrega: " + strAudit(ant.tiempoEntrega()) + "→" + strAudit(dto.getTiempoEntregaD()));
+        if (ant.activo() != activoNuevo)
+            cambios.add("estado: " + (ant.activo() ? "ACTIVO" : "INACTIVO")
                       + "→" + (activoNuevo ? "ACTIVO" : "INACTIVO"));
 
         String detalle = result.getRazonSocial();
@@ -138,4 +130,9 @@ public class ProveedorService {
         p.setActivo(true);
         return p;
     }
+    private record EstadoAnterior(
+    	    String razonSocial, String cif, String email,
+    	    String telefono, String direccion, Short tiempoEntrega,
+    	    boolean activo
+    	) {}
 }

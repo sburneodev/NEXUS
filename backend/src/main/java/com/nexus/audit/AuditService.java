@@ -101,7 +101,9 @@ public class AuditService {
                     && !"anonymousUser".equals(String.valueOf(auth.getPrincipal()))) {
                 return auth.getName();
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // Ignorado intencionalmente: si no hay contexto de seguridad, devolvemos null
+        }
         return null;
     }
 
@@ -110,18 +112,18 @@ public class AuditService {
             ServletRequestAttributes attrs =
                 (ServletRequestAttributes) RequestContextHolder.currentRequestAttributes();
             HttpServletRequest req = attrs.getRequest();
-            // Soporte para proxies / balanceadores (X-Forwarded-For)
             String forwarded = req.getHeader("X-Forwarded-For");
             if (forwarded != null && !forwarded.isBlank()) {
                 return forwarded.split(",")[0].trim();
             }
             String addr = req.getRemoteAddr();
-            // Normalizar loopback IPv6 → IPv4 estándar
             if ("0:0:0:0:0:0:0:1".equals(addr) || "::1".equals(addr)) {
                 return "127.0.0.1";
             }
             return addr;
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+            // Ignorado intencionalmente: si no hay request activo, devolvemos null
+        }
         return null;
     }
 }

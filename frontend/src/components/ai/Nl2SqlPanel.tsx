@@ -4,10 +4,12 @@ import api from '../../services/api';
 import { DynamicTable, type TableRow } from './DynamicTable';
 
 interface Nl2SqlResponse {
-    sql:        string;
-    resultados: TableRow[];
-    mensaje?:   string;
-    error?:     string;
+    sql:         string;
+    filas:       TableRow[];
+    columnas:    string[];
+    total_filas: number;
+    descripcion?: string;
+    error?:      string;
 }
 
 type PanelState = 'idle' | 'loading' | 'success' | 'error';
@@ -285,7 +287,7 @@ export function Nl2SqlPanel(): JSX.Element {
                                     </div>
 
                                     {/* Tabla de resultados */}
-                                    {result.resultados.length > 0 && (
+                                    {(result.filas ?? []).length > 0 && (
                                         <div>
                                             <div style={{
                                                 fontFamily:    'var(--font-display)',
@@ -296,13 +298,13 @@ export function Nl2SqlPanel(): JSX.Element {
                                                 color:         'var(--text-muted)',
                                                 marginBottom:  '8px',
                                             }}>
-                                                {result.resultados.length} resultado{result.resultados.length !== 1 ? 's' : ''}
+                                                {result.filas.length} resultado{result.filas.length !== 1 ? 's' : ''}
                                             </div>
-                                            <DynamicTable rows={result.resultados} />
+                                            <DynamicTable rows={result.filas} />
                                         </div>
                                     )}
 
-                                    {result.resultados.length === 0 && (
+                                    {(result.filas ?? []).length === 0 && (
                                         <div style={{
                                             fontFamily:    'var(--font-mono)',
                                             fontSize:      '11px',

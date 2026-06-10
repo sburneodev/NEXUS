@@ -26,6 +26,7 @@ class ProductoServiceTest {
     @Mock private AuditService        auditService;
     @Mock private ProductoRepository  productoRepository;
     @Mock private ProveedorRepository proveedorRepository;
+
     @InjectMocks private ProductoService productoService;
 
     private Producto productoValido() {
@@ -46,7 +47,6 @@ class ProductoServiceTest {
         dto.setNombre("Producto Test");
         dto.setPrecioCoste(BigDecimal.TEN);
         dto.setPrecioVenta(BigDecimal.valueOf(19.99));
-
         when(productoRepository.findBySkuAndActivoTrue("STD-TEST-001")).thenReturn(Optional.empty());
         when(productoRepository.save(any())).thenReturn(productoValido());
 
@@ -58,7 +58,6 @@ class ProductoServiceTest {
     void crear_producto_sku_duplicado_lanza_excepcion() {
         ProductoDTO dto = new ProductoDTO();
         dto.setSku("STD-TEST-001");
-
         when(productoRepository.findBySkuAndActivoTrue("STD-TEST-001"))
                 .thenReturn(Optional.of(productoValido()));
 
@@ -68,7 +67,9 @@ class ProductoServiceTest {
     @Test
     void buscar_producto_no_encontrado_lanza_excepcion() {
         when(productoRepository.findById(999L)).thenReturn(Optional.empty());
-        assertThrows(RuntimeException.class, () -> productoService.editar(999L, new ProductoDTO()));
+
+        var dto = new ProductoDTO();
+        assertThrows(RuntimeException.class, () -> productoService.editar(999L, dto));
     }
 
     @Test

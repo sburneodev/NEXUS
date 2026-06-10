@@ -10,16 +10,21 @@ import com.nexus.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.security.core.Authentication;
+
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
 @Service
 public class UsuarioService {
+
+    private static final String ENTIDAD       = "USUARIO";
+    private static final String NOT_FOUND_MSG = "Usuario no encontrado: ";
+    private static final String TEMP_PASSWORD = System.getenv().getOrDefault("TEMP_PASSWORD", "NEXUS2026!");
 
     private final UsuarioRepository usuarioRepository;
     private final RolRepository     rolRepository;
@@ -37,14 +42,15 @@ public class UsuarioService {
     }
 
     private Long getUsuarioActualId() {
-    	Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    	if (auth == null || !auth.isAuthenticated()) {
-    	    throw new RuntimeException("Usuario actual no encontrado");
-    	}
-    	String email = auth.getName();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario actual no encontrado");
+        }
+        String email = auth.getName();
         return usuarioRepository.findByEmail(email)
                 .map(Usuario::getId)
-                .orElseThrow(() -> new RuntimeException("Usuario actual no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Usuario actual no encontrado"));
     }
 
     public Page<UsuarioDTO> listar(String buscar, Pageable pageable) {
@@ -60,64 +66,61 @@ public class UsuarioService {
 
     public UsuarioDTO buscarPorId(Long id) {
         return toDTO(usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id)));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id)));
     }
 
     public void activar(Long id) {
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.setActive(true);
         usuarioRepository.save(u);
-        auditService.log("USUARIO", "ACTIVATE", id,
-                "Cuenta activada: " + u.getEmail());
+        auditService.log(ENTIDAD, "ACTIVATE", id, "Cuenta activada: " + u.getEmail());
     }
 
     public void desactivar(Long id) {
         if (id.equals(getUsuarioActualId())) {
-            throw new RuntimeException("No puedes desactivarte a ti mismo");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "No puedes desactivarte a ti mismo");
         }
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.setActive(false);
         usuarioRepository.save(u);
-        auditService.log("USUARIO", "DEACTIVATE", id,
-                "Cuenta desactivada: " + u.getEmail());
+        auditService.log(ENTIDAD, "DEACTIVATE", id, "Cuenta desactivada: " + u.getEmail());
     }
 
     public UsuarioDTO asignarRol(Long id, String nombreRol) {
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         Rol rol = rolRepository.findByNombre(nombreRol)
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + nombreRol));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Rol no encontrado: " + nombreRol));
         u.getRoles().add(rol);
         UsuarioDTO result = toDTO(usuarioRepository.save(u));
-        auditService.log("USUARIO", "ROLE_ASSIGN", id,
+        auditService.log(ENTIDAD, "ROLE_ASSIGN", id,
                 "Rol asignado: " + nombreRol + " → " + u.getEmail());
         return result;
     }
 
     public UsuarioDTO quitarRol(Long id, String nombreRol) {
         if (id.equals(getUsuarioActualId()) && "ADMIN".equals(nombreRol)) {
-            throw new RuntimeException("No puedes quitarte el rol ADMIN a ti mismo");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "No puedes quitarte el rol ADMIN a ti mismo");
         }
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.getRoles().removeIf(r -> r.getNombre().equals(nombreRol));
         UsuarioDTO result = toDTO(usuarioRepository.save(u));
-        auditService.log("USUARIO", "ROLE_REMOVE", id,
+        auditService.log(ENTIDAD, "ROLE_REMOVE", id,
                 "Rol retirado: " + nombreRol + " → " + u.getEmail());
         return result;
     }
 
-    /** Contraseña temporal asignada automáticamente a todos los usuarios creados por el admin. */
-    private static final String TEMP_PASSWORD = System.getenv().getOrDefault("TEMP_PASSWORD", "NEXUS2026!");
-
-    /**
-     * Crea un usuario nuevo desde el panel de administración.
-     * La cuenta se marca como activa y verificada (el admin la crea directamente).
-     * Siempre se asigna la contraseña temporal NEXUS2026! — el usuario deberá
-     * cambiarla en su primer acceso (flujo /setup-password).
-     */
     public UsuarioDTO invitar(InvitarUsuarioRequest req) {
         if (usuarioRepository.existsByEmail(req.getEmail())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -131,9 +134,9 @@ public class UsuarioService {
         Usuario u = new Usuario();
         u.setEmail(req.getEmail());
         u.setUsername(req.getUsername());
-        u.setPassword(passwordEncoder.encode(TEMP_PASSWORD)); // siempre contraseña temporal
+        u.setPassword(passwordEncoder.encode(TEMP_PASSWORD));
         u.setActive(true);
-        u.setVerified(true);   // cuenta creada por admin → no necesita verificar email
+        u.setVerified(true);
         u.setRoles(new HashSet<>());
         Usuario saved = usuarioRepository.save(u);
 
@@ -145,7 +148,7 @@ public class UsuarioService {
             saved = usuarioRepository.save(saved);
         }
 
-        auditService.log("USUARIO", "INSERT", saved.getId(),
+        auditService.log(ENTIDAD, "INSERT", saved.getId(),
                 "Usuario creado por admin: " + saved.getEmail() + " — rol: " + req.getRol());
 
         return toDTO(saved);

@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -62,7 +64,10 @@ public class GeminiService {
 
             if (response.statusCode() != 200) {
                 log.error("[GEMINI] Error HTTP {}: {}", response.statusCode(), response.body());
-                throw new RuntimeException("Error llamando a Gemini: HTTP " + response.statusCode());
+                throw new ResponseStatusException(
+                	    org.springframework.http.HttpStatus.BAD_GATEWAY,
+                	    "Error llamando a Gemini: HTTP " + response.statusCode()
+                	);
             }
 
             JsonNode root = objectMapper.readTree(response.body());

@@ -15,6 +15,14 @@ public interface ProductoRepository extends JpaRepository<Producto, Long> {
 
     Page<Producto> findByActivoTrue(Pageable pageable);
 
+    Page<Producto> findByActivoFalse(Pageable pageable);
+
+    /** Inactivos excluyendo un tipo concreto — p.ej. excluir RETRO para el chip "Inactivos" */
+    Page<Producto> findByActivoFalseAndTipoProductoNot(String tipoProducto, Pageable pageable);
+
+    /** Inactivos de un tipo concreto — p.ej. solo RETRO para el chip "Vendidos" */
+    Page<Producto> findByActivoFalseAndTipoProducto(String tipoProducto, Pageable pageable);
+
     Page<Producto> findByTipoProductoAndActivoTrue(String tipoProducto, Pageable pageable);
 
     /**

@@ -22,7 +22,7 @@ import { ActionIconBtn }                                                    from
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
 
-type ChipFilter = 'todos' | 'ESTANDAR' | 'RETRO' | 'stockBajo' | 'criticos' | 'inactivos';
+type ChipFilter = 'todos' | 'ESTANDAR' | 'RETRO' | 'stockBajo' | 'criticos' | 'inactivos' | 'vendidos';
 type SortField  = 'sku' | 'nombre' | 'precioVenta' | 'stockActual';
 type SortDir    = 'asc' | 'desc';
 
@@ -94,7 +94,8 @@ export function ProductosPage(): JSX.Element {
         // aparecer en "Stock Bajo"; ese filtro es exclusivo de productos ESTÁNDAR.
         if (chip === 'stockBajo')  { params.set('stockBajo', 'true'); params.set('tipo', 'ESTANDAR'); }
         if (chip === 'criticos')   params.set('stockCritico', 'true');
-        if (chip === 'inactivos')  params.set('activo',       'false');
+        if (chip === 'inactivos')  params.set('activo', 'false');
+        if (chip === 'vendidos')   { params.set('activo', 'false'); params.set('tipo', 'RETRO'); }
 
         // Ordenación
         if (sortField) params.set('sort', `${sortField},${sortDir}`);
@@ -119,11 +120,17 @@ export function ProductosPage(): JSX.Element {
     }, [filters.querySignal, chip, sortField, sortDir, refreshTick]);
 
     // ── Filtro client-side como fallback (stock bajo / críticos) ─────────────
+    const isVendido = (p: Producto) => p.tipoProducto === 'RETRO' && (!p.activo || p.stockActual === 0);
+
     const displayRows = (() => {
         if (chip === 'stockBajo')  return rows.filter(p => p.stockActual <= p.stockMinimo && p.tipoProducto !== 'RETRO');
-        if (chip === 'criticos')   return rows.filter(p => p.stockActual === 0);
-        if (chip === 'inactivos')  return rows.filter(p => !p.activo);
-        return rows;
+        if (chip === 'criticos')   return rows.filter(p => p.stockActual === 0 && p.tipoProducto !== 'RETRO');
+        // Inactivos: solo productos NO retro dados de baja manualmente
+        if (chip === 'inactivos')  return rows.filter(p => !p.activo && p.tipoProducto !== 'RETRO');
+        // Vendidos: artículos retro inactivos o con stock 0 (vendidos)
+        if (chip === 'vendidos')   return rows.filter(p => isVendido(p));
+        // Activos (por defecto): excluir retro con stock 0
+        return rows.filter(p => !isVendido(p));
     })();
 
     // ── Guardar (creación o edición) ─────────────────────────────────────────
@@ -147,7 +154,7 @@ export function ProductosPage(): JSX.Element {
     // ── Soft delete (sin window.confirm — confirmación inline en la fila) ────────
     const handleSoftDelete = useCallback(async (p: Producto): Promise<void> => {
         try {
-            await productoService.editar(p.id, { ...p, activo: false } as any);
+            await productoService.eliminar(p.id);
             setConfirmId(null);
             refresh();
         } catch {
@@ -168,12 +175,13 @@ export function ProductosPage(): JSX.Element {
 
     // ── Chips de filtro ───────────────────────────────────────────────────────
     const CHIPS: { key: ChipFilter; label: string; icon?: string; danger?: boolean; muted?: boolean; color?: string }[] = [
-        { key: 'todos',     label: 'Todos' },
+        { key: 'todos',     label: 'Activos' },
         { key: 'ESTANDAR',  label: 'Estándar' },
         { key: 'RETRO',     label: 'Retro',      icon: '★', color: 'var(--accent-gold)'   },
         { key: 'stockBajo', label: 'Stock Bajo', icon: '⚠', danger: true                  },
         { key: 'criticos',  label: 'Sin Stock',  icon: '●', danger: true                  },
         { key: 'inactivos', label: 'Inactivos',  icon: '○', muted:  true                  },
+        { key: 'vendidos',  label: 'Vendidos',   icon: '✓', color: 'var(--accent-gold)'   },
     ];
 
     // ── Render ────────────────────────────────────────────────────────────────
@@ -454,12 +462,10 @@ export function ProductosPage(): JSX.Element {
 
                                             {/* Estado */}
                                             <td style={tdStyle}>
-                                                {p.tipoProducto === 'RETRO' && !p.activo ? (
+                                                {p.tipoProducto === 'RETRO' && (!p.activo || p.stockActual === 0) ? (
                                                     <span style={{
                                                         fontFamily:    'var(--font-mono)', fontSize: '11px', fontWeight: 700,
                                                         letterSpacing: '0.14em', color: 'var(--accent-danger)',
-                                                        border:        '1px solid var(--accent-danger)',
-                                                        borderRadius:  '2px', padding: '2px 7px', display: 'inline-block',
                                                     }}>VENDIDO</span>
                                                 ) : (
                                                     <span style={{
@@ -578,6 +584,10 @@ export function ProductosPage(): JSX.Element {
 // ── Badge de stock ────────────────────────────────────────────────────────────
 
 function stockBadge(p: Producto): JSX.Element {
+    // Artículo retro vendido (inactivo o stock 0) — no tiene stock relevante
+    if (p.tipoProducto === 'RETRO' && (!p.activo || p.stockActual === 0)) {
+        return <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', opacity: 0.4 }}>—</span>;
+    }
     const critico = p.tipoProducto !== 'RETRO' && p.stockActual <= p.stockMinimo;
     return (
         <span style={{

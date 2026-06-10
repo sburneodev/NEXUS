@@ -37,7 +37,7 @@ const EMPTY: ProductForm = {
     tipoProducto: 'ESTANDAR', estadoConservacion: '',
     activo: true,
     idProveedor: '', idCategoria: '', idUbicacion: '',
-    plataforma: '', anio: '',
+    plataforma: '', anio: '', tasacionIaEur: '',
 };
 
 // ── Componente principal ──────────────────────────────────────────────────────
@@ -120,6 +120,8 @@ export function ProductFormPanel({
                 ...(producto?.atributosEspecificos as Record<string, unknown> || {}),
                 ...(form.plataforma.trim() ? { plataforma: form.plataforma.trim() } : {}),
                 ...(form.anio.trim() ? { anio: Number(form.anio) } : {}),
+                ...(form.tasacionIaEur && !isNaN(Number(form.tasacionIaEur))
+                    ? { tasacion_ia_eur: Number(form.tasacionIaEur) } : {}),
               }
             : null;
 

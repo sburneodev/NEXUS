@@ -23,7 +23,15 @@ public class ProductoController {
     public ResponseEntity<Page<ProductoDTO>> listar(
             @RequestParam(required = false) String tipo,
             @RequestParam(required = false) String buscar,
+            @RequestParam(required = false) Boolean activo,
             Pageable pageable) {
+
+        // Chips "Inactivos" y "Vendidos" — filtrado por tipo cuando se especifica
+        if (Boolean.FALSE.equals(activo)) {
+            if (tipo != null && !tipo.isBlank())
+                return ResponseEntity.ok(productoService.listarInactivosPorTipo(tipo, pageable));
+            return ResponseEntity.ok(productoService.listarInactivosNoRetro(pageable));
+        }
 
         final boolean hasBuscar = buscar != null && !buscar.isBlank();
         final boolean hasTipo   = tipo   != null && !tipo.isBlank();
@@ -34,7 +42,7 @@ public class ProductoController {
         if (hasBuscar)            return ResponseEntity.ok(productoService.buscar(buscar, pageable));
         // Solo tipo
         if (hasTipo)              return ResponseEntity.ok(productoService.listarPorTipo(tipo, pageable));
-        // Sin filtros → listado completo
+        // Sin filtros → listado completo (solo activos)
         return ResponseEntity.ok(productoService.listar(pageable));
     }
 

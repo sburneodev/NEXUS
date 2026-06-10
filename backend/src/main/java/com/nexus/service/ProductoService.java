@@ -54,6 +54,11 @@ public class ProductoService {
         Producto p = productoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Producto no encontrado: " + id));
+        // Capturar estado anterior para el log de auditoría
+        boolean activoAntes    = Boolean.TRUE.equals(p.getActivo());
+        double  precioAntes    = p.getPrecioVenta() != null ? p.getPrecioVenta() : 0;
+        int     stockAntes     = p.getStockActual()  != null ? p.getStockActual()  : 0;
+
         p.setSku(dto.getSku());
         p.setNombre(dto.getNombre());
         p.setDescripcion(dto.getDescripcion());
@@ -91,13 +96,49 @@ public class ProductoService {
             p.setUbicacion(null);
         }
         ProductoDTO result = toDTO(productoRepository.save(p));
-        auditService.log(ENTIDAD, "UPDATE", id,
-                "SKU: " + result.getSku() + " | " + result.getNombre());
+
+        // Construir detalles de cambios para auditoría
+        StringBuilder detalles = new StringBuilder("SKU: ").append(result.getSku())
+                .append(" | ").append(result.getNombre());
+
+        boolean activoDespues = Boolean.TRUE.equals(result.getActivo());
+        if (activoAntes != activoDespues) {
+            detalles.append(" | estado: ")
+                    .append(activoAntes ? "ACTIVO" : "INACTIVO")
+                    .append(" → ")
+                    .append(activoDespues ? "ACTIVO" : "INACTIVO");
+        }
+
+        double precioAhora = result.getPrecioVenta() != null ? result.getPrecioVenta() : 0;
+        if (Math.abs(precioAntes - precioAhora) > 0.001) {
+            detalles.append(String.format(" | precio: %.2f€ → %.2f€", precioAntes, precioAhora));
+        }
+
+        int stockAhora = result.getStockActual() != null ? result.getStockActual() : 0;
+        if (stockAntes != stockAhora) {
+            detalles.append(String.format(" | stock: %d → %d", stockAntes, stockAhora));
+        }
+
+        auditService.log(ENTIDAD, "UPDATE", id, detalles.toString());
         return result;
     }
 
     public Page<ProductoDTO> listar(Pageable pageable) {
         return productoRepository.findByActivoTrue(pageable).map(this::toDTO);
+    }
+
+    public Page<ProductoDTO> listarInactivos(Pageable pageable) {
+        return productoRepository.findByActivoFalse(pageable).map(this::toDTO);
+    }
+
+    /** Chip "Inactivos": productos dados de baja manualmente, excluye artículos RETRO vendidos */
+    public Page<ProductoDTO> listarInactivosNoRetro(Pageable pageable) {
+        return productoRepository.findByActivoFalseAndTipoProductoNot("RETRO", pageable).map(this::toDTO);
+    }
+
+    /** Chip "Vendidos": artículos RETRO inactivos (stock agotado = vendidos) */
+    public Page<ProductoDTO> listarInactivosPorTipo(String tipo, Pageable pageable) {
+        return productoRepository.findByActivoFalseAndTipoProducto(tipo, pageable).map(this::toDTO);
     }
 
     public Page<ProductoDTO> listarPorTipo(String tipo, Pageable pageable) {

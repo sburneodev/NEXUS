@@ -116,6 +116,14 @@ public class StockService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, resultado);
         }
 
+        // Artículo retro vendido: si el stock llega a 0 se desactiva automáticamente
+        if (stockNuevo == 0) {
+            jdbcTemplate.update(
+                "UPDATE productos SET activo = false WHERE id = ? AND tipo_producto = 'RETRO'",
+                request.getIdProducto()
+            );
+        }
+
         auditService.log(
                 "STOCK",
                 "STOCK_MOVEMENT",

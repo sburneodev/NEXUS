@@ -17,16 +17,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * QA-01 — Tests unitarios de ProveedorService.
- *
- * Cubre:
- *  1. listar: devuelve lista de activos
- *  2. buscarPorId: encontrado OK, no encontrado → excepción
- *  3. crear: persiste y audita
- *  4. editar: actualiza campos y audita, no encontrado → excepción
- *  5. softDelete: marca activo=false, audita, no encontrado → excepción
- */
 @ExtendWith(MockitoExtension.class)
 class ProveedorServiceTest {
 
@@ -34,8 +24,6 @@ class ProveedorServiceTest {
     @Mock private AuditService        auditService;
 
     @InjectMocks private ProveedorService proveedorService;
-
-    // ── Helpers ───────────────────────────────────────────────────────
 
     private Proveedor proveedorValido() {
         Proveedor p = new Proveedor();
@@ -60,13 +48,9 @@ class ProveedorServiceTest {
         return dto;
     }
 
-    // ── TEST 1 — listar ───────────────────────────────────────────────
-
     @Test
     void listar_devuelve_todos() {
-        // listar() ahora devuelve findAll() — activos e inactivos
-        when(proveedorRepository.findAll())
-                .thenReturn(List.of(proveedorValido()));
+        when(proveedorRepository.findAll()).thenReturn(List.of(proveedorValido()));
 
         List<ProveedorDTO> result = proveedorService.listar();
 
@@ -81,12 +65,9 @@ class ProveedorServiceTest {
         assertTrue(proveedorService.listar().isEmpty());
     }
 
-    // ── TEST 2 — buscarPorId ──────────────────────────────────────────
-
     @Test
     void buscarPorId_encontrado_devuelveDTO() {
-        when(proveedorRepository.findById(1L))
-                .thenReturn(Optional.of(proveedorValido()));
+        when(proveedorRepository.findById(1L)).thenReturn(Optional.of(proveedorValido()));
 
         ProveedorDTO result = proveedorService.buscarPorId(1L);
         assertEquals("DistribuTech S.L.", result.getRazonSocial());
@@ -100,8 +81,6 @@ class ProveedorServiceTest {
                 () -> proveedorService.buscarPorId(999L));
     }
 
-    // ── TEST 3 — crear ────────────────────────────────────────────────
-
     @Test
     void crear_proveedor_persiste_y_audita() {
         Proveedor guardado = proveedorValido();
@@ -113,8 +92,6 @@ class ProveedorServiceTest {
         assertEquals("B-12345678",        result.getCif());
         verify(auditService).log(eq("PROVEEDOR"), eq("CREATE"), any(), anyString());
     }
-
-    // ── TEST 4 — editar ───────────────────────────────────────────────
 
     @Test
     void editar_proveedor_actualiza_campos_y_audita() {
@@ -138,13 +115,12 @@ class ProveedorServiceTest {
     void editar_proveedor_no_encontrado_lanza_excepcion() {
         when(proveedorRepository.findById(88L)).thenReturn(Optional.empty());
 
+        var dto = dtoValido();
         assertThrows(RuntimeException.class,
-                () -> proveedorService.editar(88L, dtoValido()));
+                () -> proveedorService.editar(88L, dto));
 
         verify(proveedorRepository, never()).save(any());
     }
-
-    // ── TEST 5 — softDelete ───────────────────────────────────────────
 
     @Test
     void softDelete_desactiva_proveedor_y_audita() {

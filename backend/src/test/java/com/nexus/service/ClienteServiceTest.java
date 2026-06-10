@@ -20,17 +20,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * QA-01 — Tests unitarios de ClienteService.
- *
- * Cubre:
- *  1. crear: cliente nuevo OK, email duplicado → 409
- *  2. buscarPorId: encontrado OK, no encontrado → 404
- *  3. editar: OK, no encontrado → 404, email en conflicto → 409
- *  4. sumarPuntos: OK, resultado negativo → 400
- *  5. softDelete: marca activo=false y llama a audit
- *  6. listar: sin búsqueda devuelve página
- */
 @ExtendWith(MockitoExtension.class)
 class ClienteServiceTest {
 
@@ -38,8 +27,6 @@ class ClienteServiceTest {
     @Mock private AuditService      auditService;
 
     @InjectMocks private ClienteService clienteService;
-
-    // ── Helpers ───────────────────────────────────────────────────────
 
     private Cliente clienteValido() {
         Cliente c = new Cliente();
@@ -60,8 +47,6 @@ class ClienteServiceTest {
         return dto;
     }
 
-    // ── TEST 1 — crear ────────────────────────────────────────────────
-
     @Test
     void crear_cliente_nuevo_ok() {
         when(clienteRepository.findByEmail("carlos@test.es")).thenReturn(Optional.empty());
@@ -78,8 +63,9 @@ class ClienteServiceTest {
         when(clienteRepository.findByEmail("carlos@test.es"))
                 .thenReturn(Optional.of(clienteValido()));
 
+        var dto = dtoValido();
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> clienteService.crear(dtoValido()));
+                () -> clienteService.crear(dto));
 
         assertEquals(409, ex.getStatusCode().value());
         verify(clienteRepository, never()).save(any());
@@ -96,11 +82,8 @@ class ClienteServiceTest {
 
         ClienteDTO result = clienteService.crear(dto);
         assertNotNull(result);
-        // Si email es null, no debe consultar findByEmail
         verify(clienteRepository, never()).findByEmail(any());
     }
-
-    // ── TEST 2 — buscarPorId ──────────────────────────────────────────
 
     @Test
     void buscarPorId_encontrado_devuelveDTO() {
@@ -128,8 +111,6 @@ class ClienteServiceTest {
         assertEquals(404, ex.getStatusCode().value());
     }
 
-    // ── TEST 3 — editar ───────────────────────────────────────────────
-
     @Test
     void editar_cliente_ok() {
         Cliente c = clienteValido();
@@ -148,8 +129,9 @@ class ClienteServiceTest {
     void editar_cliente_no_encontrado_lanza404() {
         when(clienteRepository.findById(99L)).thenReturn(Optional.empty());
 
+        var dto = dtoValido();
         ResponseStatusException ex = assertThrows(ResponseStatusException.class,
-                () -> clienteService.editar(99L, dtoValido()));
+                () -> clienteService.editar(99L, dto));
 
         assertEquals(404, ex.getStatusCode().value());
     }
@@ -173,8 +155,6 @@ class ClienteServiceTest {
 
         assertEquals(409, ex.getStatusCode().value());
     }
-
-    // ── TEST 4 — sumarPuntos ──────────────────────────────────────────
 
     @Test
     void sumarPuntos_suma_correctamente() {
@@ -200,8 +180,6 @@ class ClienteServiceTest {
         assertEquals(400, ex.getStatusCode().value());
     }
 
-    // ── TEST 5 — softDelete ───────────────────────────────────────────
-
     @Test
     void softDelete_desactiva_cliente_y_audita() {
         Cliente c = clienteValido();
@@ -224,11 +202,8 @@ class ClienteServiceTest {
         assertEquals(404, ex.getStatusCode().value());
     }
 
-    // ── TEST 6 — listar ───────────────────────────────────────────────
-
     @Test
     void listar_sin_busqueda_devuelve_pagina() {
-        // activo=null → todos → findAll(Pageable)
         when(clienteRepository.findAll(any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(clienteValido())));
 
@@ -238,7 +213,6 @@ class ClienteServiceTest {
 
     @Test
     void listar_con_busqueda_filtra_por_nombre() {
-        // activo=null + buscar → findByNombreContainingIgnoreCase
         when(clienteRepository.findByNombreContainingIgnoreCase(
                 eq("Carlos"), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(clienteValido())));

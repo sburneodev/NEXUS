@@ -34,9 +34,10 @@ interface Toast {
 }
 
 interface InviteForm {
-    email:    string;
-    username: string;
-    rol:      string;
+    email:          string;
+    username:       string;
+    nombreCompleto: string;
+    rol:            string;
 }
 
 const SELF_COLOR = '#F59E0B';
@@ -81,7 +82,7 @@ export function UsuariosPage(): JSX.Element {
     const emailRef = useRef<HTMLInputElement>(null);
 
     function openInviteModal(): void {
-        setInviteForm({ email: '', username: '', rol: 'CAJERO' });
+        setInviteForm({ email: '', username: '', nombreCompleto: '', rol: 'CAJERO' });
         setPwdCopied(false);
         setInviteOpen(true);
         setTimeout(() => emailRef.current?.focus(), 60);
@@ -90,6 +91,10 @@ export function UsuariosPage(): JSX.Element {
     function handleInviteEmail(value: string): void {
         const derived = value.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
         setInviteForm(f => ({ ...f, email: value, username: derived }));
+    }
+
+    function handleInviteNombre(value: string): void {
+        setInviteForm(f => ({ ...f, nombreCompleto: value }));
     }
 
     async function submitInvite(): Promise<void> {
@@ -444,6 +449,20 @@ export function UsuariosPage(): JSX.Element {
                                     placeholder="usuario@empresa.com"
                                     value={inviteForm.email}
                                     onChange={e => handleInviteEmail(e.target.value)}
+                                    style={invInputStyle}
+                                    onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                    onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                />
+                            </div>
+
+                            {/* Nombre completo */}
+                            <div>
+                                <label style={invLabelStyle}>Nombre completo</label>
+                                <input
+                                    type="text"
+                                    placeholder="Nombre Apellido"
+                                    value={inviteForm.nombreCompleto}
+                                    onChange={e => handleInviteNombre(e.target.value)}
                                     style={invInputStyle}
                                     onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
                                     onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}

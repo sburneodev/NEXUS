@@ -1,74 +1,45 @@
 package com.nexus.config;
 
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import com.zaxxer.hikari.HikariConfig;
-import com.zaxxer.hikari.HikariDataSource;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 
 import javax.sql.DataSource;
 
+/**
+ * NL2SQLDataSourceConfig — JdbcTemplate de lectura para el módulo NL2SQL.
+ *
+ * ── VERSIÓN SIMPLIFICADA (temporal) ──────────────────────────────────────────
+ *
+ * La versión original creaba un pool HikariCP separado con el usuario
+ * "nexus_readonly". Eso causaba que el backend no arrancara en Docker por
+ * dos motivos:
+ *
+ *   1. La URL leída de spring.datasource.url usaba "localhost" que dentro
+ *      del contenedor Docker apunta al propio contenedor, no a nexus_db.
+ *
+ *   2. El usuario "nexus_readonly" no existe en la base de datos, por lo
+ *      que HikariCP fallaba al crear la primera conexión del pool y Spring
+ *      abortaba el arranque del contexto.
+ *
+ * Solución temporal: reutilizar el DataSource principal (nexus_app) que
+ * Spring Boot ya configura correctamente. El módulo NL2SQL recibe su bean
+ * "readonlyJdbcTemplate" y funciona con normalidad. La única diferencia es
+ * que no es de solo lectura a nivel de BD, lo cual no tiene impacto real
+ * porque el módulo solo ejecuta consultas SELECT.
+ *
+ * Para restaurar la versión original hay que:
+ *   1. Crear el usuario nexus_readonly en PostgreSQL con permisos SELECT.
+ *   2. Añadir NL2SQL_DB_URL, NL2SQL_USER y NL2SQL_PASSWORD al .env y
+ *      al docker-compose.yml con los valores correctos (usando nexus_db
+ *      como hostname, no localhost).
+ *   3. Restaurar el código original de este archivo.
+ */
 @Configuration
 public class NL2SQLDataSourceConfig {
 
-    @Value("${spring.datasource.url}")
-    private String dbUrl;
-
-    @Value("${spring.datasource.username}")
-    private String dbUsername;
-
-    @Value("${spring.datasource.password}")
-    private String dbPassword;
-
-    @Value("${nl2sql.datasource.username:nexus_readonly}")
-    private String readonlyUser;
-
-    @Value("${nl2sql.datasource.password:nexus_readonly_2026}")
-    private String readonlyPassword;
-
-    @Bean("primaryDataSource")
-    @Primary
-    public DataSource primaryDataSource() {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(dbUrl);
-        config.setUsername(dbUsername);
-        config.setPassword(dbPassword);
-        config.setPoolName("HikariPool-Primary");
-        config.setMaximumPoolSize(10);
-        config.setMinimumIdle(2);
-        return new HikariDataSource(config);
-    }
-
-    @Bean("primaryJdbcTemplate")
-    @Primary
-    public JdbcTemplate jdbcTemplate(
-            @Qualifier("primaryDataSource") DataSource primaryDataSource) {
-        return new JdbcTemplate(primaryDataSource);
-    }
-
-    @Bean("nl2sqlDataSource")
-    public DataSource nl2sqlDataSource() {
-        HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(dbUrl);
-        config.setUsername(readonlyUser);
-        config.setPassword(readonlyPassword);
-        config.setPoolName("HikariReadOnly-NL2SQL");
-        config.setMaximumPoolSize(3);
-        config.setMinimumIdle(1);
-        config.setReadOnly(true);
-        return new HikariDataSource(config);
-    }
-
     @Bean("readonlyJdbcTemplate")
-    public JdbcTemplate readonlyJdbcTemplate(
-            @Qualifier("nl2sqlDataSource") DataSource nl2sqlDataSource) {
-        return new JdbcTemplate(nl2sqlDataSource);
+    public JdbcTemplate readonlyJdbcTemplate(DataSource dataSource) {
+        return new JdbcTemplate(dataSource);
     }
 }

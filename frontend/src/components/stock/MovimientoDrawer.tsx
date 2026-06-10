@@ -323,7 +323,10 @@ export function MovimientoDrawer({
             const tipoEfectivo: TipoMovimiento = esRetroConStock && initialTipo === 'ENTRADA'
                 ? 'SALIDA'
                 : initialTipo;
-            setForm(makeEmptyForm(tipoEfectivo));
+            const formInicial = makeEmptyForm(tipoEfectivo);
+            // Retro: la cantidad siempre es 1, se auto-rellena y se oculta el campo
+            if (producto?.tipoProducto === 'RETRO') formInicial.cantidad = '1';
+            setForm(formInicial);
             setResult(null);
             setSelectedCliente(null);
             setSelectedProveedor(null);
@@ -431,6 +434,7 @@ export function MovimientoDrawer({
     }, [producto, form, selectedCliente, selectedProveedor, onSaved, makeEmptyForm]);
 
     // ── Derivados ─────────────────────────────────────────────────────────────
+    const esRetro           = producto?.tipoProducto === 'RETRO';
     const cantidadNum       = parseInt(form.cantidad, 10);
     const stockInsuficiente = form.tipoMovimiento === 'SALIDA'
         && !isNaN(cantidadNum) && cantidadNum > 0
@@ -696,8 +700,8 @@ export function MovimientoDrawer({
                         </div>
                     ) : (
                         <>
-                    {/* Cantidad */}
-                    <div>
+                    {/* Cantidad — oculta para RETRO (siempre 1, se auto-rellena) */}
+                    {!esRetro && <div>
                         <label style={labelStyle}>Cantidad *</label>
                         <input
                             type="number" min={1}
@@ -730,7 +734,7 @@ export function MovimientoDrawer({
                                 </span>
                             </div>
                         )}
-                    </div>
+                    </div>}
 
                     {/* Precio unitario */}
                     {form.tipoMovimiento !== 'AJUSTE' && (

@@ -20,8 +20,9 @@
  * Code 39 en SVG puro (Code39Barcode.tsx) — sin librerías externas.
  */
 
-import { createPortal } from 'react-dom';
-import type { CSSProperties } from 'react';
+import { createPortal }        from 'react-dom';
+import { useState }             from 'react';
+import type { CSSProperties }   from 'react';
 import { Code39Barcode }     from './Code39Barcode';
 import { Logo }              from '../brand/Logo';
 import type { Producto, TipoMovimiento } from '../../types/models';
@@ -55,9 +56,9 @@ const PRINT_CSS = `
     #albaran-root { display: none !important; }
 }
 @media print {
-    body, html    { background: white !important; }
-    #root         { display: none !important; }
-    #albaran-root { display: block !important; }
+    body, html         { background: white !important; }
+    body > *           { display: none !important; }
+    #albaran-root      { display: block !important; }
     @page {
         size: A4 portrait;
         margin: 15mm 20mm;
@@ -424,10 +425,51 @@ function AlbaranDocument({ d }: { d: AlbaranInfo }): JSX.Element {
 // ── AlbaranModal — overlay de la app ──────────────────────────────────────────
 
 export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | null {
+    const [printing, setPrinting] = useState(false);
+
     if (!isOpen || !data) return null;
 
     const accentVar = TIPO_COLOR_VAR[data.tipoMovimiento];
     const accentHex = TIPO_COLOR_HEX[data.tipoMovimiento];
+
+    const handlePrint = () => {
+        const el = document.getElementById('albaran-root');
+        if (!el) return;
+
+        // Abre una ventana limpia con solo el documento del albarán
+        const win = window.open('', '_blank', 'width=900,height=1200,scrollbars=yes');
+        if (!win) {
+            // Fallback si el navegador bloquea el popup
+            setPrinting(true);
+            setTimeout(() => { window.print(); setPrinting(false); }, 250);
+            return;
+        }
+
+        win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Albarán ${data.codigo}</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: white; font-family: 'Inter', 'Segoe UI', Arial, sans-serif; }
+        @page { size: A4 portrait; margin: 15mm 20mm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        svg { display: block; }
+    </style>
+</head>
+<body>
+${el.outerHTML}
+</body>
+</html>`);
+        win.document.close();
+        win.focus();
+        // Pequeño delay para que el navegador termine de parsear el DOM antes de imprimir
+        setTimeout(() => {
+            win.print();
+            win.close();
+        }, 400);
+    };
 
     return (
         <>
@@ -437,13 +479,13 @@ export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | nu
             {/* Documento imprimible renderizado en <body> (oculto en pantalla) */}
             {createPortal(<AlbaranDocument d={data} />, document.body)}
 
-            {/* ── Overlay del modal ── */}
-            <div
+            {/* ── Overlay del modal — oculto mientras se imprime ── */}
+            {!printing && <div
                 onClick={e => { if (e.target === e.currentTarget) onClose(); }}
                 style={{
                     position:       'fixed',
                     inset:          0,
-                    zIndex:         1000,
+                    zIndex:         2000,
                     background:     'rgba(5,5,10,0.88)',
                     backdropFilter: 'blur(6px)',
                     display:        'flex',
@@ -569,7 +611,7 @@ export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | nu
                     {/* ── Botones ── */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <button
-                            onClick={() => window.print()}
+                            onClick={handlePrint}
                             className="btn btn-primary"
                             style={{
                                 width:         '100%',
@@ -595,7 +637,7 @@ export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | nu
                     </div>
 
                 </div>
-            </div>
+            </div>}
         </>
     );
 }

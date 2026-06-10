@@ -64,19 +64,60 @@ interface RangoResponse {
 }
 
 // ── CSS de impresión ──────────────────────────────────────────────────
+// (PRINT_CSS ya no se usa para imprimir — se usa imprimirEnVentanaNueva)
+// Se mantiene como fallback por si el popup está bloqueado.
 const PRINT_CSS = `
 @media print {
-    body { background: white !important; }
-    html { background: white !important; }
-    #root                       { display: none !important; }
+    body, html                  { background: white !important; }
+    body > *                    { display: none !important; }
     #albaran-consolidado-root   { display: block !important; }
-    @page { size: A4 portrait; margin: 0; }
+    @page { size: A4 portrait; margin: 15mm 20mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 @media screen {
     #albaran-consolidado-root   { display: none !important; }
 }
 `;
+
+// ── Impresión en ventana nueva ────────────────────────────────────────
+// Copia todos los CSS del documento actual (incluye CSS modules hasheados)
+// para que AlbaranTemplate se vea idéntico en la ventana de impresión.
+function imprimirEnVentanaNueva(elementId: string, titulo: string): void {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    let cssText = '';
+    Array.from(document.styleSheets).forEach(sheet => {
+        try {
+            Array.from(sheet.cssRules || []).forEach(rule => {
+                cssText += rule.cssText + '\n';
+            });
+        } catch { /* cross-origin, se ignora */ }
+    });
+
+    const win = window.open('', '_blank', 'width=900,height=1200,scrollbars=yes');
+    if (!win) { window.print(); return; }
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>${cssText}</style>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; background: white; }
+        @page { size: A4 portrait; margin: 15mm 20mm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        svg { display: block; }
+    </style>
+</head>
+<body>${el.innerHTML}</body>
+</html>`);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); win.close(); }, 400);
+}
 
 // ── Conversión de la lista de items → un único AlbaranData ───────────
 //
@@ -347,7 +388,7 @@ export function AlbaranesRangoPage(): JSX.Element {
                         {/* Botón imprimir */}
                         {albaranData && (
                             <button
-                                onClick={() => window.print()}
+                                onClick={() => imprimirEnVentanaNueva('albaran-consolidado-root', `Albarán ${albaranData.numero}`)}
                                 className="btn btn-ghost"
                                 style={{ fontSize: '12px', letterSpacing: '0.10em', whiteSpace: 'nowrap', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}
                             >

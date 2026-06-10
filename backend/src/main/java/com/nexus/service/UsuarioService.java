@@ -10,11 +10,12 @@ import com.nexus.repository.UsuarioRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.security.core.Authentication;
+
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
@@ -43,12 +44,13 @@ public class UsuarioService {
     private Long getUsuarioActualId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {
-            throw new RuntimeException("Usuario actual no encontrado");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario actual no encontrado");
         }
         String email = auth.getName();
         return usuarioRepository.findByEmail(email)
                 .map(Usuario::getId)
-                .orElseThrow(() -> new RuntimeException("Usuario actual no encontrado"));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED, "Usuario actual no encontrado"));
     }
 
     public Page<UsuarioDTO> listar(String buscar, Pageable pageable) {
@@ -64,35 +66,39 @@ public class UsuarioService {
 
     public UsuarioDTO buscarPorId(Long id) {
         return toDTO(usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id)));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id)));
     }
 
     public void activar(Long id) {
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.setActive(true);
         usuarioRepository.save(u);
-        auditService.log(ENTIDAD, "ACTIVATE", id,
-                "Cuenta activada: " + u.getEmail());
+        auditService.log(ENTIDAD, "ACTIVATE", id, "Cuenta activada: " + u.getEmail());
     }
 
     public void desactivar(Long id) {
         if (id.equals(getUsuarioActualId())) {
-            throw new RuntimeException("No puedes desactivarte a ti mismo");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "No puedes desactivarte a ti mismo");
         }
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.setActive(false);
         usuarioRepository.save(u);
-        auditService.log(ENTIDAD, "DEACTIVATE", id,
-                "Cuenta desactivada: " + u.getEmail());
+        auditService.log(ENTIDAD, "DEACTIVATE", id, "Cuenta desactivada: " + u.getEmail());
     }
 
     public UsuarioDTO asignarRol(Long id, String nombreRol) {
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         Rol rol = rolRepository.findByNombre(nombreRol)
-                .orElseThrow(() -> new RuntimeException("Rol no encontrado: " + nombreRol));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Rol no encontrado: " + nombreRol));
         u.getRoles().add(rol);
         UsuarioDTO result = toDTO(usuarioRepository.save(u));
         auditService.log(ENTIDAD, "ROLE_ASSIGN", id,
@@ -102,10 +108,12 @@ public class UsuarioService {
 
     public UsuarioDTO quitarRol(Long id, String nombreRol) {
         if (id.equals(getUsuarioActualId()) && "ADMIN".equals(nombreRol)) {
-            throw new RuntimeException("No puedes quitarte el rol ADMIN a ti mismo");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "No puedes quitarte el rol ADMIN a ti mismo");
         }
         Usuario u = usuarioRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException(NOT_FOUND_MSG + id));
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, NOT_FOUND_MSG + id));
         u.getRoles().removeIf(r -> r.getNombre().equals(nombreRol));
         UsuarioDTO result = toDTO(usuarioRepository.save(u));
         auditService.log(ENTIDAD, "ROLE_REMOVE", id,

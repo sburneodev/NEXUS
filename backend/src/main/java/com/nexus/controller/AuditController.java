@@ -104,10 +104,12 @@ public class AuditController {
             entry.put("entidad",      fila.get("tabla"));
             entry.put("accion",       fila.get("operacion"));
             entry.put("usuarioEmail", fila.get("usuario_email"));
-            entry.put("entidadId",    fila.get("id_registro"));   // TEXT → frontend lo muestra como string
+            entry.put("entidadId",    fila.get("id_registro"));
             entry.put("detalles",     fila.get("detalles"));
             entry.put("timestamp",    fila.get("creado_en"));
             entry.put("ip",           fila.get("ip"));
+            entry.put("datosAntes",   fila.get("datos_antes"));
+            entry.put("datosDespues", fila.get("datos_despues"));
             return entry;
         }).toList();
 

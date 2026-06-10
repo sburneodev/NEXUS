@@ -72,6 +72,21 @@ export function UsuariosPage(): JSX.Element {
     const [confirmModal, setConfirmModal] = useState<UsuarioAdmin | null>(null);
     const [refreshKey,   setRefreshKey]   = useState(0);
 
+    // ── Filtro de estado — persiste en localStorage para no resetearse al navegar ──
+    type StatusFilter = 'ACTIVOS' | 'TODOS' | 'INACTIVOS';
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+        (localStorage.getItem('usuarios_statusFilter') as StatusFilter) ?? 'ACTIVOS'
+    );
+    function changeStatusFilter(f: StatusFilter): void {
+        setStatusFilter(f);
+        localStorage.setItem('usuarios_statusFilter', f);
+    }
+    const filteredRows = (
+        statusFilter === 'ACTIVOS'   ? rows.filter(u =>  u.isActive)
+        : statusFilter === 'INACTIVOS' ? rows.filter(u => !u.isActive)
+        : rows
+    ).sort((a, b) => (b.roles.includes('ADMIN') ? 1 : 0) - (a.roles.includes('ADMIN') ? 1 : 0));
+
     // ── Modal Invitar ─────────────────────────────────────────────────────────
     const [inviteOpen,    setInviteOpen]    = useState(false);
     const [inviteLoading, setInviteLoading] = useState(false);
@@ -596,13 +611,48 @@ export function UsuariosPage(): JSX.Element {
                 </div>
             )}
 
-            {/* ── TableControls ── */}
+            {/* ── TableControls con filtro de estado integrado ── */}
             <div style={{ marginBottom: '16px' }}>
                 <TableControls
                     filters={filters}
                     isLoading={isLoading}
                     entityLabel="usuario"
-                    searchPlaceholder="Buscar por email o nombre de usuario..."
+                    searchPlaceholder="Buscar por email o usuario..."
+                    extraFilters={
+                        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-default)', flexShrink: 0 }}>
+                            {([
+                                { key: 'ACTIVOS',   label: 'Activos'   },
+                                { key: 'TODOS',     label: 'Todos'     },
+                                { key: 'INACTIVOS', label: 'Inactivos' },
+                            ] as { key: StatusFilter; label: string }[]).map(({ key, label }, i) => {
+                                const active = statusFilter === key;
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => changeStatusFilter(key)}
+                                        style={{
+                                            background:    active ? 'var(--accent-primary)' : 'var(--bg-elevated)',
+                                            color:         active ? '#fff' : 'var(--text-muted)',
+                                            border:        'none',
+                                            borderRight:   i < 2 ? '1px solid var(--border-default)' : 'none',
+                                            padding:       '0 16px',
+                                            height:        '38px',
+                                            fontFamily:    'var(--font-display)',
+                                            fontSize:      '10px',
+                                            fontWeight:    700,
+                                            letterSpacing: '0.10em',
+                                            textTransform: 'uppercase',
+                                            cursor:        'pointer',
+                                            transition:    'background 160ms ease, color 160ms ease',
+                                            whiteSpace:    'nowrap',
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    }
                 />
             </div>
 
@@ -622,17 +672,19 @@ export function UsuariosPage(): JSX.Element {
                                 <SkeletonRows rows={Math.min(filters.limit, 8)} cols={5} />
                             )}
 
-                            {!isLoading && rows.length === 0 && (
+                            {!isLoading && filteredRows.length === 0 && (
                                 <tr>
                                     <td colSpan={5} style={{ padding: '48px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
                                         {filters.search
                                             ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
-                                            : 'SIN USUARIOS'}
+                                            : statusFilter === 'INACTIVOS'
+                                                ? 'NO HAY USUARIOS INACTIVOS'
+                                                : 'SIN USUARIOS'}
                                     </td>
                                 </tr>
                             )}
 
-                            {rows.map(u => {
+                            {filteredRows.map(u => {
                                 const self    = isSelf(u);
                                 const rowBusy = loadingRows.has(u.id);
 

@@ -136,9 +136,9 @@ export function ProductFormPanel({
             idUbicacion:          form.idUbicacion ? Number(form.idUbicacion) : null,
             precioCoste:          Number(form.precioCoste),
             precioVenta:          Number(form.precioVenta),
-            stockActual:          Number(form.stockActual),
-            stockMinimo:          Number(form.stockMinimo) || 0,
-            stockMaximo:          Number(form.stockMaximo) || 999,
+            stockActual:          isRetro ? 1 : Number(form.stockActual),
+            stockMinimo:          isRetro ? 1 : (Number(form.stockMinimo) || 0),
+            stockMaximo:          isRetro ? 1 : (Number(form.stockMaximo) || 999),
             tipoProducto:         isRetro ? 'RETRO' : 'ESTANDAR',
             estadoConservacion:   isRetro
                 ? ((form.estadoConservacion || null) as Producto['estadoConservacion'])
@@ -305,19 +305,33 @@ export function ProductFormPanel({
                                     hasError={!!errors.precioVenta}
                                 />
                             </Field>
-                            <Field label="Stock Actual" required error={errors.stockActual}>
-                                <Input
-                                    type="number" placeholder="0"
-                                    value={form.stockActual} onChange={set('stockActual')}
-                                    hasError={!!errors.stockActual}
-                                />
-                            </Field>
-                            <Field label="Stock Mínimo">
-                                <Input
-                                    type="number" placeholder="5"
-                                    value={form.stockMinimo} onChange={set('stockMinimo')}
-                                />
-                            </Field>
+                            {isRetro ? (
+                                <Field label="Stock Actual">
+                                    <Input
+                                        type="number"
+                                        value="1"
+                                        onChange={() => {}}
+                                        readOnly
+                                        style={{ opacity: 0.5, cursor: 'not-allowed' }}
+                                    />
+                                </Field>
+                            ) : (
+                                <>
+                                    <Field label="Stock Actual" required error={errors.stockActual}>
+                                        <Input
+                                            type="number" placeholder="0"
+                                            value={form.stockActual} onChange={set('stockActual')}
+                                            hasError={!!errors.stockActual}
+                                        />
+                                    </Field>
+                                    <Field label="Stock Mínimo">
+                                        <Input
+                                            type="number" placeholder="5"
+                                            value={form.stockMinimo} onChange={set('stockMinimo')}
+                                        />
+                                    </Field>
+                                </>
+                            )}
                         </div>
                     </Section>
                 </div>

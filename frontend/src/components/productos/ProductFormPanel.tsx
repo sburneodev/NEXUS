@@ -28,6 +28,8 @@ export interface ProductFormPanelProps {
     initialValues?: Partial<ProductForm>;
     /** true → modo Bóveda Retro: campos extra, badge dorado, tipoProducto='RETRO' al crear */
     modoRetro?:    boolean;
+    /** Error devuelto por el servidor tras intentar guardar */
+    serverError?:  string | null;
 }
 
 const EMPTY: ProductForm = {
@@ -43,7 +45,7 @@ const EMPTY: ProductForm = {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export function ProductFormPanel({
-    producto, onCancel, onSave, initialValues, modoRetro = false,
+    producto, onCancel, onSave, initialValues, modoRetro = false, serverError,
 }: ProductFormPanelProps): JSX.Element {
 
     // Es RETRO si estamos en modo retro O si editamos un producto ya RETRO
@@ -489,6 +491,23 @@ export function ProductFormPanel({
                     />
                 </Section>
             </div>
+
+            {/* ── Error servidor ───────────────────────────────────────────── */}
+            {serverError && (
+                <div style={{
+                    margin:       '12px 0 0',
+                    padding:      '10px 14px',
+                    background:   'rgba(248,113,113,0.08)',
+                    border:       '1px solid var(--accent-danger, #f87171)',
+                    borderRadius: '6px',
+                    fontFamily:   'var(--font-mono)',
+                    fontSize:     '11px',
+                    color:        'var(--accent-danger, #f87171)',
+                    lineHeight:   '1.5',
+                }}>
+                    ▲ {serverError}
+                </div>
+            )}
 
             {/* ── Footer de acciones ────────────────────────────────────────── */}
             <div style={{

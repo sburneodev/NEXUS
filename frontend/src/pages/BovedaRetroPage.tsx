@@ -195,6 +195,7 @@ export function BovedaRetroPage(): JSX.Element {
     const [editOpen,     setEditOpen]     = useState(false);
     const [selected,     setSelected]     = useState<Producto | null>(null);
     const [prefillData,  setPrefillData]  = useState<Partial<ProductForm> | null>(null);
+    const [saveError,    setSaveError]    = useState<string | null>(null);
     const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
 
     useEffect(() => {
@@ -253,6 +254,7 @@ export function BovedaRetroPage(): JSX.Element {
     const handleSave = useCallback(async (
         data: Omit<Producto, 'id' | 'creadoEn' | 'actualizadoEn' | 'proveedorNombre'>,
     ): Promise<void> => {
+        setSaveError(null);
         try {
             if (selected) {
                 await productoService.editar(selected.id, data as any);
@@ -265,8 +267,11 @@ export function BovedaRetroPage(): JSX.Element {
                 setRows(prev => [nuevo, ...prev]);
             }
             closeEdit();
-        } catch (err) {
-            console.error('Error guardando pieza retro:', err);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message
+                ?? err?.response?.data
+                ?? 'Error al guardar la pieza. Comprueba que el SKU no esté duplicado.';
+            setSaveError(String(msg));
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selected]);
@@ -281,6 +286,7 @@ export function BovedaRetroPage(): JSX.Element {
                 onCancel={closeEdit}
                 onSave={handleSave}
                 initialValues={prefillData ?? undefined}
+                serverError={saveError}
             />
         ) : (
             <>

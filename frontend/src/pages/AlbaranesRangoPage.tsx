@@ -86,37 +86,68 @@ function imprimirEnVentanaNueva(elementId: string, titulo: string): void {
     const el = document.getElementById(elementId);
     if (!el) return;
 
+    // Copiar SOLO el CSS del módulo AlbaranTemplate (contiene --corp-navy).
+    // NO copiamos el CSS global de la app — tiene variables de tema oscuro
+    // (color: white, etc.) que harían invisible el texto en el fondo blanco del albarán.
     let cssText = '';
     Array.from(document.styleSheets).forEach(sheet => {
         try {
-            Array.from(sheet.cssRules || []).forEach(rule => {
-                cssText += rule.cssText + '\n';
-            });
+            const rules = Array.from(sheet.cssRules || []);
+            const sheetCss = rules.map(r => r.cssText).join('\n');
+            // Solo incluir hojas que contengan variables corporativas del albarán
+            if (sheetCss.includes('--corp-navy') || sheetCss.includes('corp-navy')) {
+                cssText += sheetCss + '\n';
+            }
         } catch { /* cross-origin, se ignora */ }
     });
 
-    const win = window.open('', '_blank', 'width=900,height=1200,scrollbars=yes');
-    if (!win) { window.print(); return; }
+    // Usamos un iframe oculto — nunca bloqueado por el navegador
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
 
-    win.document.write(`<!DOCTYPE html>
+    const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <title>${titulo}</title>
     <style>${cssText}</style>
     <style>
+        /* ── Reset tema oscuro de la app para que el albarán imprima en blanco ── */
+        html, body {
+            background: white !important;
+            color: #111827 !important;
+        }
+        :root {
+            --text-primary:   #111827 !important;
+            --text-secondary: #374151 !important;
+            --text-muted:     #6B7280 !important;
+            --bg-primary:     #ffffff !important;
+            --bg-surface:     #f9fafb !important;
+            --bg-elevated:    #f3f4f6 !important;
+        }
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; background: white; }
+        body { margin: 0; padding: 0; }
         @page { size: A4 portrait; margin: 15mm 20mm; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         svg { display: block; }
     </style>
 </head>
-<body>${el.innerHTML}</body>
+<body>${el.outerHTML}</body>
 </html>`);
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); win.close(); }, 400);
+    doc.close();
+
+    iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        }, 1000);
+    };
 }
 
 // ── Conversión de la lista de items → un único AlbaranData ───────────

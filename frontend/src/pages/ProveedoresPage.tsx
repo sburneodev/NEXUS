@@ -86,8 +86,9 @@ export function ProveedoresPage(): JSX.Element {
     const [selected,     setSelected]     = useState<Proveedor | null>(null);
     const [isSaving,     setIsSaving]     = useState(false);
     const [errorMsg,     setErrorMsg]     = useState<string | null>(null);
-    const [toast,        setToast]        = useState('');
-    const [refreshKey,   setRefreshKey]   = useState(0);
+    const [toast,         setToast]         = useState('');
+    const [refreshKey,    setRefreshKey]    = useState(0);
+    const [confirmDelete, setConfirmDelete] = useState<Proveedor | null>(null);
 
     function showToast(msg: string): void {
         setToast(msg);
@@ -142,11 +143,17 @@ export function ProveedoresPage(): JSX.Element {
     function handleAdd(): void                { setSelected(null); setErrorMsg(null); setModalOpen(true); }
     function handleClose(): void              { setModalOpen(false); setSelected(null); }
 
-    async function handleDelete(p: Proveedor): Promise<void> {
-        if (!window.confirm(`¿Eliminar a ${p.razonSocial}?`)) return;
+    function handleDelete(p: Proveedor): void {
+        setConfirmDelete(p);
+    }
+
+    async function doDelete(): Promise<void> {
+        if (!confirmDelete) return;
+        const nombre = confirmDelete.razonSocial;
+        setConfirmDelete(null);
         try {
-            await proveedorService.eliminar(p.id);
-            showToast(`${p.razonSocial} eliminado correctamente`);
+            await proveedorService.eliminar(confirmDelete.id);
+            showToast(`${nombre} eliminado correctamente`);
             setRefreshKey(k => k + 1);
         } catch {
             showToast('Error al eliminar el proveedor');
@@ -180,6 +187,39 @@ export function ProveedoresPage(): JSX.Element {
             {toast && (
                 <div style={{ position: 'fixed', bottom: '88px', right: '28px', zIndex: 200, background: 'var(--bg-elevated)', border: '1px solid var(--accent-primary)', borderRadius: 'var(--radius-base)', padding: '12px 20px', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--accent-primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', animation: 'fadeInUp 0.2s ease both' }}>
                     ✓ {toast}
+                </div>
+            )}
+
+            {/* Modal de confirmación eliminar */}
+            {confirmDelete && (
+                <div
+                    onClick={() => setConfirmDelete(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'rgba(5,5,15,0.75)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}
+                >
+                    <div
+                        onClick={e => e.stopPropagation()}
+                        style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-default)', borderRadius: '14px', padding: '28px 28px 24px', maxWidth: '380px', width: '100%', boxShadow: '0 24px 60px rgba(0,0,0,0.7)', display: 'flex', flexDirection: 'column', gap: '18px' }}
+                    >
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', textAlign: 'center' }}>
+                            <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'rgba(248,113,113,0.10)', border: '1.5px solid var(--accent-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                                🗑
+                            </div>
+                            <span style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
+                                Eliminar proveedor
+                            </span>
+                            <p style={{ fontFamily: 'var(--font-body)', fontSize: '13px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                                ¿Confirmas que quieres eliminar a <strong style={{ color: 'var(--text-primary)' }}>{confirmDelete.razonSocial}</strong>? Esta acción no se puede deshacer.
+                            </p>
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={() => setConfirmDelete(null)} className="btn btn-ghost" style={{ flex: 1, fontSize: '11px', letterSpacing: '0.10em' }}>
+                                CANCELAR
+                            </button>
+                            <button onClick={doDelete} className="btn" style={{ flex: 1, fontSize: '11px', letterSpacing: '0.10em', background: 'var(--accent-danger)', border: '1px solid var(--accent-danger)', color: '#fff', borderRadius: 'var(--radius-base)', padding: '10px', cursor: 'pointer', fontFamily: 'var(--font-display)', fontWeight: 700 }}>
+                                ELIMINAR
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -436,16 +436,17 @@ export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | nu
         const el = document.getElementById('albaran-root');
         if (!el) return;
 
-        // Abre una ventana limpia con solo el documento del albarán
-        const win = window.open('', '_blank', 'width=900,height=1200,scrollbars=yes');
-        if (!win) {
-            // Fallback si el navegador bloquea el popup
-            setPrinting(true);
-            setTimeout(() => { window.print(); setPrinting(false); }, 250);
-            return;
-        }
+        // Usamos un iframe oculto — los iframes nunca son bloqueados por el navegador
+        // a diferencia de window.open() que se bloquea como popup.
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+        document.body.appendChild(iframe);
 
-        win.document.write(`<!DOCTYPE html>
+        const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
+        if (!doc) { document.body.removeChild(iframe); return; }
+
+        doc.open();
+        doc.write(`<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
@@ -458,17 +459,17 @@ export function AlbaranModal({ isOpen, onClose, data }: Props): JSX.Element | nu
         svg { display: block; }
     </style>
 </head>
-<body>
-${el.outerHTML}
-</body>
+<body>${el.outerHTML}</body>
 </html>`);
-        win.document.close();
-        win.focus();
-        // Pequeño delay para que el navegador termine de parsear el DOM antes de imprimir
-        setTimeout(() => {
-            win.print();
-            win.close();
-        }, 400);
+        doc.close();
+
+        iframe.onload = () => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+                if (document.body.contains(iframe)) document.body.removeChild(iframe);
+            }, 1000);
+        };
     };
 
     return (

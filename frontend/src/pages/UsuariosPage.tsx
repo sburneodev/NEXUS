@@ -725,28 +725,40 @@ export function UsuariosPage(): JSX.Element {
 
                                         {/* ── Acciones ── */}
                                         <td style={{ padding: '12px 16px' }}>
-                                            <button
-                                                onClick={() => requestToggle(u)}
-                                                disabled={rowBusy}
-                                                style={{
-                                                    background:    'transparent',
-                                                    border:        `1px solid ${u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
-                                                    color:         u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)',
-                                                    borderRadius:  '4px',
-                                                    padding:       '4px 10px',
-                                                    cursor:        rowBusy ? 'not-allowed' : 'pointer',
-                                                    fontFamily:    'var(--font-display)',
-                                                    fontSize:      '10px',
-                                                    fontWeight:    700,
-                                                    letterSpacing: '0.08em',
-                                                    textTransform: 'uppercase',
-                                                    opacity:       rowBusy ? 0.45 : 1,
+                                            {u.roles.includes('ADMIN') ? (
+                                                <span style={{
+                                                    fontFamily:    'var(--font-mono)',
+                                                    fontSize:      '16px',
+                                                    color:         'var(--text-muted)',
+                                                    opacity:       0.35,
+                                                    display:       'inline-block',
                                                     minWidth:      '90px',
-                                                    transition:    'opacity 150ms',
-                                                }}
-                                            >
-                                                {rowBusy ? '···' : (u.isActive ? 'DESACTIVAR' : 'ACTIVAR')}
-                                            </button>
+                                                    textAlign:     'center',
+                                                }}>—</span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => requestToggle(u)}
+                                                    disabled={rowBusy}
+                                                    style={{
+                                                        background:    'transparent',
+                                                        border:        `1px solid ${u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
+                                                        color:         u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                                                        borderRadius:  '4px',
+                                                        padding:       '4px 10px',
+                                                        cursor:        rowBusy ? 'not-allowed' : 'pointer',
+                                                        fontFamily:    'var(--font-display)',
+                                                        fontSize:      '10px',
+                                                        fontWeight:    700,
+                                                        letterSpacing: '0.08em',
+                                                        textTransform: 'uppercase',
+                                                        opacity:       rowBusy ? 0.45 : 1,
+                                                        minWidth:      '90px',
+                                                        transition:    'opacity 150ms',
+                                                    }}
+                                                >
+                                                    {rowBusy ? '···' : (u.isActive ? 'DESACTIVAR' : 'ACTIVAR')}
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );

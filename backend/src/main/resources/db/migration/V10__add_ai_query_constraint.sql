@@ -1,0 +1,8 @@
+ALTER TABLE audit_log DROP CONSTRAINT audit_log_operacion_check;
+ALTER TABLE audit_log ADD CONSTRAINT audit_log_operacion_check 
+CHECK (operacion IN (
+    'INSERT','UPDATE','DELETE','SELECT',
+    'LOGIN','LOGOUT','REGISTER','VERIFY_EMAIL','CHANGE_PASSWORD',
+    'CREATE','ACTIVATE','DEACTIVATE','ROLE_ASSIGN','ROLE_REMOVE',
+    'AI_QUERY'
+));

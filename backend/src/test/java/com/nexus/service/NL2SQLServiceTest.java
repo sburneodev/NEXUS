@@ -4,6 +4,8 @@ import com.nexus.ai.GeminiService;
 import com.nexus.ai.NL2SQLService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -16,22 +18,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-/**
- * QA-01 — Tests unitarios de NL2SQLService (AI-07).
- *
- * Usa el jdbcTemplate principal mockeado via @InjectMocks —
- * compatible con la implementación actual que no usa readonly datasource.
- *
- * Cubre:
- *  1. SELECT válida → ejecuta JDBC y devuelve filas
- *  2. Sin resultados → listas vacías sin error
- *  3. SQL null → devuelve error sin tocar JDBC
- *  4. Markdown wrapper → se limpia y ejecuta correctamente
- *  5. UPDATE bloqueado → RuntimeException
- *  6. DROP bloqueado → RuntimeException
- *  7. DELETE bloqueado → RuntimeException
- *  8. JSON malformado → devuelve mapa de error sin propagar excepción
- */
 @ExtendWith(MockitoExtension.class)
 class NL2SQLServiceTest {
 
@@ -39,8 +25,6 @@ class NL2SQLServiceTest {
     @Mock private JdbcTemplate  jdbcTemplate;
 
     @InjectMocks private NL2SQLService nl2sqlService;
-
-    // ── TEST 1 — SELECT válida ejecuta JDBC ──────────────────────────
 
     @Test
     void consulta_select_valida_ejecuta_y_devuelve_filas() {
@@ -58,8 +42,6 @@ class NL2SQLServiceTest {
         verify(jdbcTemplate).queryForList(anyString());
     }
 
-    // ── TEST 2 — Sin resultados ───────────────────────────────────────
-
     @Test
     void consulta_sin_resultados_devuelve_lista_vacia() {
         when(geminiService.llamar(anyString())).thenReturn(
@@ -74,8 +56,6 @@ class NL2SQLServiceTest {
         assertTrue(((List<?>) result.get("columnas")).isEmpty());
     }
 
-    // ── TEST 3 — SQL null no toca JDBC ───────────────────────────────
-
     @Test
     void sql_null_devuelve_error_sin_ejecutar_jdbc() {
         when(geminiService.llamar(anyString())).thenReturn(
@@ -87,8 +67,6 @@ class NL2SQLServiceTest {
         assertNotNull(result.get("error"));
         verifyNoInteractions(jdbcTemplate);
     }
-
-    // ── TEST 4 — Markdown wrapper ─────────────────────────────────────
 
     @Test
     void respuesta_con_markdown_se_limpia_y_ejecuta() {
@@ -104,49 +82,20 @@ class NL2SQLServiceTest {
         assertEquals(1, result.get("total_filas"));
     }
 
-    // ── TEST 5 — UPDATE bloqueado ─────────────────────────────────────
-
-    @Test
-    void sql_update_bloqueado_lanza_excepcion() {
-        when(geminiService.llamar(anyString())).thenReturn(
-            "{\"sql\": \"UPDATE productos SET precio_venta = 0\", \"descripcion\": \"Destructivo\"}"
-        );
+    @ParameterizedTest(name = "SQL peligroso bloqueado: {1}")
+    @CsvSource({
+        "'{\"sql\": \"UPDATE productos SET precio_venta = 0\", \"descripcion\": \"Destructivo\"}', pon todos los precios a cero",
+        "'{\"sql\": \"SELECT 1; DROP TABLE productos\", \"descripcion\": \"Destructivo\"}',            borra los productos",
+        "'{\"sql\": \"SELECT * FROM clientes WHERE DELETE FROM clientes\", \"descripcion\": \"Intento\"}', elimina clientes"
+    })
+    void sql_peligroso_bloqueado_lanza_excepcion(String respuestaGemini, String pregunta) {
+        when(geminiService.llamar(anyString())).thenReturn(respuestaGemini);
 
         assertThrows(RuntimeException.class,
-            () -> nl2sqlService.ejecutarConsulta("pon todos los precios a cero"));
+            () -> nl2sqlService.ejecutarConsulta(pregunta));
 
         verifyNoInteractions(jdbcTemplate);
     }
-
-    // ── TEST 6 — DROP bloqueado ───────────────────────────────────────
-
-    @Test
-    void sql_con_drop_bloqueado_lanza_excepcion() {
-        when(geminiService.llamar(anyString())).thenReturn(
-            "{\"sql\": \"SELECT 1; DROP TABLE productos\", \"descripcion\": \"Destructivo\"}"
-        );
-
-        assertThrows(RuntimeException.class,
-            () -> nl2sqlService.ejecutarConsulta("borra los productos"));
-
-        verifyNoInteractions(jdbcTemplate);
-    }
-
-    // ── TEST 7 — DELETE bloqueado ─────────────────────────────────────
-
-    @Test
-    void sql_con_delete_bloqueado_lanza_excepcion() {
-        when(geminiService.llamar(anyString())).thenReturn(
-            "{\"sql\": \"SELECT * FROM clientes WHERE DELETE FROM clientes\", \"descripcion\": \"Intento\"}"
-        );
-
-        assertThrows(RuntimeException.class,
-            () -> nl2sqlService.ejecutarConsulta("elimina clientes"));
-
-        verifyNoInteractions(jdbcTemplate);
-    }
-
-    // ── TEST 8 — JSON malformado ──────────────────────────────────────
 
     @Test
     void json_malformado_devuelve_error_sin_propagar_excepcion() {

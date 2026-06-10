@@ -81,10 +81,16 @@ public class GeminiService {
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RuntimeException("Error en GeminiService: hilo interrumpido", e);
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Error en GeminiService: hilo interrumpido"
+            );
         } catch (Exception e) {
             log.error("[GEMINI] Excepción: {}", e.getMessage());
-            throw new RuntimeException("Error en GeminiService: " + e.getMessage(), e);
+            throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error en GeminiService: " + e.getMessage()
+            );
         }
     }
 }

@@ -17,9 +17,10 @@ import type { TableRow } from './DynamicTable';
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
 interface Nl2SqlResponse {
-    sql:        string;
-    resultados: TableRow[];
-    error?:     string;
+    sql:         string;
+    filas:       TableRow[];
+    total_filas: number;
+    error?:      string;
 }
 
 interface Message {
@@ -338,17 +339,16 @@ export function AiFab(): JSX.Element {
                 }, 2500);
 
             } else {
-                const hasResults  = data.resultados && data.resultados.length > 0;
+               const hasResults  = data.filas && data.filas.length > 0;
                 const responseText = hasResults
-                    ? `He encontrado ${data.resultados.length} resultado${data.resultados.length !== 1 ? 's' : ''}.`
+                    ? `He encontrado ${data.filas.length} resultado${data.filas.length !== 1 ? 's' : ''}.`
                     : 'La consulta no devolvió resultados.';
 
                 setMessages(prev => prev.map(m =>
                     m.id === aiId
-                        ? { ...m, loading: false, text: responseText, sql: data.sql, results: data.resultados }
+                        ? { ...m, loading: false, text: responseText, sql: data.sql, results: data.filas }
                         : m
                 ));
-
                 // — AVT-07: TALKING al llegar la respuesta —
                 // showOutput=false en el avatar → solo anima el monitor retro,
                 // el texto ya está visible en la burbuja del chat.

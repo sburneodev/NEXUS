@@ -68,6 +68,19 @@ export function UsuariosPage(): JSX.Element {
     const [rows,         setRows]         = useState<UsuarioAdmin[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
     const [toast,        setToast]        = useState<Toast | null>(null);
+    const [sortField,    setSortField]    = useState<'username' | 'email' | null>(null);
+    const [sortDir,      setSortDir]      = useState<'asc' | 'desc'>('asc');
+
+    const toggleSort = (field: 'username' | 'email'): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        filters.setPage(0);
+    };
     const [loadingRows,  setLoadingRows]  = useState<Set<number>>(new Set());
     const [confirmModal, setConfirmModal] = useState<UsuarioAdmin | null>(null);
     const [refreshKey,   setRefreshKey]   = useState(0);
@@ -85,14 +98,25 @@ export function UsuariosPage(): JSX.Element {
         statusFilter === 'ACTIVOS'   ? rows.filter(u =>  u.isActive)
         : statusFilter === 'INACTIVOS' ? rows.filter(u => !u.isActive)
         : rows
-    ).sort((a, b) => (b.roles.includes('ADMIN') ? 1 : 0) - (a.roles.includes('ADMIN') ? 1 : 0));
+    ).sort((a, b) => {
+        // Admins siempre primero
+        const adminDiff = (b.roles.includes('ADMIN') ? 1 : 0) - (a.roles.includes('ADMIN') ? 1 : 0);
+        if (adminDiff !== 0) return adminDiff;
+        // Orden del usuario (si activo)
+        if (!sortField) return 0;
+        const aVal = a[sortField].toLowerCase();
+        const bVal = b[sortField].toLowerCase();
+        return sortDir === 'asc'
+            ? aVal.localeCompare(bVal, 'es-ES')
+            : bVal.localeCompare(aVal, 'es-ES');
+    });
 
     // ── Modal Invitar ─────────────────────────────────────────────────────────
     const [inviteOpen,    setInviteOpen]    = useState(false);
     const [inviteLoading, setInviteLoading] = useState(false);
     const [pwdCopied,     setPwdCopied]     = useState(false);
     const [inviteForm,    setInviteForm]    = useState<InviteForm>({
-        email: '', username: '', rol: 'CAJERO',
+        email: '', username: '', nombreCompleto: '', rol: 'CAJERO',
     });
     const emailRef = useRef<HTMLInputElement>(null);
 
@@ -662,9 +686,11 @@ export function UsuariosPage(): JSX.Element {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
-                                {['Usuario', 'Email', 'Roles', 'Estado', 'Acciones'].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{h}</th>
-                                ))}
+                                <UsuarioSortableTh label="Usuario" field="username" currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <UsuarioSortableTh label="Email"   field="email"    currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={usuarioThStyle}>Roles</th>
+                                <th style={usuarioThStyle}>Estado</th>
+                                <th style={usuarioThStyle}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
@@ -839,6 +865,48 @@ export function UsuariosPage(): JSX.Element {
                 </div>
             </div>
         </div>
+    );
+}
+
+// ── Estilos de tabla ─────────────────────────────────────────────────────────
+
+const usuarioThStyle: React.CSSProperties = {
+    padding: '10px 16px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+};
+
+function UsuarioSortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        'username' | 'email';
+    currentField: 'username' | 'email' | null;
+    dir:          'asc' | 'desc';
+    onSort:       (f: 'username' | 'email') => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...usuarioThStyle, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
     );
 }
 

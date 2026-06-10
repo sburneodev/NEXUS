@@ -20,6 +20,8 @@ import { TableControls, SkeletonRows }      from '../components/table/TableContr
 import api                                  from '../services/api';
 
 type ActivoKey = 'TODOS' | 'ACTIVOS' | 'INACTIVOS';
+type SortField  = 'nombre' | 'puntosFidelidad';
+type SortDir    = 'asc' | 'desc';
 
 // ── Campos del formulario ─────────────────────────────────────────────────────
 
@@ -89,6 +91,19 @@ export function ClientesPage(): JSX.Element {
     const [refreshKey, setRefreshKey] = useState(0);
     const [filterActivo,  setFilterActivo]  = useState<ActivoKey>('TODOS');
     const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
+    const [sortField,     setSortField]     = useState<SortField | null>(null);
+    const [sortDir,       setSortDir]       = useState<SortDir>('asc');
+
+    const toggleSort = (field: SortField): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        filters.setPage(0);
+    };
 
     function showToast(msg: string): void {
         setToast(msg);
@@ -103,6 +118,7 @@ export function ClientesPage(): JSX.Element {
         const params = buildParams();
         if (filterActivo === 'ACTIVOS')   params.set('activo', 'true');
         if (filterActivo === 'INACTIVOS') params.set('activo', 'false');
+        if (sortField) params.set('sort', `${sortField},${sortDir}`);
 
         api.get<PaginatedResponse<Cliente>>(`/clientes?${params.toString()}`)
             .then(({ data }) => {
@@ -155,6 +171,8 @@ export function ClientesPage(): JSX.Element {
         filters.querySignal,
         refreshKey,
         filterActivo,
+        sortField,
+        sortDir,
         buildParams,
         setPagination,
         activeSearch,
@@ -305,11 +323,12 @@ export function ClientesPage(): JSX.Element {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                                {['Nombre', 'Email', 'Teléfono', 'Puntos', 'Estado', 'Acciones'].map(h => (
-                                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'var(--bg-elevated)' }}>
-                                        {h}
-                                    </th>
-                                ))}
+                                <SortableTh label="Nombre"   field="nombre"          currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={thStyle}>Email</th>
+                                <th style={thStyle}>Teléfono</th>
+                                <SortableTh label="Puntos"   field="puntosFidelidad" currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={thStyle}>Estado</th>
+                                <th style={thStyle}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
@@ -402,6 +421,46 @@ export function ClientesPage(): JSX.Element {
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
 const tdStyle: CSSProperties = { padding: '10px 14px', verticalAlign: 'middle' };
+
+const thStyle: CSSProperties = {
+    padding: '10px 14px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'var(--bg-elevated)',
+};
+
+function SortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        SortField;
+    currentField: SortField | null;
+    dir:          SortDir;
+    onSort:       (f: SortField) => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...thStyle, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
+    );
+}
 
 function actionBtnStyle(color: string): CSSProperties {
     return {

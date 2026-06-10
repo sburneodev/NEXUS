@@ -30,6 +30,11 @@ const FIELDS: FieldConfig[] = [
     { key: 'activo',         label: 'Proveedor activo',      type: 'checkbox' },
 ];
 
+// ── Tipos de ordenación ───────────────────────────────────────────────────────
+
+type SortField  = 'razonSocial' | 'tiempoEntregaD';
+type SortDir    = 'asc' | 'desc';
+
 // ── Filtro activo ─────────────────────────────────────────────────────────────
 
 type ActivoKey = 'TODOS' | 'ACTIVOS' | 'INACTIVOS';
@@ -82,6 +87,19 @@ export function ProveedoresPage(): JSX.Element {
     const [rows,         setRows]         = useState<Proveedor[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
     const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [sortField,    setSortField]    = useState<SortField | null>(null);
+    const [sortDir,      setSortDir]      = useState<SortDir>('asc');
+
+    const toggleSort = (field: SortField): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        filters.setPage(0);
+    };
     const [modalOpen,    setModalOpen]    = useState(false);
     const [selected,     setSelected]     = useState<Proveedor | null>(null);
     const [isSaving,     setIsSaving]     = useState(false);
@@ -115,6 +133,20 @@ export function ProveedoresPage(): JSX.Element {
                             || (filterActivo === 'ACTIVOS' ? p.activo === true : p.activo === false);
                         return matchSearch && matchActivo;
                     });
+                    // Ordenación client-side
+                    if (sortField) {
+                        filtered.sort((a, b) => {
+                            if (sortField === 'razonSocial') {
+                                return sortDir === 'asc'
+                                    ? a.razonSocial.localeCompare(b.razonSocial, 'es-ES')
+                                    : b.razonSocial.localeCompare(a.razonSocial, 'es-ES');
+                            }
+                            // tiempoEntregaD: null → al final
+                            const aVal = a.tiempoEntregaD ?? Infinity;
+                            const bVal = b.tiempoEntregaD ?? Infinity;
+                            return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+                        });
+                    }
                     const total    = filtered.length;
                     const pageData = filtered.slice(activePage * activeLimit, (activePage + 1) * activeLimit);
                     setRows(pageData);
@@ -130,6 +162,8 @@ export function ProveedoresPage(): JSX.Element {
     }, [
         filters.querySignal,
         filterActivo,
+        sortField,
+        sortDir,
         refreshKey,
         setPagination,
         activeSearch,
@@ -266,11 +300,13 @@ export function ProveedoresPage(): JSX.Element {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)' }}>
-                                {['Razón Social', 'CIF', 'Email', 'Teléfono', 'Entrega', 'Estado', 'Acciones'].map(h => (
-                                    <th key={h} style={{ padding: '10px 14px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'var(--bg-elevated)' }}>
-                                        {h}
-                                    </th>
-                                ))}
+                                <SortableTh label="Razón Social" field="razonSocial"   currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={thStyle}>CIF</th>
+                                <th style={thStyle}>Email</th>
+                                <th style={thStyle}>Teléfono</th>
+                                <SortableTh label="Entrega"      field="tiempoEntregaD" currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={thStyle}>Estado</th>
+                                <th style={thStyle}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
@@ -354,6 +390,46 @@ export function ProveedoresPage(): JSX.Element {
 // ── Estilos ───────────────────────────────────────────────────────────────────
 
 const tdStyle: CSSProperties = { padding: '10px 14px', verticalAlign: 'middle' };
+
+const thStyle: CSSProperties = {
+    padding: '10px 14px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--text-muted)', whiteSpace: 'nowrap', background: 'var(--bg-elevated)',
+};
+
+function SortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        SortField;
+    currentField: SortField | null;
+    dir:          SortDir;
+    onSort:       (f: SortField) => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...thStyle, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
+    );
+}
 
 function actionBtnStyle(color: string): CSSProperties {
     return {

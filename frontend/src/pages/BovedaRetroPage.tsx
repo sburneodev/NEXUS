@@ -22,6 +22,8 @@ import { ActionIconBtn }       from '../components/ui/ActionIconBtn';
 
 type EstadoKey = EstadoConservacion | 'TODOS';
 type ActivoKey = 'TODOS' | 'ACTIVOS' | 'VENDIDOS';
+type SortField  = 'nombre' | 'precioVenta';
+type SortDir    = 'asc' | 'desc';
 
 const ESTADO_META: Record<EstadoKey, { label: string; color: string; desc: string }> = {
     TODOS:   { label: 'Todos',  color: 'var(--text-muted)',    desc: '' },
@@ -177,6 +179,19 @@ export function BovedaRetroPage(): JSX.Element {
     const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
     const [expandedId,      setExpandedId]      = useState<number | null>(null);
     const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
+    const [sortField,       setSortField]       = useState<SortField | null>(null);
+    const [sortDir,         setSortDir]         = useState<SortDir>('asc');
+
+    const toggleSort = (field: SortField): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        filters.setPage(0);
+    };
     const [editOpen,     setEditOpen]     = useState(false);
     const [selected,     setSelected]     = useState<Producto | null>(null);
     const [localData]                     = useState<Producto[]>(MOCK_PRODUCTOS.filter(p => p.tipoProducto === 'RETRO'));
@@ -188,6 +203,7 @@ export function BovedaRetroPage(): JSX.Element {
         const params = buildParams();
         params.set('tipo', 'RETRO');
         if (filterEstado !== 'TODOS') params.set('estado', filterEstado);
+        if (sortField) params.set('sort', `${sortField},${sortDir}`);
         // No enviamos ?activo al backend porque el backend puede no actualizar
         // ese campo al hacer movimientos de stock. La distinción DISPONIBLE/VENDIDO
         // se hace client-side mediante stockActual === 0.
@@ -221,7 +237,7 @@ export function BovedaRetroPage(): JSX.Element {
             });
 
         return () => { cancelled = true; };
-    }, [filters.querySignal, filterEstado, filterActivo, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
+    }, [filters.querySignal, filterEstado, filterActivo, sortField, sortDir, buildParams, setPagination, activeSearch, activePage, activeLimit, localData]);
 
     function handleRegistrar(_data: Partial<ProductForm>): void {
         // Desde el Tasador IA: abre el panel vacío en modo creación RETRO
@@ -331,14 +347,21 @@ export function BovedaRetroPage(): JSX.Element {
             {/* ── Tasador IA ── */}
             <TasadorIA onRegistrar={handleRegistrar} />
 
-            {/* ── Filtros de estado ── */}
+            {/* ── Búsqueda + filtros en una sola fila ── */}
             {(() => {
                 const activeDesc = hoveredEstado
                     ? ESTADO_META[hoveredEstado].desc
                     : filterEstado !== 'TODOS' ? ESTADO_META[filterEstado].desc : '';
-                return (
-                    <div style={{ marginBottom: '8px' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+
+                // chipsNode es estático respecto al hover — NO incluye activeDesc
+                // para evitar que los re-renders del hover rompan los eventos del ratón
+                const chipsNode = (
+                    <>
+                        {/* Separador vertical */}
+                        <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border-default)', flexShrink: 0, margin: '0 2px' }} />
+
+                        {/* Chips de estado */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
                             {(Object.keys(ESTADO_META) as EstadoKey[]).map(key => (
                                 <FilterChip
                                     key={key}
@@ -350,7 +373,10 @@ export function BovedaRetroPage(): JSX.Element {
                                     onMouseLeave={() => setHoveredEstado(null)}
                                 />
                             ))}
-                            <div style={{ width: '1px', background: 'var(--border-subtle)', margin: '0 2px', alignSelf: 'stretch' }} />
+
+                            {/* Separador interno */}
+                            <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border-default)', flexShrink: 0, margin: '0 2px' }} />
+
                             {(['ACTIVOS', 'VENDIDOS'] as ActivoKey[]).map(key => (
                                 <FilterChip
                                     key={key}
@@ -361,7 +387,20 @@ export function BovedaRetroPage(): JSX.Element {
                                 />
                             ))}
                         </div>
-                        {/* Descripción del estado — fade in/out */}
+                    </>
+                );
+
+                return (
+                    <div style={{ marginBottom: '16px' }}>
+                        <TableControls
+                            filters={filters}
+                            isLoading={isLoading}
+                            entityLabel="pieza"
+                            entityLabelPlural="piezas"
+                            searchPlaceholder="Buscar por nombre o SKU..."
+                            extraFilters={chipsNode}
+                        />
+                        {/* Leyenda — fuera del chipsNode para no re-crear los chips en cada hover */}
                         <div style={{
                             height:        '18px',
                             marginTop:     '5px',
@@ -379,28 +418,19 @@ export function BovedaRetroPage(): JSX.Element {
                 );
             })()}
 
-            {/* ── Búsqueda y paginación ── */}
-            <div style={{ marginBottom: '16px' }}>
-                <TableControls
-                    filters={filters}
-                    isLoading={isLoading}
-                    entityLabel="pieza"
-                    entityLabelPlural="piezas"
-                    searchPlaceholder="Buscar por nombre o SKU..."
-                />
-            </div>
-
             {/* ── Tabla ── */}
             <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
-                                {['Estado', 'SKU', 'Nombre', 'Plataforma', 'Precio', 'Disponibilidad', ''].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                                        {h}
-                                    </th>
-                                ))}
+                                <th style={bovedaThStyle}>Estado</th>
+                                <th style={bovedaThStyle}>SKU</th>
+                                <BovedaSortableTh label="Nombre"       field="nombre"      currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={bovedaThStyle}>Plataforma</th>
+                                <BovedaSortableTh label="Precio"       field="precioVenta" currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={bovedaThStyle}>Disponibilidad</th>
+                                <th style={bovedaThStyle}></th>
                             </tr>
                         </thead>
                         <tbody style={{ opacity: isLoading && rows.length > 0 ? 0.5 : 1, transition: 'opacity 200ms' }}>
@@ -513,6 +543,48 @@ export function BovedaRetroPage(): JSX.Element {
             </>
         )}
         </div>
+    );
+}
+
+// ── Estilos y cabeceras de tabla ──────────────────────────────────────────────
+
+const bovedaThStyle: React.CSSProperties = {
+    padding: '10px 16px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase',
+    color: 'var(--text-muted)', whiteSpace: 'nowrap',
+};
+
+function BovedaSortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        SortField;
+    currentField: SortField | null;
+    dir:          SortDir;
+    onSort:       (f: SortField) => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...bovedaThStyle, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-gold)' : 'var(--text-muted)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
     );
 }
 

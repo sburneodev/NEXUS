@@ -1,24 +1,23 @@
 /**
- * pages/ProductosPage.tsx — SUFP v3.1
+ * pages/ProductosPage.tsx — SUFP v3.2
  *
  * Gestión de productos con filtrado y paginación server-side.
  * · Chips de filtro rápido: Todos / Estándar / Retro / Stock Bajo / Críticos
  * · Cabeceras de tabla ordenables: SKU, Nombre, Precio Venta, Stock
- * · Ajuste rápido de stock inline (mini-modal)
  * · Creación: navega a /productos/nuevo (wizard dedicado)
  * · Edición:  ProductFormPanel integrado en el panel central
+ * · Gestión de stock: exclusiva de la sección Stock
  */
 
 import { useState, useEffect, useCallback, type CSSProperties, type ReactNode } from 'react';
 import { useLocation }                                                     from 'react-router-dom';
-import { Boxes, Pencil, Trash2 }                                           from 'lucide-react';
+import { Pencil, Trash2 }                                                  from 'lucide-react';
 import type { Producto, TipoProducto, PaginatedResponse }                  from '../types/models';
 import { ProductFormPanel }                                                 from '../components/productos/ProductFormPanel';
 import { useTableFilters, calculateAutoLimit }                              from '../hooks/useTableFilters';
 import { TableControls, SkeletonRows }                                     from '../components/table/TableControls';
 import { productoService }                                                  from '../services/productoService';
 import api                                                                  from '../services/api';
-import { MovimientoDrawer }                                                 from '../components/stock/MovimientoDrawer';
 import { ActionIconBtn }                                                    from '../components/ui/ActionIconBtn';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
@@ -45,8 +44,6 @@ export function ProductosPage(): JSX.Element {
     const [editOpen,    setEditOpen]    = useState(false);
     const [selected,    setSelected]    = useState<Producto | null>(null);
     const [refreshTick, setRefreshTick] = useState(0);
-    const [drawerOpen,     setDrawerOpen]     = useState(false);
-    const [drawerProducto, setDrawerProducto] = useState<Producto | null>(null);
     const [confirmId,      setConfirmId]      = useState<number | null>(null);
 
     // Mensaje de éxito tras crear producto desde /productos/nuevo
@@ -65,19 +62,20 @@ export function ProductosPage(): JSX.Element {
     const refresh = useCallback(() => setRefreshTick(t => t + 1), []);
 
     // ── Helpers de ordenación ─────────────────────────────────────────────────
+    // Ciclo: neutro → ↑ asc → ↓ desc → neutro (tercer clic = sin orden)
     const toggleSort = (field: SortField) => {
-        if (sortField === field) {
-            setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-        } else {
+        if (sortField !== field) {
+            // Campo distinto → empezar desde asc
             setSortField(field);
             setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            // Ya estaba asc → pasar a desc
+            setSortDir('desc');
+        } else {
+            // Ya estaba desc → volver a neutro (sin orden)
+            setSortField(null);
         }
         filters.setPage(0);
-    };
-
-    const sortIcon = (field: SortField): string => {
-        if (sortField !== field) return ' ⇅';
-        return sortDir === 'asc' ? ' ↑' : ' ↓';
     };
 
     // ── Fetch server-side ─────────────────────────────────────────────────────
@@ -164,11 +162,6 @@ export function ProductosPage(): JSX.Element {
         document.addEventListener('keydown', handler);
         return () => document.removeEventListener('keydown', handler);
     }, [confirmId]);
-
-    // ── Drawer de stock ───────────────────────────────────────────────────────
-    const openStockDrawer = (p: Producto): void => { setDrawerProducto(p); setDrawerOpen(true); };
-    const closeStockDrawer = (): void => { setDrawerOpen(false); setTimeout(() => setDrawerProducto(null), 320); };
-    const handleMovimientoSaved = useCallback((_id: number, _stock: number) => { refresh(); }, [refresh]);
 
     const openEdit = (p: Producto): void => { setSelected(p); setEditOpen(true); };
     const closeEdit = (): void => { setEditOpen(false); setSelected(null); };
@@ -441,11 +434,7 @@ export function ProductosPage(): JSX.Element {
                                                     fontFamily:    'var(--font-mono)',
                                                     fontSize:      '11px',
                                                     letterSpacing: '0.06em',
-                                                    color:         p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-secondary)',
-                                                    border:        `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`,
-                                                    background:    p.tipoProducto === 'RETRO' ? 'rgba(255,200,60,0.08)' : 'transparent',
-                                                    borderRadius:  '3px',
-                                                    padding:       '2px 7px',
+                                                    color:         p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-muted)',
                                                 }}>
                                                     {p.tipoProducto}
                                                 </span>
@@ -559,12 +548,6 @@ export function ProductosPage(): JSX.Element {
                                                     /* ── Botones normales ── */
                                                     <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
                                                         <ActionIconBtn
-                                                            icon={Boxes}
-                                                            color="primary"
-                                                            title="Gestionar stock"
-                                                            onClick={() => openStockDrawer(p)}
-                                                        />
-                                                        <ActionIconBtn
                                                             icon={Pencil}
                                                             color="cyan"
                                                             title={`Editar ${p.nombre}`}
@@ -588,12 +571,6 @@ export function ProductosPage(): JSX.Element {
                 </>
             )}
 
-            <MovimientoDrawer
-                open={drawerOpen}
-                producto={drawerProducto}
-                onClose={closeStockDrawer}
-                onSaved={handleMovimientoSaved}
-            />
         </div>
     );
 }
@@ -660,8 +637,9 @@ function SortableTh({ label, field, currentField, dir, onSort }: {
                 onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
             >
                 {label}
-                <span style={{ opacity: active ? 1 : 0.35, fontSize: '11px' }}>
-                    {active ? (dir === 'asc' ? '↑' : '↓') : '⇅'}
+                <span style={{ opacity: active ? 1 : 0.25, fontSize: '10px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.25 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.25 : 1 }}>▼</span>
                 </span>
             </button>
         </th>

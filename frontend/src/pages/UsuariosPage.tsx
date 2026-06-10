@@ -34,9 +34,10 @@ interface Toast {
 }
 
 interface InviteForm {
-    email:    string;
-    username: string;
-    rol:      string;
+    email:          string;
+    username:       string;
+    nombreCompleto: string;
+    rol:            string;
 }
 
 const SELF_COLOR = '#F59E0B';
@@ -67,21 +68,60 @@ export function UsuariosPage(): JSX.Element {
     const [rows,         setRows]         = useState<UsuarioAdmin[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
     const [toast,        setToast]        = useState<Toast | null>(null);
+    const [sortField,    setSortField]    = useState<'username' | 'email' | null>(null);
+    const [sortDir,      setSortDir]      = useState<'asc' | 'desc'>('asc');
+
+    const toggleSort = (field: 'username' | 'email'): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        filters.setPage(0);
+    };
     const [loadingRows,  setLoadingRows]  = useState<Set<number>>(new Set());
     const [confirmModal, setConfirmModal] = useState<UsuarioAdmin | null>(null);
     const [refreshKey,   setRefreshKey]   = useState(0);
+
+    // ── Filtro de estado — persiste en localStorage para no resetearse al navegar ──
+    type StatusFilter = 'ACTIVOS' | 'TODOS' | 'INACTIVOS';
+    const [statusFilter, setStatusFilter] = useState<StatusFilter>(() =>
+        (localStorage.getItem('usuarios_statusFilter') as StatusFilter) ?? 'ACTIVOS'
+    );
+    function changeStatusFilter(f: StatusFilter): void {
+        setStatusFilter(f);
+        localStorage.setItem('usuarios_statusFilter', f);
+    }
+    const filteredRows = (
+        statusFilter === 'ACTIVOS'   ? rows.filter(u =>  u.isActive)
+        : statusFilter === 'INACTIVOS' ? rows.filter(u => !u.isActive)
+        : rows
+    ).sort((a, b) => {
+        // Admins siempre primero
+        const adminDiff = (b.roles.includes('ADMIN') ? 1 : 0) - (a.roles.includes('ADMIN') ? 1 : 0);
+        if (adminDiff !== 0) return adminDiff;
+        // Orden del usuario (si activo)
+        if (!sortField) return 0;
+        const aVal = a[sortField].toLowerCase();
+        const bVal = b[sortField].toLowerCase();
+        return sortDir === 'asc'
+            ? aVal.localeCompare(bVal, 'es-ES')
+            : bVal.localeCompare(aVal, 'es-ES');
+    });
 
     // ── Modal Invitar ─────────────────────────────────────────────────────────
     const [inviteOpen,    setInviteOpen]    = useState(false);
     const [inviteLoading, setInviteLoading] = useState(false);
     const [pwdCopied,     setPwdCopied]     = useState(false);
     const [inviteForm,    setInviteForm]    = useState<InviteForm>({
-        email: '', username: '', rol: 'CAJERO',
+        email: '', username: '', nombreCompleto: '', rol: 'CAJERO',
     });
     const emailRef = useRef<HTMLInputElement>(null);
 
     function openInviteModal(): void {
-        setInviteForm({ email: '', username: '', rol: 'CAJERO' });
+        setInviteForm({ email: '', username: '', nombreCompleto: '', rol: 'CAJERO' });
         setPwdCopied(false);
         setInviteOpen(true);
         setTimeout(() => emailRef.current?.focus(), 60);
@@ -90,6 +130,10 @@ export function UsuariosPage(): JSX.Element {
     function handleInviteEmail(value: string): void {
         const derived = value.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
         setInviteForm(f => ({ ...f, email: value, username: derived }));
+    }
+
+    function handleInviteNombre(value: string): void {
+        setInviteForm(f => ({ ...f, nombreCompleto: value }));
     }
 
     async function submitInvite(): Promise<void> {
@@ -450,6 +494,20 @@ export function UsuariosPage(): JSX.Element {
                                 />
                             </div>
 
+                            {/* Nombre completo */}
+                            <div>
+                                <label style={invLabelStyle}>Nombre completo</label>
+                                <input
+                                    type="text"
+                                    placeholder="Nombre Apellido"
+                                    value={inviteForm.nombreCompleto}
+                                    onChange={e => handleInviteNombre(e.target.value)}
+                                    style={invInputStyle}
+                                    onFocus={e  => { e.currentTarget.style.borderColor = 'var(--accent-primary)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--accent-primary-glow)'; }}
+                                    onBlur={e   => { e.currentTarget.style.borderColor = 'var(--border-default)'; e.currentTarget.style.boxShadow = 'none'; }}
+                                />
+                            </div>
+
                             {/* Username */}
                             <div>
                                 <label style={invLabelStyle}>Username *</label>
@@ -577,13 +635,48 @@ export function UsuariosPage(): JSX.Element {
                 </div>
             )}
 
-            {/* ── TableControls ── */}
+            {/* ── TableControls con filtro de estado integrado ── */}
             <div style={{ marginBottom: '16px' }}>
                 <TableControls
                     filters={filters}
                     isLoading={isLoading}
                     entityLabel="usuario"
-                    searchPlaceholder="Buscar por email o nombre de usuario..."
+                    searchPlaceholder="Buscar por email o usuario..."
+                    extraFilters={
+                        <div style={{ display: 'flex', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-default)', flexShrink: 0 }}>
+                            {([
+                                { key: 'ACTIVOS',   label: 'Activos'   },
+                                { key: 'TODOS',     label: 'Todos'     },
+                                { key: 'INACTIVOS', label: 'Inactivos' },
+                            ] as { key: StatusFilter; label: string }[]).map(({ key, label }, i) => {
+                                const active = statusFilter === key;
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => changeStatusFilter(key)}
+                                        style={{
+                                            background:    active ? 'var(--accent-primary)' : 'var(--bg-elevated)',
+                                            color:         active ? '#fff' : 'var(--text-muted)',
+                                            border:        'none',
+                                            borderRight:   i < 2 ? '1px solid var(--border-default)' : 'none',
+                                            padding:       '0 16px',
+                                            height:        '38px',
+                                            fontFamily:    'var(--font-display)',
+                                            fontSize:      '10px',
+                                            fontWeight:    700,
+                                            letterSpacing: '0.10em',
+                                            textTransform: 'uppercase',
+                                            cursor:        'pointer',
+                                            transition:    'background 160ms ease, color 160ms ease',
+                                            whiteSpace:    'nowrap',
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    }
                 />
             </div>
 
@@ -593,9 +686,11 @@ export function UsuariosPage(): JSX.Element {
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border-default)', background: 'var(--bg-elevated)' }}>
-                                {['Usuario', 'Email', 'Roles', 'Estado', 'Acciones'].map(h => (
-                                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{h}</th>
-                                ))}
+                                <UsuarioSortableTh label="Usuario" field="username" currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <UsuarioSortableTh label="Email"   field="email"    currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                <th style={usuarioThStyle}>Roles</th>
+                                <th style={usuarioThStyle}>Estado</th>
+                                <th style={usuarioThStyle}>Acciones</th>
                             </tr>
                         </thead>
                         <tbody style={{ opacity: isLoading ? 0.5 : 1, transition: 'opacity 200ms ease' }}>
@@ -603,17 +698,19 @@ export function UsuariosPage(): JSX.Element {
                                 <SkeletonRows rows={Math.min(filters.limit, 8)} cols={5} />
                             )}
 
-                            {!isLoading && rows.length === 0 && (
+                            {!isLoading && filteredRows.length === 0 && (
                                 <tr>
                                     <td colSpan={5} style={{ padding: '48px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '0.08em' }}>
                                         {filters.search
                                             ? `SIN RESULTADOS PARA "${filters.search.toUpperCase()}"`
-                                            : 'SIN USUARIOS'}
+                                            : statusFilter === 'INACTIVOS'
+                                                ? 'NO HAY USUARIOS INACTIVOS'
+                                                : 'SIN USUARIOS'}
                                     </td>
                                 </tr>
                             )}
 
-                            {rows.map(u => {
+                            {filteredRows.map(u => {
                                 const self    = isSelf(u);
                                 const rowBusy = loadingRows.has(u.id);
 
@@ -725,28 +822,40 @@ export function UsuariosPage(): JSX.Element {
 
                                         {/* ── Acciones ── */}
                                         <td style={{ padding: '12px 16px' }}>
-                                            <button
-                                                onClick={() => requestToggle(u)}
-                                                disabled={rowBusy}
-                                                style={{
-                                                    background:    'transparent',
-                                                    border:        `1px solid ${u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
-                                                    color:         u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)',
-                                                    borderRadius:  '4px',
-                                                    padding:       '4px 10px',
-                                                    cursor:        rowBusy ? 'not-allowed' : 'pointer',
-                                                    fontFamily:    'var(--font-display)',
-                                                    fontSize:      '10px',
-                                                    fontWeight:    700,
-                                                    letterSpacing: '0.08em',
-                                                    textTransform: 'uppercase',
-                                                    opacity:       rowBusy ? 0.45 : 1,
+                                            {u.roles.includes('ADMIN') ? (
+                                                <span style={{
+                                                    fontFamily:    'var(--font-mono)',
+                                                    fontSize:      '16px',
+                                                    color:         'var(--text-muted)',
+                                                    opacity:       0.35,
+                                                    display:       'inline-block',
                                                     minWidth:      '90px',
-                                                    transition:    'opacity 150ms',
-                                                }}
-                                            >
-                                                {rowBusy ? '···' : (u.isActive ? 'DESACTIVAR' : 'ACTIVAR')}
-                                            </button>
+                                                    textAlign:     'center',
+                                                }}>—</span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => requestToggle(u)}
+                                                    disabled={rowBusy}
+                                                    style={{
+                                                        background:    'transparent',
+                                                        border:        `1px solid ${u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)'}`,
+                                                        color:         u.isActive ? 'var(--accent-danger)' : 'var(--accent-primary)',
+                                                        borderRadius:  '4px',
+                                                        padding:       '4px 10px',
+                                                        cursor:        rowBusy ? 'not-allowed' : 'pointer',
+                                                        fontFamily:    'var(--font-display)',
+                                                        fontSize:      '10px',
+                                                        fontWeight:    700,
+                                                        letterSpacing: '0.08em',
+                                                        textTransform: 'uppercase',
+                                                        opacity:       rowBusy ? 0.45 : 1,
+                                                        minWidth:      '90px',
+                                                        transition:    'opacity 150ms',
+                                                    }}
+                                                >
+                                                    {rowBusy ? '···' : (u.isActive ? 'DESACTIVAR' : 'ACTIVAR')}
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -756,6 +865,48 @@ export function UsuariosPage(): JSX.Element {
                 </div>
             </div>
         </div>
+    );
+}
+
+// ── Estilos de tabla ─────────────────────────────────────────────────────────
+
+const usuarioThStyle: React.CSSProperties = {
+    padding: '10px 16px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+    letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)',
+    whiteSpace: 'nowrap',
+};
+
+function UsuarioSortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        'username' | 'email';
+    currentField: 'username' | 'email' | null;
+    dir:          'asc' | 'desc';
+    onSort:       (f: 'username' | 'email') => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...usuarioThStyle, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '10px', fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-cyan)' : 'var(--text-muted)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-muted)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
     );
 }
 

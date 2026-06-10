@@ -60,6 +60,20 @@ export function StockPage(): JSX.Element {
     const [rowsPerPage,     setRowsPerPage]    = useState<number>(() => calculateAutoLimit());
 
     // Drawer
+    const [sortField,       setSortField]      = useState<'nombre' | 'stockActual' | 'stockMinimo' | null>(null);
+    const [sortDir,         setSortDir]        = useState<'asc' | 'desc'>('asc');
+
+    const toggleSort = (field: 'nombre' | 'stockActual' | 'stockMinimo'): void => {
+        if (sortField !== field) {
+            setSortField(field); setSortDir('asc');
+        } else if (sortDir === 'asc') {
+            setSortDir('desc');
+        } else {
+            setSortField(null);
+        }
+        setCurrentPage(0);
+    };
+
     const [drawerOpen,      setDrawerOpen]     = useState(false);
     const [drawerProducto,  setDrawerProducto] = useState<Producto | null>(null);
     const [drawerInitialTipo, setDrawerInitialTipo] = useState<TipoMovimiento>('ENTRADA');
@@ -109,12 +123,27 @@ export function StockPage(): JSX.Element {
         });
     }, [productos, activeFilter, searchTerm]);
 
+    // ── Ordenación client-side ─────────────────────────────────────────────────
+    const sorted = useMemo(() => {
+        if (!sortField) return filtered;
+        return [...filtered].sort((a, b) => {
+            if (sortField === 'nombre') {
+                return sortDir === 'asc'
+                    ? a.nombre.localeCompare(b.nombre, 'es-ES')
+                    : b.nombre.localeCompare(a.nombre, 'es-ES');
+            }
+            const aVal = a[sortField] as number;
+            const bVal = b[sortField] as number;
+            return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+    }, [filtered, sortField, sortDir]);
+
     // ── Paginación client-side ─────────────────────────────────────────────────
-    const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
+    const totalPages = Math.max(1, Math.ceil(sorted.length / rowsPerPage));
     const safePage   = Math.min(currentPage, totalPages - 1);
     const paginated  = useMemo(
-        () => filtered.slice(safePage * rowsPerPage, (safePage + 1) * rowsPerPage),
-        [filtered, safePage, rowsPerPage],
+        () => sorted.slice(safePage * rowsPerPage, (safePage + 1) * rowsPerPage),
+        [sorted, safePage, rowsPerPage],
     );
 
     // ── Drawer helpers ─────────────────────────────────────────────────────────
@@ -203,15 +232,15 @@ export function StockPage(): JSX.Element {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
 
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                        {filtered.length === 0
+                        {sorted.length === 0
                             ? 'Sin productos'
                             : <>Mostrando{' '}
                                 <strong style={{ color: 'var(--text-secondary)' }}>
-                                    {safePage * rowsPerPage + 1}–{Math.min((safePage + 1) * rowsPerPage, filtered.length)}
+                                    {safePage * rowsPerPage + 1}–{Math.min((safePage + 1) * rowsPerPage, sorted.length)}
                                 </strong>
                                 {' '}de{' '}
-                                <strong style={{ color: 'var(--text-primary)' }}>{filtered.length}</strong>
-                                {' '}producto{filtered.length !== 1 ? 's' : ''}
+                                <strong style={{ color: 'var(--text-primary)' }}>{sorted.length}</strong>
+                                {' '}producto{sorted.length !== 1 ? 's' : ''}
                             </>
                         }
                     </span>
@@ -264,14 +293,13 @@ export function StockPage(): JSX.Element {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
                                 <tr style={{ background: 'var(--bg-elevated)', borderBottom: '1px solid var(--border-default)' }}>
-                                    {['SKU', 'Producto', 'Tipo', 'Stock Act.', 'Mín.', 'Estado', 'Acciones'].map(h => (
-                                        <th key={h} style={{
-                                            padding: '12px 14px', textAlign: 'left',
-                                            fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
-                                            letterSpacing: '0.10em', textTransform: 'uppercase',
-                                            color: 'var(--text-secondary)', whiteSpace: 'nowrap',
-                                        }}>{h}</th>
-                                    ))}
+                                    <th style={stockThBase}>SKU</th>
+                                    <StockSortableTh label="Producto"  field="nombre"       currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                    <th style={stockThBase}>Tipo</th>
+                                    <StockSortableTh label="Stock Act." field="stockActual"  currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                    <StockSortableTh label="Mín."       field="stockMinimo"  currentField={sortField} dir={sortDir} onSort={toggleSort} />
+                                    <th style={stockThBase}>Estado</th>
+                                    <th style={stockThBase}>Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -303,7 +331,7 @@ export function StockPage(): JSX.Element {
                                             </td>
                                             {/* Tipo */}
                                             <td style={{ padding: '12px 14px' }}>
-                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-secondary)', border: `1px solid ${p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--border-default)'}`, borderRadius: '3px', padding: '2px 7px', letterSpacing: '0.04em' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: p.tipoProducto === 'RETRO' ? 'var(--accent-gold)' : 'var(--text-muted)', letterSpacing: '0.04em' }}>
                                                     {p.tipoProducto}
                                                 </span>
                                             </td>
@@ -321,7 +349,7 @@ export function StockPage(): JSX.Element {
                                             </td>
                                             {/* Estado */}
                                             <td style={{ padding: '12px 14px' }}>
-                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', color: badge.color, background: `${badge.color}18`, border: `1px solid ${badge.color}`, borderRadius: '3px', padding: '2px 8px', whiteSpace: 'nowrap' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, letterSpacing: '0.06em', color: badge.color, whiteSpace: 'nowrap' }}>
                                                     {badge.text}
                                                 </span>
                                             </td>
@@ -368,6 +396,48 @@ export function StockPage(): JSX.Element {
             onSaved={handleMovimientoSaved}
         />
         </>
+    );
+}
+
+// ── Cabeceras de tabla ────────────────────────────────────────────────────────
+
+const stockThBase: React.CSSProperties = {
+    padding: '12px 14px', textAlign: 'left',
+    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+    letterSpacing: '0.10em', textTransform: 'uppercase',
+    color: 'var(--text-secondary)', whiteSpace: 'nowrap',
+};
+
+function StockSortableTh({ label, field, currentField, dir, onSort }: {
+    label:        string;
+    field:        'nombre' | 'stockActual' | 'stockMinimo';
+    currentField: 'nombre' | 'stockActual' | 'stockMinimo' | null;
+    dir:          'asc' | 'desc';
+    onSort:       (f: 'nombre' | 'stockActual' | 'stockMinimo') => void;
+}): JSX.Element {
+    const active = currentField === field;
+    return (
+        <th style={{ ...stockThBase, cursor: 'pointer', userSelect: 'none' }}>
+            <button
+                onClick={() => onSort(field)}
+                style={{
+                    background: 'transparent', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-display)', fontSize: '11px', fontWeight: 700,
+                    letterSpacing: '0.10em', textTransform: 'uppercase',
+                    color: active ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                    padding: 0, display: 'flex', alignItems: 'center', gap: '4px',
+                    transition: 'color 120ms ease', whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-primary)'; }}
+                onMouseLeave={e => { if (!active) (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)'; }}
+            >
+                {label}
+                <span style={{ opacity: active ? 1 : 0.3, fontSize: '9px', display: 'flex', flexDirection: 'column', lineHeight: '0.65', gap: 0 }}>
+                    <span style={{ opacity: active && dir === 'asc'  ? 1 : active ? 0.3 : 1 }}>▲</span>
+                    <span style={{ opacity: active && dir === 'desc' ? 1 : active ? 0.3 : 1 }}>▼</span>
+                </span>
+            </button>
+        </th>
     );
 }
 

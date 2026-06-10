@@ -64,19 +64,91 @@ interface RangoResponse {
 }
 
 // ── CSS de impresión ──────────────────────────────────────────────────
+// (PRINT_CSS ya no se usa para imprimir — se usa imprimirEnVentanaNueva)
+// Se mantiene como fallback por si el popup está bloqueado.
 const PRINT_CSS = `
 @media print {
-    body { background: white !important; }
-    html { background: white !important; }
-    #root                       { display: none !important; }
+    body, html                  { background: white !important; }
+    body > *                    { display: none !important; }
     #albaran-consolidado-root   { display: block !important; }
-    @page { size: A4 portrait; margin: 0; }
+    @page { size: A4 portrait; margin: 15mm 20mm; }
     * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
 @media screen {
     #albaran-consolidado-root   { display: none !important; }
 }
 `;
+
+// ── Impresión en ventana nueva ────────────────────────────────────────
+// Copia todos los CSS del documento actual (incluye CSS modules hasheados)
+// para que AlbaranTemplate se vea idéntico en la ventana de impresión.
+function imprimirEnVentanaNueva(elementId: string, titulo: string): void {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    // Copiar SOLO el CSS del módulo AlbaranTemplate (contiene --corp-navy).
+    // NO copiamos el CSS global de la app — tiene variables de tema oscuro
+    // (color: white, etc.) que harían invisible el texto en el fondo blanco del albarán.
+    let cssText = '';
+    Array.from(document.styleSheets).forEach(sheet => {
+        try {
+            const rules = Array.from(sheet.cssRules || []);
+            const sheetCss = rules.map(r => r.cssText).join('\n');
+            // Solo incluir hojas que contengan variables corporativas del albarán
+            if (sheetCss.includes('--corp-navy') || sheetCss.includes('corp-navy')) {
+                cssText += sheetCss + '\n';
+            }
+        } catch { /* cross-origin, se ignora */ }
+    });
+
+    // Usamos un iframe oculto — nunca bloqueado por el navegador
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument ?? iframe.contentWindow?.document;
+    if (!doc) { document.body.removeChild(iframe); return; }
+
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>${cssText}</style>
+    <style>
+        /* ── Reset tema oscuro de la app para que el albarán imprima en blanco ── */
+        html, body {
+            background: white !important;
+            color: #111827 !important;
+        }
+        :root {
+            --text-primary:   #111827 !important;
+            --text-secondary: #374151 !important;
+            --text-muted:     #6B7280 !important;
+            --bg-primary:     #ffffff !important;
+            --bg-surface:     #f9fafb !important;
+            --bg-elevated:    #f3f4f6 !important;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; padding: 0; }
+        @page { size: A4 portrait; margin: 15mm 20mm; }
+        * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        svg { display: block; }
+    </style>
+</head>
+<body>${el.outerHTML}</body>
+</html>`);
+    doc.close();
+
+    iframe.onload = () => {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+        setTimeout(() => {
+            if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        }, 1000);
+    };
+}
 
 // ── Conversión de la lista de items → un único AlbaranData ───────────
 //
@@ -347,7 +419,7 @@ export function AlbaranesRangoPage(): JSX.Element {
                         {/* Botón imprimir */}
                         {albaranData && (
                             <button
-                                onClick={() => window.print()}
+                                onClick={() => imprimirEnVentanaNueva('albaran-consolidado-root', `Albarán ${albaranData.numero}`)}
                                 className="btn btn-ghost"
                                 style={{ fontSize: '12px', letterSpacing: '0.10em', whiteSpace: 'nowrap', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)' }}
                             >

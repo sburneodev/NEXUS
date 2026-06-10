@@ -134,6 +134,11 @@ public class UsuarioService {
         Usuario u = new Usuario();
         u.setEmail(req.getEmail());
         u.setUsername(req.getUsername());
+        // Nombre completo: usar el proporcionado o el username como fallback
+        String nombre = (req.getNombreCompleto() != null && !req.getNombreCompleto().isBlank())
+                ? req.getNombreCompleto()
+                : req.getUsername();
+        u.setNombreCompleto(nombre);
         u.setPassword(passwordEncoder.encode(TEMP_PASSWORD));
         u.setActive(true);
         u.setVerified(true);

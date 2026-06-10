@@ -7,10 +7,19 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { createPortal }    from 'react-dom';
+import { Pencil }          from 'lucide-react';
 import api                 from '../../services/api';
 import type { Producto, TipoMovimiento } from '../../types/models';
 import { AlbaranModal }    from './AlbaranModal';
 import type { AlbaranInfo } from './AlbaranModal';
+
+// ── Helper: precio sugerido según tipo de movimiento ────────────────────────────
+function getPrecioSugerido(p: Producto | null, tipo: TipoMovimiento): string {
+    if (!p) return '';
+    if (tipo === 'SALIDA'  && p.precioVenta  > 0) return p.precioVenta.toFixed(2);
+    if (tipo === 'ENTRADA' && p.precioCoste  > 0) return p.precioCoste.toFixed(2);
+    return '';
+}
 
 // ── Tipos exportados ──────────────────────────────────────────────────────────
 
@@ -297,6 +306,8 @@ export function MovimientoDrawer({
     // Se fija a true en el mismo batch que setAlbaranInfo, garantizando que el botón
     // aparece siempre que hay albarán disponible, sin depender del orden de renders.
     const [hasAlbaran,        setHasAlbaran]        = useState(false);
+    // Precio: bloqueado por defecto, se desbloquea con el lápiz
+    const [precioBloqueado,   setPrecioBloqueado]   = useState(true);
     // Ref al contenedor scrollable y al panel de resultado — para scroll automático
     const scrollBodyRef = useRef<HTMLDivElement>(null);
     const resultRef     = useRef<HTMLDivElement>(null);
@@ -323,7 +334,14 @@ export function MovimientoDrawer({
             const tipoEfectivo: TipoMovimiento = esRetroConStock && initialTipo === 'ENTRADA'
                 ? 'SALIDA'
                 : initialTipo;
-            setForm(makeEmptyForm(tipoEfectivo));
+            const formInicial = makeEmptyForm(tipoEfectivo);
+            // Retro: la cantidad siempre es 1, se auto-rellena y se oculta el campo
+            if (producto?.tipoProducto === 'RETRO') formInicial.cantidad = '1';
+            // Auto-rellenar precio desde la ficha del producto
+            const precioSugerido = getPrecioSugerido(producto, tipoEfectivo);
+            formInicial.precioUnitario = precioSugerido;
+            setForm(formInicial);
+            setPrecioBloqueado(precioSugerido !== '');
             setResult(null);
             setSelectedCliente(null);
             setSelectedProveedor(null);
@@ -431,6 +449,7 @@ export function MovimientoDrawer({
     }, [producto, form, selectedCliente, selectedProveedor, onSaved, makeEmptyForm]);
 
     // ── Derivados ─────────────────────────────────────────────────────────────
+    const esRetro           = producto?.tipoProducto === 'RETRO';
     const cantidadNum       = parseInt(form.cantidad, 10);
     const stockInsuficiente = form.tipoMovimiento === 'SALIDA'
         && !isNaN(cantidadNum) && cantidadNum > 0
@@ -623,9 +642,12 @@ export function MovimientoDrawer({
                                         disabled={bloqueado}
                                         onClick={() => {
                                             if (bloqueado) return;
-                                            setField('tipoMovimiento', t);
+                                            const nuevoPrecio = getPrecioSugerido(producto, t);
+                                            setForm(prev => ({ ...prev, tipoMovimiento: t, precioUnitario: nuevoPrecio }));
+                                            setPrecioBloqueado(nuevoPrecio !== '');
                                             setSelectedCliente(null);
                                             setSelectedProveedor(null);
+                                            setResult(null);
                                         }}
                                         title={bloqueado ? 'No disponible — pieza retro ya en stock' : undefined}
                                         style={{
@@ -696,8 +718,8 @@ export function MovimientoDrawer({
                         </div>
                     ) : (
                         <>
-                    {/* Cantidad */}
-                    <div>
+                    {/* Cantidad — oculta para RETRO (siempre 1, se auto-rellena) */}
+                    {!esRetro && <div>
                         <label style={labelStyle}>Cantidad *</label>
                         <input
                             type="number" min={1}
@@ -730,20 +752,89 @@ export function MovimientoDrawer({
                                 </span>
                             </div>
                         )}
-                    </div>
+                    </div>}
 
-                    {/* Precio unitario */}
+                    {/* Precio unitario — auto-rellenado desde la ficha del producto */}
                     {form.tipoMovimiento !== 'AJUSTE' && (
                         <div>
-                            <label style={labelStyle}>
-                                Precio unitario (€){' '}
-                                <span style={{ fontWeight: 400, opacity: 0.55, textTransform: 'none', letterSpacing: 0 }}>— opcional</span>
-                            </label>
-                            <input type="number" min={0} step="0.01" placeholder="0.00"
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                                <label style={{ ...labelStyle, marginBottom: 0 }}>
+                                    Precio unitario (€)
+                                </label>
+                                {precioBloqueado && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setPrecioBloqueado(false)}
+                                        title="Editar precio manualmente"
+                                        style={{
+                                            display:    'flex', alignItems: 'center', gap: '4px',
+                                            background: 'transparent',
+                                            border:     '1px solid var(--border-subtle)',
+                                            borderRadius: '5px',
+                                            color:      'var(--text-muted)',
+                                            cursor:     'pointer',
+                                            padding:    '2px 8px',
+                                            fontFamily: 'var(--font-display)',
+                                            fontSize:   '9px', fontWeight: 700,
+                                            letterSpacing: '0.08em',
+                                            textTransform: 'uppercase',
+                                            transition: 'all 140ms ease',
+                                        }}
+                                        onMouseEnter={e => {
+                                            const b = e.currentTarget as HTMLButtonElement;
+                                            b.style.borderColor = 'var(--accent-gold)';
+                                            b.style.color = 'var(--accent-gold)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            const b = e.currentTarget as HTMLButtonElement;
+                                            b.style.borderColor = 'var(--border-subtle)';
+                                            b.style.color = 'var(--text-muted)';
+                                        }}
+                                    >
+                                        <Pencil size={10} />
+                                        Editar
+                                    </button>
+                                )}
+                            </div>
+                            <input
+                                type="number" min={0} step="0.01"
+                                placeholder="0.00"
                                 value={form.precioUnitario}
+                                disabled={precioBloqueado}
                                 onChange={e => setField('precioUnitario', e.target.value)}
-                                style={inputStyle} onFocus={onFI} onBlur={onBI}
+                                style={{
+                                    ...inputStyle,
+                                    background:  precioBloqueado ? 'var(--bg-surface)' : 'var(--bg-elevated)',
+                                    color:       precioBloqueado ? 'var(--text-secondary)' : 'var(--text-primary)',
+                                    cursor:      precioBloqueado ? 'default' : 'text',
+                                    opacity:     1,
+                                }}
+                                onFocus={precioBloqueado ? undefined : onFI}
+                                onBlur={onBI}
                             />
+                            <p style={{
+                                fontFamily:    'var(--font-mono)',
+                                fontSize:      '10px',
+                                margin:        '5px 0 0',
+                                letterSpacing: '0.02em',
+                                color:         precioBloqueado ? 'var(--text-muted)' : 'var(--accent-gold)',
+                                display:       'flex', alignItems: 'center', gap: '5px',
+                            }}>
+                                {precioBloqueado ? (
+                                    <>
+                                        <span style={{ opacity: 0.5 }}>🔒</span>
+                                        {form.tipoMovimiento === 'SALIDA'
+                                            ? 'Precio de venta obtenido de la ficha del producto'
+                                            : 'Precio de coste obtenido de la ficha del producto'}
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>✎</span>
+                                        Editando manualmente — sugerido:{' '}
+                                        <strong>{getPrecioSugerido(producto, form.tipoMovimiento) || '—'}€</strong>
+                                    </>
+                                )}
+                            </p>
                         </div>
                     )}
 

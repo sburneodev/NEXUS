@@ -160,7 +160,7 @@ public class ProductoService {
         p.setActivo(false);
         productoRepository.save(p);
         auditService.log(ENTIDAD, "DELETE", id,
-                "Baja lógica | SKU: " + p.getSku() + " | " + p.getNombre());
+                "SKU: " + p.getSku() + " | " + p.getNombre() + " | estado: ACTIVO → INACTIVO");
     }
 
     public ProductoDTO toDTO(Producto p) {

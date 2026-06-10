@@ -29,22 +29,35 @@ public class NL2SQLService {
     }
 
     private static final String SCHEMA = """
-        Tablas disponibles (PostgreSQL):
-        - usuarios(id, email, username, nombre_completo, is_active, is_verified, creado_en)
-        - roles(id, nombre, descripcion)
-        - usuarios_roles(id_usuario, id_rol)
-        - productos(id, sku, nombre, descripcion, precio_coste, precio_venta, stock_actual,
-                    stock_minimo, tipo_producto, estado_conservacion, activo, id_proveedor, id_ubicacion)
-        - proveedores(id, razon_social, email, tiempo_entrega_d, activo)
-        - clientes(id, nombre, email, telefono, puntos_fidelidad, activo, creado_en)
-        - transacciones_stock(id, id_producto, id_usuario, id_cliente, id_proveedor,
-                              tipo_movimiento, cantidad, stock_antes, stock_despues,
-                              precio_unitario, referencia, fecha)
-        - ordenes_compra(id, id_proveedor, id_usuario, estado, fecha_creacion, fecha_recepcion)
-        - detalles_orden_compra(id, id_orden, id_producto, cantidad, precio_unitario)
-        - ubicaciones_almacen(id, pasillo, estanteria, nivel)
-        - audit_log(id, tabla, operacion, id_registro, datos_antes, datos_despues, creado_en)
-        """;
+    	    Tablas disponibles (PostgreSQL):
+    	    - usuarios(id, email, username, nombre_completo, is_active, is_verified, creado_en)
+    	    - roles(id, nombre, descripcion)
+    	    - usuarios_roles(id_usuario, id_rol)
+    	    - productos(id, sku, nombre, descripcion, precio_coste, precio_venta, stock_actual,
+    	                stock_minimo, tipo_producto, estado_conservacion, activo, id_proveedor, id_ubicacion)
+    	    - proveedores(id, razon_social, email, tiempo_entrega_d, activo)
+    	    - clientes(id, nombre, email, telefono, puntos_fidelidad, activo, creado_en)
+    	    - transacciones_stock(id, id_producto, id_usuario, id_cliente, id_proveedor,
+    	                          tipo_movimiento, cantidad, stock_antes, stock_despues,
+    	                          precio_unitario, referencia, fecha)
+    	    - ordenes_compra(id, id_proveedor, id_usuario, estado, fecha_creacion, fecha_recepcion)
+    	    - detalles_orden_compra(id, id_orden, id_producto, cantidad, precio_unitario)
+    	    - ubicaciones_almacen(id, pasillo, estanteria, nivel)
+    	    - audit_log(id, tabla, operacion, id_registro, datos_antes, datos_despues, creado_en)
+    	    
+    	    VALORES EXACTOS EN LA BD (usa SIEMPRE estos valores, respetando mayúsculas):
+    	    - productos.tipo_producto: 'RETRO' para artículos retro/La Bóveda, 'ESTANDAR' para modernos
+    	    - productos.estado_conservacion: 'MINT', 'CIB', 'LOOSE', 'LOOSE_D'
+    	    - transacciones_stock.tipo_movimiento: 'ENTRADA', 'SALIDA', 'AJUSTE'
+    	    
+    	    GLOSARIO DE NEGOCIO:
+    	    - "La Bóveda Retro" o "artículos retro" o "piezas retro" = productos WHERE tipo_producto = 'RETRO'
+    	    - "stock disponible" o "disponibles" = stock_actual > 0
+    	    - "bajo mínimo" = stock_actual <= stock_minimo
+    	    - "productos activos" = activo = true
+    	    - "ventas" = transacciones_stock WHERE tipo_movimiento = 'SALIDA'
+    	    - "compras a proveedor" = transacciones_stock WHERE tipo_movimiento = 'ENTRADA'
+    	    """;
 
     public Map<String, Object> ejecutarConsulta(String preguntaEnEspanol) {
         String prompt = """

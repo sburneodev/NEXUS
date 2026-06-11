@@ -112,14 +112,19 @@ export function StockPage(): JSX.Element {
     // ── Filtrado ───────────────────────────────────────────────────────────────
     const filtered = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
+        const esVendido = (p: Producto) => p.tipoProducto === 'RETRO' && p.stockActual === 0;
         return productos.filter(p => {
+            // Si hay búsqueda activa, mostrar todo (incluso vendidos) para que el buscador funcione
+            if (q) {
+                const matchSearch = p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+                return matchSearch;
+            }
             const matchType =
-                activeFilter === 'TODOS'    ? true :
+                activeFilter === 'TODOS'    ? !esVendido(p) :
                 activeFilter === 'ESTANDAR' ? p.tipoProducto === 'ESTANDAR' :
-                activeFilter === 'RETRO'    ? p.tipoProducto === 'RETRO' :
+                activeFilter === 'RETRO'    ? p.tipoProducto === 'RETRO' && !esVendido(p) :
                 getEstado(p) === activeFilter;
-            const matchSearch = !q || p.nombre.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-            return matchType && matchSearch;
+            return matchType;
         });
     }, [productos, activeFilter, searchTerm]);
 

@@ -176,7 +176,7 @@ export function BovedaRetroPage(): JSX.Element {
     const [rows,         setRows]         = useState<Producto[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
     const [filterEstado, setFilterEstado] = useState<EstadoKey>('TODOS');
-    const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [filterActivo, setFilterActivo] = useState<ActivoKey>('ACTIVOS');
     const [expandedId,      setExpandedId]      = useState<number | null>(null);
     const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
     const [sortField,       setSortField]       = useState<SortField | null>(null);

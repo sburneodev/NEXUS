@@ -98,8 +98,8 @@ export function ProductosPage(): JSX.Element {
         if (chip === 'inactivos')  params.set('activo', 'false');
         if (chip === 'vendidos')   { params.set('activo', 'false'); params.set('tipo', 'RETRO'); }
 
-        // Ordenación
-        if (sortField) params.set('sort', `${sortField},${sortDir}`);
+        // Ordenación: por defecto más reciente primero
+        params.set('sort', sortField ? `${sortField},${sortDir}` : 'id,desc');
 
         api.get<PaginatedResponse<Producto>>(`/productos?${params.toString()}`)
             .then(({ data }) => {

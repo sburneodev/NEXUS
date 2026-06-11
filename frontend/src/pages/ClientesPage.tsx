@@ -118,7 +118,7 @@ export function ClientesPage(): JSX.Element {
         const params = buildParams();
         if (filterActivo === 'ACTIVOS')   params.set('activo', 'true');
         if (filterActivo === 'INACTIVOS') params.set('activo', 'false');
-        if (sortField) params.set('sort', `${sortField},${sortDir}`);
+        params.set('sort', sortField ? `${sortField},${sortDir}` : 'id,desc');
 
         api.get<PaginatedResponse<Cliente>>(`/clientes?${params.toString()}`)
             .then(({ data }) => {

@@ -205,7 +205,7 @@ export function BovedaRetroPage(): JSX.Element {
         const params = buildParams();
         params.set('tipo', 'RETRO');
         if (filterEstado !== 'TODOS') params.set('estado', filterEstado);
-        if (sortField) params.set('sort', `${sortField},${sortDir}`);
+        params.set('sort', sortField ? `${sortField},${sortDir}` : 'id,desc');
         // No enviamos ?activo al backend porque el backend puede no actualizar
         // ese campo al hacer movimientos de stock. La distinción DISPONIBLE/VENDIDO
         // se hace client-side mediante stockActual === 0.

@@ -86,7 +86,7 @@ export function ProveedoresPage(): JSX.Element {
     // ── Estado local ──────────────────────────────────────────────────────────
     const [rows,         setRows]         = useState<Proveedor[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
-    const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [filterActivo, setFilterActivo] = useState<ActivoKey>('ACTIVOS');
     const [sortField,    setSortField]    = useState<SortField | null>(null);
     const [sortDir,      setSortDir]      = useState<SortDir>('asc');
 
@@ -133,20 +133,19 @@ export function ProveedoresPage(): JSX.Element {
                             || (filterActivo === 'ACTIVOS' ? p.activo === true : p.activo === false);
                         return matchSearch && matchActivo;
                     });
-                    // Ordenación client-side
-                    if (sortField) {
-                        filtered.sort((a, b) => {
-                            if (sortField === 'razonSocial') {
-                                return sortDir === 'asc'
-                                    ? a.razonSocial.localeCompare(b.razonSocial, 'es-ES')
-                                    : b.razonSocial.localeCompare(a.razonSocial, 'es-ES');
-                            }
-                            // tiempoEntregaD: null → al final
-                            const aVal = a.tiempoEntregaD ?? Infinity;
-                            const bVal = b.tiempoEntregaD ?? Infinity;
-                            return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
-                        });
-                    }
+                    // Ordenación client-side — por defecto más reciente primero
+                    filtered.sort((a, b) => {
+                        if (!sortField) return b.id - a.id;
+                        if (sortField === 'razonSocial') {
+                            return sortDir === 'asc'
+                                ? a.razonSocial.localeCompare(b.razonSocial, 'es-ES')
+                                : b.razonSocial.localeCompare(a.razonSocial, 'es-ES');
+                        }
+                        // tiempoEntregaD: null → al final
+                        const aVal = a.tiempoEntregaD ?? Infinity;
+                        const bVal = b.tiempoEntregaD ?? Infinity;
+                        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+                    });
                     const total    = filtered.length;
                     const pageData = filtered.slice(activePage * activeLimit, (activePage + 1) * activeLimit);
                     setRows(pageData);

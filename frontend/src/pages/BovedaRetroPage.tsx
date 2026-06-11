@@ -176,7 +176,7 @@ export function BovedaRetroPage(): JSX.Element {
     const [rows,         setRows]         = useState<Producto[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
     const [filterEstado, setFilterEstado] = useState<EstadoKey>('TODOS');
-    const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [filterActivo, setFilterActivo] = useState<ActivoKey>('ACTIVOS');
     const [expandedId,      setExpandedId]      = useState<number | null>(null);
     const [hoveredEstado,   setHoveredEstado]   = useState<EstadoKey | null>(null);
     const [sortField,       setSortField]       = useState<SortField | null>(null);
@@ -205,7 +205,7 @@ export function BovedaRetroPage(): JSX.Element {
         const params = buildParams();
         params.set('tipo', 'RETRO');
         if (filterEstado !== 'TODOS') params.set('estado', filterEstado);
-        if (sortField) params.set('sort', `${sortField},${sortDir}`);
+        params.set('sort', sortField ? `${sortField},${sortDir}` : 'id,desc');
         // No enviamos ?activo al backend porque el backend puede no actualizar
         // ese campo al hacer movimientos de stock. La distinción DISPONIBLE/VENDIDO
         // se hace client-side mediante stockActual === 0.

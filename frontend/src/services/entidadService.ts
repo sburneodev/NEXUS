@@ -53,9 +53,9 @@ export type ProveedorForm = Omit<Proveedor, 'id'>;
 // ── Servicio de Clientes ─────────────────────────────────────────────
 
 export const clienteService = {
-    listar: (buscar = '', page = 0, size = 10) =>
+    listar: (buscar = '', page = 0, size = 10, activo?: boolean) =>
         api.get<PageResponse<Cliente>>('/clientes', {
-            params: { buscar: buscar || undefined, page, size },
+            params: { buscar: buscar || undefined, page, size, activo },
         }).then(r => r.data),
 
     buscarPorId: (id: number) =>

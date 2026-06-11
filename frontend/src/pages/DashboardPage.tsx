@@ -43,7 +43,7 @@ const glow = isDark
             api.get<KpiData>('/dashboard/analytics'),
             productoService.listar(0, 200, 'RETRO'),
             productoService.listar(0, 200, 'ESTANDAR'),
-            clienteService.listar('', 0, 1),
+            clienteService.listar('', 0, 1, true),
             // Ocupación del almacén físico — ligero, solo necesitamos total_racks + racks_ocupados
             api.get<{ mapa: Record<string, Record<string, Record<string, unknown>>>; total_racks: number; racks_ocupados: number }>('/almacen/mapa'),
         ]).then(([analyticsRes, retroRes, estandarRes, clientesRes, mapaRes]) => {
@@ -82,7 +82,7 @@ const glow = isDark
             }
 
             if (retroRes.status === 'fulfilled')
-                merged.piezasRetroDisponibles = retroRes.value.totalElements;
+                merged.piezasRetroDisponibles = retroRes.value.content.filter(p => p.stockActual > 0).length;
 
             if (estandarRes.status === 'fulfilled') {
                 const estandar = estandarRes.value.content;

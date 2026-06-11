@@ -86,7 +86,7 @@ export function ProveedoresPage(): JSX.Element {
     // ── Estado local ──────────────────────────────────────────────────────────
     const [rows,         setRows]         = useState<Proveedor[]>([]);
     const [isLoading,    setIsLoading]    = useState(true);
-    const [filterActivo, setFilterActivo] = useState<ActivoKey>('TODOS');
+    const [filterActivo, setFilterActivo] = useState<ActivoKey>('ACTIVOS');
     const [sortField,    setSortField]    = useState<SortField | null>(null);
     const [sortDir,      setSortDir]      = useState<SortDir>('asc');
 

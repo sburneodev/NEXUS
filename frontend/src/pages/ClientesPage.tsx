@@ -89,7 +89,7 @@ export function ClientesPage(): JSX.Element {
     const [toast,      setToast]      = useState('');
     // Trigger para re-fetch tras operaciones CRUD
     const [refreshKey, setRefreshKey] = useState(0);
-    const [filterActivo,  setFilterActivo]  = useState<ActivoKey>('TODOS');
+    const [filterActivo,  setFilterActivo]  = useState<ActivoKey>('ACTIVOS');
     const [confirmDelete, setConfirmDelete] = useState<Cliente | null>(null);
     const [sortField,     setSortField]     = useState<SortField | null>(null);
     const [sortDir,       setSortDir]       = useState<SortDir>('asc');
